@@ -1,0 +1,19 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "at-risk-agreements-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/atRiskAgreements/ARAWebPart.js",
+          "manifest": "./src/webparts/atRiskAgreements/ARAWebPart.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {},
+  "localizedResources": {
+    "AtRiskAgreementsWebPartStrings": "lib/webparts/atRiskAgreements/loc/{locale}.js",
+    "ControlStrings": "node_modules/@pnp/spfx-controls-react/lib/loc/{locale}.js"
+  }
+}

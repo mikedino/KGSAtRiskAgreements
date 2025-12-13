@@ -1,0 +1,40 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "At-Risk Agreements Application",
+    "id": "66c0c8b0-5fb6-4ae5-8ca9-229a14299f82",
+    "version": "1.0.0.1",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "developer": {
+      "name": "",
+      "websiteUrl": "",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": "Undefined-1.21.1"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "kgs-at-risk-agreements description"
+      },
+      "longDescription": {
+        "default": "kgs-at-risk-agreements description"
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "kgs-at-risk-agreements Feature",
+        "description": "The feature that activates elements of the kgs-at-risk-agreements solution.",
+        "id": "fc231f3d-577c-40ca-9e82-9186a9ecf7de",
+        "version": "1.0.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/kgs-at-risk-agreements.sppkg"
+  }
+}

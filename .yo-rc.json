@@ -1,0 +1,18 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "plusBeta": false,
+    "isCreatingSolution": true,
+    "nodeVersion": "22.19.0",
+    "sdksVersions": {},
+    "version": "1.21.1",
+    "libraryName": "kgs-at-risk-agreements",
+    "libraryId": "66c0c8b0-5fb6-4ae5-8ca9-229a14299f82",
+    "environment": "spo",
+    "packageManager": "npm",
+    "solutionName": "kgs-at-risk-agreements",
+    "solutionShortDescription": "kgs-at-risk-agreements description",
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "componentType": "webpart"
+  }
+}
