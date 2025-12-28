@@ -1,6 +1,8 @@
 import { createTheme } from "@mui/material/styles";
+import { baseTheme } from "./theme.base";
 
 export const darkTheme = createTheme({
+  ...baseTheme,
   palette: {
     mode: "dark",
 
@@ -13,7 +15,7 @@ export const darkTheme = createTheme({
 
     background: {
       default: "#001729",             // Almost black, subtle blue hint
-      paper: "#003057"                
+      paper: "#003057"
     },
 
     divider: "#ccd6dd",
@@ -24,14 +26,14 @@ export const darkTheme = createTheme({
 
     action: {
       active: "#F2C744", // Gold accent for icons
-      selected: "#4b82ff" 
+      selected: "#4b82ff"
     }
 
   },
 
   custom: {
     cardBg: "#062038",        // slightly lighter than page
-    cardBorder: "#626262" 
+    cardBorder: "#626262"
   },
 
   typography: {
@@ -39,24 +41,7 @@ export const darkTheme = createTheme({
   },
 
   components: {
-    // Smooth transitions globally
-    MuiCssBaseline: {
-      styleOverrides: {
-        body: {
-          transition: "background-color 300ms ease, color 300ms ease",
-        },
-      },
-    },
 
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          //borderRadius: 10,
-          backgroundImage: "none",
-          transition: "background-color 250ms ease",
-        },
-      },
-    },
 
     MuiButton: {
       styleOverrides: {
@@ -76,6 +61,30 @@ export const darkTheme = createTheme({
           }
         },
 
+        // DEFAULT OUTLINED BUTTON (neutral gray)
+        outlined: {
+          borderColor: "#9FB3C8",
+          color: "#9FB3C8",
+
+          "&:hover": {
+            borderColor: "#ccd6dd",
+            color: "#ccd6dd",
+            backgroundColor: "rgba(255, 255, 255, 0.06)",
+          }
+        },
+
+        //  OUTLINED PRIMARY (if explicitly color="primary")
+        outlinedPrimary: {
+          borderColor: "#9FB3C8",
+          color: "#9FB3C8",
+
+          "&:hover": {
+            borderColor: "#ccd6dd",
+            color: "#ccd6dd",
+            backgroundColor: "rgba(255, 255, 255, 0.06)",
+          }
+        },
+
         // SECONDARY button: TEAL
         containedSecondary: {
           backgroundColor: "#005C6C",
@@ -92,9 +101,8 @@ export const darkTheme = createTheme({
           "&:hover": {
             backgroundColor: "#B43B3B",
           }
-        },
+        }
 
-        // Outlined buttons inherit text color automatically
       }
     }
   }

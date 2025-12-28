@@ -1,6 +1,8 @@
 import { createTheme } from "@mui/material/styles";
+import { baseTheme } from "./theme.base";
 
 export const lightTheme = createTheme({
+  ...baseTheme,
   palette: {
     mode: "light",
 
@@ -38,22 +40,6 @@ export const lightTheme = createTheme({
   },
 
   components: {
-    MuiCssBaseline: {
-      styleOverrides: {
-        body: {
-          transition: "background-color 300ms ease, color 300ms ease",
-        },
-      },
-    },
-
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          //borderRadius: 10,
-          backgroundImage: "none",
-        }
-      }
-    },
 
     MuiButton: {
       styleOverrides: {

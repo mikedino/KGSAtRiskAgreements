@@ -1,11 +1,17 @@
 import * as React from "react";
-import { useState } from "react";
-import { Box, Grid, Typography, TextField, MenuItem, Button, Divider } from "@mui/material";
+import { useState, useMemo, useEffect } from "react";
+import { Box, Grid, Typography, TextField, MenuItem, Button, Divider, Autocomplete } from "@mui/material";
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs, { Dayjs } from 'dayjs';
 import { PeoplePicker, PrincipalType } from "@pnp/spfx-controls-react/lib/PeoplePicker";
 import { WebPartContext } from '@microsoft/sp-webpart-base';
-import { IRiskAgreementItem } from "../data/props";
-import { IPersonaProps } from "@fluentui/react";
+import { ContractType, IRiskAgreementItem } from "../data/props";
+import { IPersonaProps, Stack } from "@fluentui/react";
 import { customPickerClass } from "../styles/componentStyles";
+import CurrencyField from "../ui/CurrencyField";
+import { DataSource } from "../data/ds";
 
 interface RiskAgreementFormProps {
   item?: IRiskAgreementItem; // undefined = NEW
@@ -15,12 +21,25 @@ interface RiskAgreementFormProps {
   onCancel: () => void;
 }
 
-type SubmissionType = "existing" | "opportunity";
+type SubmissionType = "existing" | "new";
 
 const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mode, onSubmit, onCancel, }) => {
 
   const [submissionType, setSubmissionType] = useState<SubmissionType>("existing");
-  const [form, setForm] = useState<IRiskAgreementItem>({ ...(item ?? {}) } as IRiskAgreementItem);
+  const [form, setForm] = useState<IRiskAgreementItem>({
+    riskFundingRequested: 0,
+    ...(item ?? {})
+  } as IRiskAgreementItem);
+
+  useEffect(() => {
+    const loadInvoices = async (): Promise<void> => {
+      await DataSource.getInvoices();
+    };
+
+    loadInvoices().catch((error: unknown) => {
+      console.error("Failed to load attachments", error);
+    });
+  }, []);
 
   const peoplePickerContext = {
     absoluteUrl: context.pageContext.web.absoluteUrl,
@@ -42,382 +61,43 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
     }
   };
 
-  // ContractType options array
-  const CONTRACT_TYPE_OPTIONS: IRiskAgreementItem["ContractType"][] = ["FFP", "FFP/LOE", "T&M", "LH", "CPAF", "CPIF", "CPFF", "CR"];
+  // memoized list so we don’t re-filter 2700+ invoices on every keystroke.
+  const filteredInvoices = useMemo(() => {
+    if (!form.contractId) return [];
 
-  // -----------------------------
-  // PROJECT / OPPORTUNITY SECTION
-  // -----------------------------
-  const renderProjectInfo = (): JSX.Element => {
-    if (submissionType === "existing") {
-      return (
-        <Grid container spacing={3}>
+    const dInvoice = DataSource.Invoices;
 
-          <Grid size={12}>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              Project Information
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 3 }}>
-              Core details about the project and contract
-            </Typography>
-          </Grid>
+    return dInvoice.filter(
+      i => i.field_49 === form.contractId
 
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField
-              label="Project/Contract Name"
-              fullWidth
-              required
-              value={form.ProjectName ?? ""}
-              onChange={(e) => updateField("ProjectName", e.target.value)}
-            />
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField
-              label="Contract Number"
-              fullWidth
-              required
-              value={form.ContractNumber ?? ""}
-              onChange={(e) => updateField("ContractNumber", e.target.value)}
-            />
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField
-              type="date"
-              label="PoP Start Date"
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-              value={form.StartD ?? ""}
-              onChange={(e) => updateField("StartD", e.target.value)}
-            />
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField
-              type="date"
-              label="PoP End Date"
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-              value={form.EndD ?? ""}
-              onChange={(e) => updateField("EndD", e.target.value)}
-            />
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField
-              select
-              label="Entity"
-              required
-              fullWidth
-              value={form.EntityB ?? ""}
-              onChange={(e) => updateField("EntityB", e.target.value)}
-            >
-              <MenuItem value="">Select entity</MenuItem>
-              <MenuItem value="KGS">KGS</MenuItem>
-              <MenuItem value="KDS">KDS</MenuItem>
-              {/* TODO: Populate dynamically */}
-            </TextField>
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 6 }}>
-            <PeoplePicker
-              titleText="Entity General Manager"
-              context={peoplePickerContext}
-              peoplePickerCntrlclassName={customPickerClass}
-              defaultSelectedUsers={form.EntityBManager?.EMail ? [form.EntityBManager.EMail] : []}
-              personSelectionLimit={1}
-              ensureUser
-              onChange={(items) => handlePeoplePicker(items, "EntityBManager")}
-              principalTypes={[PrincipalType.User]}
-              resolveDelay={1000}
-            />
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 6 }}>
-            <PeoplePicker
-              titleText="Project Manager"
-              context={peoplePickerContext}
-              peoplePickerCntrlclassName={customPickerClass}
-              defaultSelectedUsers={form.ProjectManager?.EMail ? [form.ProjectManager.EMail] : []}
-              personSelectionLimit={1}
-              ensureUser
-              onChange={(items) => handlePeoplePicker(items, "ProjectManager")}
-              principalTypes={[PrincipalType.User]}
-              resolveDelay={1000}
-            />
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 6 }}>
-            <PeoplePicker
-              titleText="Contract Manager"
-              context={peoplePickerContext}
-              peoplePickerCntrlclassName={customPickerClass}
-              defaultSelectedUsers={form.EntityAManager?.EMail ? [form.EntityAManager.EMail] : []}
-              personSelectionLimit={1}
-              ensureUser
-              onChange={(items) => handlePeoplePicker(items, "EntityAManager")}
-              principalTypes={[PrincipalType.User]}
-              resolveDelay={1000}
-            />
-          </Grid>
-
-          <Grid size={12}>
-            <TextField
-              label="Task Order"
-              fullWidth
-              value={form.TaskOrder ?? ""}
-              onChange={(e) => updateField("TaskOrder", e.target.value)}
-            />
-          </Grid>
-        </Grid>
-      );
-    }
-
-    // -----------------------------
-    //      OPPORTUNITY SECTION
-    // -----------------------------
-    return (
-      <Grid container spacing={3}>
-
-        <Grid size={12}>
-          <Typography variant="h6" sx={{ mb: 1 }}>
-            Opportunity Information
-          </Typography>
-        </Grid>
-
-        <Grid size={12}>
-          <TextField
-            label="OppNet Number (Optional)"
-            fullWidth
-            value={form.Opportunity ?? ""}
-            onChange={(e) => updateField("Opportunity", e.target.value)}
-          />
-        </Grid>
-
-        {!form.Opportunity && (
-          <>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                label="Contract Name"
-                fullWidth
-                value={form.ProjectName ?? "New Award"}
-                disabled
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                label="Program Name"
-                fullWidth
-                required
-                value={form.ProjectDescription ?? ""}
-                onChange={(e) =>
-                  updateField("ProjectDescription", e.target.value)
-                }
-              />
-            </Grid>
-          </>
-        )}
-
-        <Grid size={{ xs: 12, md: 6 }}>
-          <TextField
-            select
-            label="Entity"
-            fullWidth
-            required
-            value={form.EntityB ?? ""}
-            onChange={(e) => updateField("EntityB", e.target.value)}
-          >
-            <MenuItem value="">Select entity</MenuItem>
-            <MenuItem value="KGS">KGS</MenuItem>
-          </TextField>
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 6 }}>
-          <PeoplePicker
-            titleText="Project Manager"
-            context={peoplePickerContext}
-            peoplePickerCntrlclassName={customPickerClass}
-            defaultSelectedUsers={form.ProjectManager?.EMail ? [form.ProjectManager.EMail] : []}
-            personSelectionLimit={1}
-            ensureUser
-            onChange={(items) => handlePeoplePicker(items, "ProjectManager")}
-            principalTypes={[PrincipalType.User]}
-            resolveDelay={1000}
-          />
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Box sx={{ mt: 2 }}>
-            {/* <Typography variant="body1" sx={{ mb: 1 }}>
-              Contract Manager
-            </Typography> */}
-
-            <PeoplePicker
-              titleText="Contract Manager"
-              context={peoplePickerContext}
-              peoplePickerCntrlclassName={customPickerClass}
-              defaultSelectedUsers={form.EntityAManager?.EMail ? [form.EntityAManager.EMail] : []}
-              personSelectionLimit={1}
-              ensureUser
-              onChange={(items) => handlePeoplePicker(items, "EntityAManager")}
-              principalTypes={[PrincipalType.User]}
-              resolveDelay={1000}
-            />
-
-          </Box>
-
-        </Grid>
-
-      </Grid>
     );
+  }, [form.contractId, DataSource.Invoices]);
+
+
+  // ContractType options array
+  const contractTypeOptions: ContractType[] = ["FFP/LOE", "T&M", "LH", "Hybrid", "Cost Plus/Reimbursable"];
+
+  // SUBMIT HANDLER
+  const handleSubmit = (): void => {
+    onSubmit(form);
   };
-
-  // -----------------------------
-  // RISK DETAILS SECTION
-  // -----------------------------
-  const renderRiskDetails = (): JSX.Element => (
-    <Grid container spacing={3} sx={{ mt: 4 }}>
-      <Grid size={12}>
-        <Typography variant="h6" sx={{ mb: 1 }}>
-          Risk Details
-        </Typography>
-      </Grid>
-
-      {submissionType === "existing" && (
-        <Grid size={{ xs: 12, md: 6 }}>
-          <TextField
-            select
-            label="Reason for At-Risk Work"
-            fullWidth
-            required
-            value={form.Reason ?? ""}
-            onChange={(e) => updateField("Reason", e.target.value as IRiskAgreementItem["Reason"])}
-          >
-            <MenuItem value="Lack of funding">Lack of funding</MenuItem>
-            <MenuItem value="PoP End / Lack of funding">PoP End</MenuItem>
-          </TextField>
-        </Grid>
-      )}
-
-      <Grid size={{ xs: 12, md: 6 }}>
-        <TextField
-          type="date"
-          label="Risk Start Date"
-          InputLabelProps={{ shrink: true }}
-          fullWidth
-          required
-          value={form.StartDate ?? ""}
-          onChange={(e) => updateField("StartDate", e.target.value)}
-        />
-      </Grid>
-
-      <Grid size={{ xs: 12, md: 6 }}>
-        <TextField
-          type="date"
-          label="Risk End Date"
-          InputLabelProps={{ shrink: true }}
-          fullWidth
-          required
-          value={form.EndDate ?? ""}
-          onChange={(e) => updateField("EndDate", e.target.value)}
-        />
-      </Grid>
-
-      <Grid size={{ xs: 12, md: 6 }}>
-        <TextField
-          select
-          label="Contract Type"
-          fullWidth
-          required
-          value={form.ContractType ?? ""}
-          onChange={(e) =>
-            updateField("ContractType", e.target.value as IRiskAgreementItem["ContractType"])
-          }
-        >
-          <MenuItem value="">Select contract type</MenuItem>
-          {CONTRACT_TYPE_OPTIONS.map((ct) => (
-            <MenuItem key={ct} value={ct}>
-              {ct}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Grid>
-
-      {submissionType === "existing" && (
-        <Grid size={{ xs: 12, md: 6 }}>
-          <TextField
-            type="number"
-            label="Previous Risk Funding ($)"
-            fullWidth
-            value={form.HoursAuthorized ?? 0}
-            onChange={(e) =>
-              updateField("HoursAuthorized", Number(e.target.value))
-            }
-          />
-        </Grid>
-      )}
-
-      <Grid size={{ xs: 12, md: 6 }}>
-        <TextField
-          type="number"
-          label="New Risk Funding Requested ($)"
-          fullWidth
-          required
-          value={form.AmountAuthorized ?? 0}
-          onChange={(e) =>
-            updateField("AmountAuthorized", Number(e.target.value))
-          }
-        />
-      </Grid>
-    </Grid>
-  );
-
-  // -----------------------------
-  // JUSTIFICATION SECTION
-  // -----------------------------
-  const renderJustification = (): JSX.Element => (
-    <Box sx={{ mt: 4 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        Justification
-      </Typography>
-
-      <TextField
-        multiline
-        rows={5}
-        fullWidth
-        placeholder="Explain why this at-risk work is necessary..."
-        value={form.ContractComment ?? ""}
-        onChange={(e) => updateField("ContractComment", e.target.value)}
-      />
-    </Box>
-  );
 
   // -----------------------------
   // ATTACHMENTS SECTION
   // -----------------------------
   const renderAttachments = (): JSX.Element => (
     <Box sx={{ mt: 4 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        Attachments
-      </Typography>
-
+      <Typography variant="h6">Attachments</Typography>
+      <Divider sx={{ mt: 1, mb: 2 }} />
       <Button variant="outlined">Upload Document</Button>
     </Box>
   );
 
   // -----------------------------
-  // SUBMIT HANDLER
-  // -----------------------------
-  const handleSubmit = (): void => {
-    onSubmit(form);
-  };
-
-  // -----------------------------
   // MAIN RENDER
   // -----------------------------
   return (
+
     <Box sx={{ p: 4 }}>
 
       <Typography variant="h4" sx={{ mb: 3 }}>
@@ -428,36 +108,269 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
       <TextField
         select
         label="Submission Type"
-        sx={{ mb: 4, width: 300 }}
+        sx={{ mb: 1, width: 300 }}
         value={submissionType}
         onChange={(e) =>
           setSubmissionType(e.target.value as SubmissionType)
         }
       >
         <MenuItem value="existing">Existing Contract</MenuItem>
-        <MenuItem value="opportunity">Opportunity / New Contract</MenuItem>
+        <MenuItem value="new">Opportunity / New Contract</MenuItem>
       </TextField>
 
       {/* Sections */}
-      {renderProjectInfo()}
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
 
-      <Divider sx={{ my: 4 }} />
+        <Grid container spacing={3}>
 
-      {renderRiskDetails()}
-      {renderJustification()}
+          <Grid size={12}>
+            <Typography variant="h6" sx={{ mb: 1 }}>Project Information</Typography>
+            <Typography variant="body2">Core details about the project and contract</Typography>
+            <Divider sx={{ mt: 1, mb: 2 }} />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Autocomplete
+              options={DataSource.Contracts}
+              fullWidth
+              autoHighlight
+              noOptionsText="Start typing to search contracts"
+              openOnFocus={false}
+              getOptionLabel={(option) => option.field_20 ?? ""}
+              isOptionEqualToValue={(option, value) => option.field_19 === value.field_19}
+              filterOptions={(options, { inputValue }) => {
+                const search = inputValue.toLowerCase().trim();
+                if (!search) return [];
+                return options
+                  .filter(o =>
+                    o.field_20?.toLowerCase().includes(search) ||
+                    o.field_35?.toLowerCase().includes(search))
+                  .slice(0, 20);
+              }}
+              value={DataSource.Contracts.find((c) => c.field_20 === form.projectName) ?? null}
+              onChange={(_, newValue) => {
+                updateField("projectName", newValue?.field_20 ?? "");
+                updateField("contractId", newValue?.field_19 ?? undefined);
+                // reset invoice when contract changes
+                updateField("invoice", "");
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Project / Contract Name"
+                  required
+                />
+              )}
+              renderOption={(props, option) => (
+                <li {...props} key={option.field_19}>
+                  <Stack>
+                    <Typography fontWeight={500}>{option.field_20}</Typography>
+                    <Typography variant="body2" color="text.secondary">{option.field_35}</Typography>
+                  </Stack>
+                </li>
+              )}
+            />
+          </Grid>
+
+          {submissionType === "existing" && (
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Autocomplete
+                options={filteredInvoices}
+                fullWidth
+                autoHighlight
+                openOnFocus={false}
+                noOptionsText={form.contractId ? "Start typing to search invoices" : "Select a contract first"}
+                getOptionLabel={(option) => option.InvoiceID1 ?? ""}
+                isOptionEqualToValue={(option, value) => option.InvoiceID1 === value.InvoiceID1}
+                filterOptions={(options, { inputValue }) => {
+                  const search = inputValue.toLowerCase().trim();
+                  if (!search) { return options.slice(0, 20); }
+                  return options
+                    .filter(o =>
+                      o.field_42?.toLowerCase().includes(search) ||
+                      o.field_28?.toLowerCase().includes(search))
+                    .slice(0, 20);
+                }}
+                value={filteredInvoices.find(i => i.InvoiceID1 === form.invoice) ?? null}
+                onChange={(_, newValue) => { updateField("invoice", newValue?.InvoiceID1 ?? ""); }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Invoice"
+                    required
+                    disabled={!form.contractId}
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <li {...props} key={option.field_14}>
+                    <Stack>
+                      <Typography fontWeight={500}>{option.InvoiceID1}</Typography>
+                      <Typography variant="body2" color="text.secondary">{option.field_28}</Typography>
+                    </Stack>
+                  </li>
+                )}
+              />
+            </Grid>
+          )}
+
+          {submissionType === "new" && (
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField label="Program Name" fullWidth required value={form.programName ?? ""} onChange={(e) => updateField("programName", e.target.value)} />
+            </Grid>
+          )}
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              select
+              label="Contract Type"
+              fullWidth
+              required
+              value={form.contractType ?? ""}
+              onChange={(e) => updateField("contractType", e.target.value as ContractType)}
+            >
+              <MenuItem value="">Select contract type</MenuItem>
+              {contractTypeOptions.map((ct) => (
+                <MenuItem key={ct} value={ct}>
+                  {ct}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <DatePicker
+              label="Risk Start Date"
+              value={form.riskStart ? dayjs(form.riskStart) : null}
+              onChange={(value: Dayjs | null) =>
+                updateField("riskStart", value ? value.format("MM/DD/YYYY") : "")
+              }
+              slotProps={{
+                textField: {
+                  fullWidth: true,
+                  required: true
+                }
+              }}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <DatePicker
+              label="Risk End Date"
+              value={form.riskEnd ? dayjs(form.riskEnd) : null}
+              onChange={(value: Dayjs | null) =>
+                updateField("riskEnd", value ? value.format("MM/DD/YYYY") : "")
+              }
+              slotProps={{
+                textField: {
+                  fullWidth: true,
+                  required: true
+                }
+              }}
+            />
+          </Grid>
+
+          {submissionType === "existing" && (
+            <Grid size={{ xs: 12, md: 6 }}>
+              <DatePicker
+                label="PoP End Date"
+                value={form.popEnd ? dayjs(form.popEnd) : null}
+                onChange={(value: Dayjs | null) =>
+                  updateField("popEnd", value ? value.format("MM/DD/YYYY") : "")
+                }
+                slotProps={{
+                  textField: {
+                    fullWidth: true
+                  }
+                }}
+              />
+            </Grid>
+          )}
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField select label="Entity" required fullWidth value={form.entity ?? ""} onChange={(e) => updateField("entity", e.target.value)} >
+              <MenuItem value="">Select Entity</MenuItem>
+              {DataSource.Entities.map((e) => (
+                <MenuItem key={e.Id} value={e.Title}>
+                  {e.combinedTitle}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <PeoplePicker
+              titleText="Project Manager"
+              context={peoplePickerContext}
+              peoplePickerCntrlclassName={customPickerClass}
+              defaultSelectedUsers={form.projectMgr?.EMail ? [form.projectMgr.EMail] : []}
+              personSelectionLimit={1}
+              ensureUser
+              onChange={(items) => handlePeoplePicker(items, "projectMgr")}
+              principalTypes={[PrincipalType.User]}
+              resolveDelay={1000}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Box sx={{ mt: 2 }}>
+              {/* <Typography variant="body1" sx={{ mb: 1 }}>
+              Contract Manager
+            </Typography> */}
+
+              <PeoplePicker
+                titleText="Contract Manager"
+                context={peoplePickerContext}
+                peoplePickerCntrlclassName={customPickerClass}
+                defaultSelectedUsers={form.contractMgr?.EMail ? [form.contractMgr.EMail] : []}
+                personSelectionLimit={1}
+                ensureUser
+                onChange={(items) => handlePeoplePicker(items, "contractMgr")}
+                principalTypes={[PrincipalType.User]}
+                resolveDelay={1000}
+              />
+            </Box>
+          </Grid>
+
+          {submissionType === "existing" && (
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField select label="Reason for At-Risk Work" fullWidth required value={form.riskReason ?? ""} onChange={(e) => updateField("riskReason", e.target.value as IRiskAgreementItem["riskReason"])} >
+                <MenuItem value="Lack of funding">Lack of funding</MenuItem>
+                <MenuItem value="PoP End / Lack of funding">PoP End</MenuItem>
+              </TextField>
+            </Grid>
+          )}
+
+          <Grid size={{ xs: 12, md: 6 }}>
+            <CurrencyField
+              label="New Risk Funding Requested"
+              fullWidth
+              required
+              value={form.riskFundingRequested}
+              onChange={(val) => updateField("riskFundingRequested", val)}
+            />
+          </Grid>
+
+        </Grid>
+
+      </LocalizationProvider>
+
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h6">Justification</Typography>
+        <Divider sx={{ mt: 1, mb: 2 }} />
+        <TextField multiline rows={5} fullWidth placeholder="Explain why this at-risk work is necessary..." value={form.riskJustification ?? ""} onChange={(e) => updateField("riskJustification", e.target.value)} />
+      </Box>
+
       {renderAttachments()}
 
-      {/* Footer */}
-      <Box sx={{ mt: 4, display: "flex", gap: 2 }}>
-        <Button variant="outlined" onClick={onCancel}>
-          Cancel
-        </Button>
+      <Divider sx={{ mt: 3, mb: 1 }} />
 
-        <Button variant="contained" onClick={handleSubmit}>
-          Submit for Approval
-        </Button>
+      {/* Footer */}
+      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 3 }}>
+        <Button variant="outlined" onClick={onCancel}>Cancel</Button>
+        <Button variant="contained" onClick={handleSubmit}>Submit for Approval</Button>
       </Box>
     </Box>
+
   );
 };
 

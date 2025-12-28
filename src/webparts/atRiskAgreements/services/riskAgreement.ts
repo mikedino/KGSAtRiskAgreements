@@ -9,79 +9,26 @@ export class RiskAgreementService {
         return new Promise<IRiskAgreementItem>((resolve, reject) => {
             Web(Strings.Sites.main.url).Lists(Strings.Sites.main.lists.Agreements).Items().add({
                 __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.Agreements)}ListItem` },
-                Title: item.Title,
-                Agreement_Type: item.Agreement_Type,
-                Amount: item.Amount,
-                AmountAuthorized: item.AmountAuthorized,
-                CEO: item.CEO?.Id,
-                //CEOApproval?: ApprovalChoice;
-                //CEOComment?: string;
-                //CEO_Signature?: string;
-                //CEO_Signed?: boolean;
-                //CEO_SignedDate?: string;
-                ContractComment: item.ContractComment,
-                ContractNumber: item.ContractComment,
-                ContractType: item.ContractType,
-                ContractsApproval: item.ContractsApproval,
-                //DocL: item.DocL,
-                //DocLocation: item.DocLocation,
-                EndD: item.EndD,
-                EndDate: item.EndDate && item.EndDate !== "" ? item.EndDate : null,
-                EntityAManagerId: item.EntityAManager?.Id,
-                EntityB: item.EntityB, // will end up being a lookup
-                EntityBManagerId: item.EntityBManager?.Id,
-                //FinanceApproval?: ApprovalChoice;
-                FinanceManager: item.FinanceManager?.Id,
-                //Flow_Link?: string;
-                //GUID0?: string;
-                //HasAnAttachment?: boolean;
-                HoursAuthorized: item.HoursAuthorized,
-                IWAProjectID: item.IWAProjectID,
-                LackofFundingEndDate: item.LackofFundingEndDate && item.LackofFundingEndDate !== "" ? item.LackofFundingEndDate : null,
-                LineOfBusiness: item.LineOfBusiness,
-                //LOBApproval: ApprovalChoice,
-                //LOBComment: string,
-                LOBPresident: item.LOBPresident?.Id,
-                //LOBSignature: string,
-                //LOBSigned: boolean,
-                //LOBSignedDate: string,
-                //Mod: boolean,
-                //ModGUID: string,
-                NoOfDays: item.NoOfDays,
-                //OGApproval: ApprovalChoice,
-                //OG_Comment: string,
-                OG_Manager: item.OG_Manager?.Id,
-                //OG_Signature: string,
-                //OG_Signed: boolean,
-                //OG_SignedDate: string,
-                OperatingGroup: item.OperatingGroup,
-                Opportunity: item.Opportunity,
-                //PMApproval: ApprovalChoice,
-                //PM_Sign: string,
-                //PM_SignDate: string,
-                //PM_Signed: boolean,
-                //ParentGUID: string,
-                //Pdf: boolean,
-                //PdfLocation: string,
-                ProjectDescription: item.ProjectDescription,
-                ProjectId: item.ProjectId,
-                ProjectManager: item.ProjectManager?.Id,
-                ProjectName: item.ProjectName,
-                Reason: item.Reason,
-                RequiredDate: item.RequiredDate && item.RequiredDate !== "" ? item.RequiredDate : null,
-                //SentToCEO: boolean,
-                //Signature: string,
-                //SignatureB: string,
-                //SignedA: boolean,
-                //Signed_A_Date: string,
-                //SignedB: boolean,
-                //Signed_B_Date: string,
-                //StartD: string,
-                StartDate: item.StartDate && item.StartDate !== "" ? item.StartDate : null,
-                //Status: "In Progress" | "Completed" | "Rejected" | "Submitted",
-                TaskOrder: item.TaskOrder,
-                TaskOrderEndDate: item.TaskOrderEndDate && item.TaskOrderEndDate !== "" ? item.TaskOrderEndDate : null,
-                TaskOrderProjectID: item.TaskOrderProjectID
+                Title: `ATR-${item.entity}-2025-0001`, //TODO: DYNAMIC NUMBERING
+                projectName: item.projectName,
+                invoice: item.invoice,
+                contractType: item.contractType,
+                riskStart: item.riskStart && item.riskStart !== "" ? item.riskStart : null,
+                riskEnd: item.riskEnd && item.riskEnd !== "" ? item.riskEnd : null,
+                popEnd: item.popEnd && item.popEnd !== "" ? item.popEnd : null,
+                entity: item.entity,
+                projectMgrId: item.projectMgr?.Id,
+                contractMgrId: item.contractMgr?.Id,
+                riskReason: item.riskReason,
+                riskFundingRequested: item.riskFundingRequested,
+                riskJustification: item.riskJustification,
+                contractName: item.contractName,
+                programName: item.programName,
+                entityGMId: item.entityGM?.Id, 
+                OGPresidentId: item.OGPresident?.Id, 
+                SVPContractsId: item.SVPContracts?.Id, //set default
+                LOBPresidentId: item.LOBPresident?.Id, 
+                CEOId:item.CEO?.Id // set default
             }).execute(
                 //success
                 resp => {

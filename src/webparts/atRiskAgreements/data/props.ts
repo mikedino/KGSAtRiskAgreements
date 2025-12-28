@@ -1,7 +1,8 @@
 import { WebPartContext } from "@microsoft/sp-webpart-base";
 import { IPersonaProps } from "@fluentui/react/lib/Persona";
+import { Types } from "gd-sprest";
 
-export interface IAtRiskAgreementsProps {
+export interface IAppProps {
   wpTitle: string;
   context: WebPartContext;
 }
@@ -12,12 +13,16 @@ export interface IPeoplePicker extends IPersonaProps {
   Title: string;
 }
 
-interface IHyperlinkField {
-  Url: string;
-  Description?: string;
-}
+export interface IAttachmentInfo extends Types.SP.Attachment {}
 
-type ApprovalChoice = "Approved" | "Rejected" | "Not Started";
+// interface IHyperlinkField {
+//   Url: string;
+//   Description?: string;
+// }
+
+export type ApprovalChoice = "Approved" | "Rejected" | "Not Started";
+export type AraStatus =  "Draft"  | "Submitted"  | "Under Review"  | "Approved"  | "Rejected"  | "Resolved"  | "Cancelled";
+export type ContractType = "FFP/LOE" | "T&M" | "LH" | "Cost Plus/Reimbursable" | "Hybrid";
 
 export interface IRiskAgreementItem {
   //System fields
@@ -27,84 +32,81 @@ export interface IRiskAgreementItem {
   readonly Author: IPeoplePicker;
   readonly Id: number;
   Title: string;
-  // Calculated fields
-  readonly _x0033_0_x0020_Day_x0020_Lack_x0?: string; //30 Day Lack of Funding Date
-  readonly Expiring_x0020_Date_x0020_30_x00?: string; //Expiring Date 30 Day
+  Attachments: boolean;
   // Custom fields
-  Agreement_Type?: string;
-  Amount?: number;
-  AmountAuthorized?: number;
-  ApprovalStatus?: string;
-  Approval_Stat?: "Approved" | "Rejected";
-  Approval_Status?: "Approved" | "Rejected";
-  Attachment?: "Yes" | "No";
-  CEO?: IPeoplePicker;
-  CEOApproval?: ApprovalChoice;
-  CEOComment?: string;
-  CEO_Signature?: string;
-  CEO_Signed?: boolean;
-  CEO_SignedDate?: string;
-  ContractComment?: string;
-  ContractNumber?: string;
-  ContractType?: "FFP" | "FFP/LOE" | "T&M" | "LH" | "CPAF" | "CPIF" | "CPFF" | "CR";
-  ContractsApproval?: ApprovalChoice;
-  DocL?: string;
-  DocLocation?: IHyperlinkField;
-  EndD?: string;
-  EndDate?: string;
-  EntityAManager?: IPeoplePicker;
-  EntityB?: string; // will end up being a lookup
-  EntityBManager?: IPeoplePicker;
-  FinanceApproval?: ApprovalChoice;
-  FinanceManager?: IPeoplePicker;
-  Flow_Link?: string;
-  GUID0?: string;
-  HasAnAttachment?: boolean;
-  HoursAuthorized?: number;
-  IWAProjectID?: string;
-  LackofFundingEndDate?: string;
-  LineOfBusiness?: string;
-  LOBApproval?: ApprovalChoice;
-  LOBComment?: string;
-  LOBPresident?: IPeoplePicker;
-  LOBSignature?: string;
-  LOBSigned?: boolean;
-  LOBSignedDate?: string;
-  Mod?: boolean;
-  ModGUID?: string;
-  NoOfDays?: string;
-  OGApproval?: ApprovalChoice;
-  OG_Comment?: string;
-  OG_Manager?: IPeoplePicker;
-  OG_Signature?: string;
-  OG_Signed?: boolean;
-  OG_SignedDate?: string;
-  OperatingGroup?: string;
-  Opportunity?: string;
-  PMApproval?: ApprovalChoice;
-  PM_Sign?: string;
-  PM_SignDate?: string;
-  PM_Signed?: boolean;
-  ParentGUID?: string;
-  Pdf?: boolean;
-  PdfLocation?: string;
-  ProjectDescription?: string;
-  ProjectId?: string;
-  ProjectManager?: IPeoplePicker;
-  ProjectName?: string;
-  Reason?: "Lack of funding" | "PoP End / Lack of funding";
-  RequiredDate?: string;
-  SentToCEO?: boolean;
-  Signature?: string;
-  SignatureB?: string;
-  SignedA?: boolean;
-  Signed_A_Date?: string;
-  SignedB?: boolean;
-  Signed_B_Date?: string;
-  StartD?: string;
-  StartDate?: string;
-  Status?: "In Progress" | "Completed" | "Rejected" | "Submitted";
-  TaskOrder?: string;
-  TaskOrderEndDate?: string;
-  TaskOrderProjectID?: string;
+  projectName: string;
+  contractId?: string; // used on the form, not stored in the list
+  invoice: string;
+  contractType: ContractType;
+  riskStart: string; //date
+  riskEnd: string; //date
+  popEnd: string; //date
+  entity: string;
+  projectMgr: IPeoplePicker;
+  contractMgr: IPeoplePicker;
+  cmDecision: "Pending" | "Sent to OGP" | "Rejected";
+  cmComment: string;
+  cmDecisionDate: string;
+  riskReason: "Lack of Funding" | "PoP End";
+  riskFundingRequested: number;
+  riskJustification: string;
+  contractName: string;
+  programName: string;
+  araStatus: AraStatus;
+  entityGM: IPeoplePicker;
+  OGPresident: IPeoplePicker;
+  OGPresidentApproval: ApprovalChoice;
+  OGPresidentComment: string;
+  OGPresidentSignDate: string; //date
+  SVPContracts: IPeoplePicker;
+  SVPContractsApproval: ApprovalChoice;
+  SVPContractsComment: string;
+  SVPContractsSignDate: string; //date
+  LOBPresident: IPeoplePicker;
+  LOBPresidentApproval: ApprovalChoice;
+  LOBPresidentComment: string;
+  LOBPresidentSignDate: string; //date
+  CEO: IPeoplePicker;
+  CEOApproval: ApprovalChoice;
+  CEOComment: string;
+  CEOSignDate: string; //date
+}
+
+export interface IOGPresidentsItem {
+  readonly Id: number;
+  Title: string;
+  president: IPeoplePicker;
+  LOB: string;
+  LOBPresident: IPeoplePicker;
+  CM: IPeoplePicker;
+}
+
+export interface IEntitiesItem {
+  readonly Id: number;
+  Title: string;
+  abbr: string;
+  GM: IPeoplePicker;
+  combinedTitle: string;
+}
+
+export interface IContractItem {
+  readonly Id: number;
+  Title: string;
+  field_19: string; // Contract ID
+  field_20: string; // Contract Title
+  field_35: string; // Customer Contract Code
+  field_21: string; // Manager 1 Email (Project Manager)
+  field_23: string; // Manager 1 Name (Project Manager)
+  field_75: string; // OG
+  field_16: string; // Completion Date
+}
+
+export interface IInvoiceItem {
+  readonly Id: number;
+  Title: string;
+  field_49: string; // Contract ID
+  field_28: string; // Customer Contract Code
+  field_14: string; // Invoice ID
+  InvoiceID1: string; // "ContractID-InvoiceID"
+  field_42: string; // Invoice Title
 }

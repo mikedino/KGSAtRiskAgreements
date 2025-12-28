@@ -22,17 +22,15 @@ const Strings = {
         main: {
             url: ContextInfo.webAbsoluteUrl,
             lists: {
-                Agreements: "ARAAgreements",
+                Agreements: "AtRiskAgreements",
                 Roles: "ARARoles"
             }
         },
         jamis: {
             url: "/sites/Jamis_Data_API",
             lists: {
-                ContractEP: "ConctractEndPoint",
-                InvoiceEP: "InvoiceEndPoint",
-                JobEP: "JobEndPoint",
-                ProjectEP: "ProjectEndPoint"
+                ContractEP: "ContractEndPoint",
+                InvoiceEP: "InvoiceEndPoint"
             }
         },
         oppnet: {
@@ -45,13 +43,10 @@ const Strings = {
             }
         },
         lookups: {
-            url: "/sites/DataLookups",
+            url: "/sites/Dev-Sandbox",
             lists: {
-                CMSProjectData: "CMS Project Data",
-                CMSTaskOrders: "CMS Task Orders",
-                EntityManagers: "Entity Managers",
-                OGPresidents: "OG Presidents",
-                Org: "Org",
+                Entities: "Entities",
+                OGPresidents: "OGPresidents"
             }
         }
     },

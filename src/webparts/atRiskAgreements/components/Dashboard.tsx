@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Grid } from "@mui/material";
-import InfoCard from "../ui/infoCard";
+import InfoCard from "../ui/InfoCard";
 
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";

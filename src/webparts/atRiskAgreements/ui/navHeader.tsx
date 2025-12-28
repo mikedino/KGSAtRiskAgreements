@@ -8,7 +8,7 @@ import WorkIcon from "@mui/icons-material/Work";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import { Link } from "react-router-dom";
-import ThemeSwitcher from "./themeSwitcher";
+import ThemeSwitcher from "./ThemeSwitcher";
 import { WebPartContext } from "@microsoft/sp-webpart-base";
 import { stringAvatar } from "../services/utils";
 
