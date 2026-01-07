@@ -20,6 +20,12 @@ export const Configuration = Helper.SPConfig({
                     type: Helper.SPCfgFieldType.Text
                 },
                 {
+                    name: "contractId",
+                    title: "Contract Id",
+                    type: Helper.SPCfgFieldType.Text,
+                    description: "Stores the ID so the edit form can quickly find the matching contract"
+                },
+                {
                     name: "invoice",
                     title: "Invoice",
                     type: Helper.SPCfgFieldType.Text

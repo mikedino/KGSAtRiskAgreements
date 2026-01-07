@@ -35,7 +35,7 @@ export interface IRiskAgreementItem {
   Attachments: boolean;
   // Custom fields
   projectName: string;
-  contractId?: string; // used on the form, not stored in the list
+  contractId?: string; 
   invoice: string;
   contractType: ContractType;
   riskStart: string; //date
@@ -109,4 +109,11 @@ export interface IInvoiceItem {
   field_14: string; // Invoice ID
   InvoiceID1: string; // "ContractID-InvoiceID"
   field_42: string; // Invoice Title
+}
+
+export interface IConfigItem {
+  readonly Id: number;
+  Title: string;
+  IsFor: string;
+  User: IPeoplePicker;
 }

@@ -1,8 +1,10 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { IRiskAgreementItem, IAttachmentInfo } from "../data/props";
 import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, TextField, Typography } from "@mui/material";
-import AgreementInfoCard from "./viewAgreementInfo";
+import Edit from "@mui/icons-material/Edit";
+import AgreementInfoCard from "./viewInfo";
 import WorkflowTimeline from "./viewTimeline";
 import { buildWorkflowState } from "../services/workflowState";
 import { Web } from "gd-sprest";
@@ -108,20 +110,30 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({
     return (
         <Box sx={{ p: 4 }}>
             <Box sx={{ mb: 3 }}>
-                <Stack direction="row" alignItems="center" spacing={2}>
-
-                    <Typography variant="h4">{item.Title}</Typography>
-
-                    <Chip label={item.araStatus}
-                        color={
-                            item.araStatus === "Approved"
-                                ? "success"
-                                : item.araStatus === "Rejected"
-                                    ? "error"
-                                    : "warning"
-                        }
-                        size="small"
-                    />
+                <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+                    <Stack direction="row" alignItems="center" spacing={2}>
+                        <Typography variant="h4">{item.Title}</Typography>
+                        <Chip label={item.araStatus}
+                            color={
+                                item.araStatus === "Approved"
+                                    ? "success"
+                                    : item.araStatus === "Rejected"
+                                        ? "error"
+                                        : "warning"
+                            }
+                            size="small"
+                        />
+                    </Stack>
+                    <Stack direction="row" spacing={2}>
+                        <Button title="Edit this Agreeement"
+                            startIcon={<Edit />}
+                            variant="contained"
+                            color="primary"
+                            component={Link}
+                            to={`/edit/${item.Id}`}>
+                            Edit
+                        </Button>
+                    </Stack>
                 </Stack>
 
                 {/* <Typography variant="body2" color="text.secondary">AGR-{item.Id}</Typography> */}

@@ -33,20 +33,12 @@ const Strings = {
                 InvoiceEP: "InvoiceEndPoint"
             }
         },
-        oppnet: {
-            url: "/sites/OppNet",
-            lists: {
-                ContractEP: "ConctractEndPoint",
-                InvoiceEP: "InvoiceEndPoint",
-                JobEP: "JobEndPoint",
-                ProjectEP: "ProjectEndPoint"
-            }
-        },
         lookups: {
             url: "/sites/Dev-Sandbox",
             lists: {
                 Entities: "Entities",
-                OGPresidents: "OGPresidents"
+                OGPresidents: "OGPresidents",
+                Config: "Config"
             }
         }
     },

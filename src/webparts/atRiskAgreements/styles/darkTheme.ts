@@ -18,7 +18,8 @@ export const darkTheme = createTheme({
       paper: "#003057"
     },
 
-    divider: "#ccd6dd",
+    //divider: "#ccd6dd",
+
     text: {
       primary: "#ffffff",
       secondary: "#ccd6dd"
@@ -41,8 +42,6 @@ export const darkTheme = createTheme({
   },
 
   components: {
-
-
     MuiButton: {
       styleOverrides: {
         root: {
@@ -104,6 +103,28 @@ export const darkTheme = createTheme({
         }
 
       }
+    },
+
+    MuiListItem: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          // Only when rendered as an anchor
+          '&[component="a"], &[href]': {
+            color: theme.palette.info.main,   // #4b82ff
+            textDecoration: 'none',
+
+            '&:hover': {
+              textDecoration: 'underline',
+              color: theme.palette.info.main
+            },
+
+            '&:visited': {
+              color: theme.palette.info.main
+            }
+          }
+        })
+      }
     }
+
   }
 });

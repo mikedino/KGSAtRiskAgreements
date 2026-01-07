@@ -1,6 +1,5 @@
 import * as React from "react";
-import { Typography, Skeleton, List, ListItem, ListItemIcon, ListItemText } from "@mui/material";
-import AttachFile from "@mui/icons-material/AttachFile";
+import { Typography, Skeleton, List, ListItem, ListItemText } from "@mui/material";
 import { IAttachmentInfo } from "../data/props";
 
 interface AttachmentsListProps {
@@ -27,15 +26,7 @@ const AttachmentsList: React.FC<AttachmentsListProps> = ({
   return (
     <List dense>
       {attachments.map(a => (
-        <ListItem
-          key={a.FileName}
-          component="a"
-          href={a.ServerRelativeUrl}
-          target="_blank"
-        >
-          <ListItemIcon>
-            <AttachFile />
-          </ListItemIcon>
+        <ListItem key={a.FileName} component="a" href={a.ServerRelativeUrl} target="_blank" >
           <ListItemText primary={a.FileName} />
         </ListItem>
       ))}

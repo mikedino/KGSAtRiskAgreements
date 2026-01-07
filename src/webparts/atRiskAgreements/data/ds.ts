@@ -1,7 +1,7 @@
 import { Web } from "gd-sprest";
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import Strings, { setContext } from "../../../strings";
-import { IContractItem, IEntitiesItem, IInvoiceItem, IOGPresidentsItem, IRiskAgreementItem } from "./props";
+import { IConfigItem, IContractItem, IEntitiesItem, IInvoiceItem, IOGPresidentsItem, IPeoplePicker, IRiskAgreementItem } from "./props";
 import { formatError } from "../services/utils";
 
 export class DataSource {
@@ -23,10 +23,10 @@ export class DataSource {
 
                 Promise.all([
                     this.getAgreeements(),
+                    this.getConfig(),
                     this.getEntities(),
                     this.getOGs(),
-                    this.getContracts(),
-                    //this.getInvoices()
+                    this.getContracts()
                 ])
                     .then(() => {
                         this.initialized = true;
@@ -61,10 +61,12 @@ export class DataSource {
                     "*", "Author/Id", "Author/Title", "Author/EMail", "projectMgr/Id", "projectMgr/Title", "projectMgr/EMail", 
                     "contractMgr/Id", "contractMgr/Title", "contractMgr/EMail", "entityGM/Id", "entityGM/Title", "entityGM/EMail",
                     "OGPresident/Id", "OGPresident/Title", "OGPresident/EMail", "SVPContracts/Id", "SVPContracts/Title", "SVPContracts/EMail",
-                    //"LOBPresident/Id", "LOBPresident/Title", "LOBPresident/EMail", "CEO/Id", "CEO/Title", "CEO/EMail"
+                    "LOBPresident/Id", "LOBPresident/Title", "LOBPresident/EMail", 
+                    "CEO/Id", "CEO/Title", "CEO/EMail"
                 ],
                 Expand: ["Author", "projectMgr", "contractMgr", "entityGM", "OGPresident", "SVPContracts", 
-                    //'LOBPresident', 'CEO'
+                    'LOBPresident', 
+                    'CEO'
                 ],
                 Top: 5000
             }).execute(
@@ -72,6 +74,8 @@ export class DataSource {
                 items => {
                     if (items?.results?.length) {
                         this._agreements = items.results as unknown as IRiskAgreementItem[];
+
+                        console.log("AGREEMENTS", this._agreements);
 
                         // resolve with retrieved items
                         resolve(this._agreements);
@@ -84,6 +88,50 @@ export class DataSource {
                 // Error
                 error => {
                     reject(new Error(`Error fetching Agreements: ${formatError(error)}`));
+                }
+            )
+
+        });
+    }
+
+    // Load default CEO and SVP Contract from Config list
+    private static _config: IConfigItem[] = [];
+    static get CEO(): IPeoplePicker | undefined { 
+        const ceo = this._config.find(c => c.IsFor === "CEO")?.User
+        return ceo; 
+    }
+    static get SVPContracts(): IPeoplePicker | undefined { 
+        const svpc = this._config.find(c => c.IsFor === "SVPContracts")?.User
+        return svpc;
+    }
+    static getConfig(): Promise<IConfigItem[]> {
+        return new Promise<IConfigItem[]>((resolve, reject) => {
+
+            // clear the items
+            this._config = [];
+
+            // load the data
+            Web(Strings.Sites.lookups.url).Lists(Strings.Sites.lookups.lists.Config).Items().query({
+                Select: ["Id", "Title", "User/Id", "User/EMail", "User/Title", "IsFor"],
+                Filter: `IsFor eq 'CEO' or IsFor eq 'SVPContracts'`,
+                Expand: ["User"]
+            }).execute(
+                // Success
+                items => {
+                    if (items?.results?.length) {
+                        this._config = items.results as unknown as IConfigItem[];
+
+                        // resolve with retrieved items
+                        resolve(this._config);
+
+                    } else {
+                        //none found - resolve with empty array
+                        resolve([])
+                    }
+                },
+                // Error
+                error => {
+                    reject(new Error(`Error fetching Config: ${formatError(error)}`));
                 }
             )
 
@@ -213,6 +261,8 @@ export class DataSource {
     }
 
     // Load all the Invoices from JAMIS
+    // Currently there are 2700+ with no way to filter so this is loaded on on new/edit forms
+    // look to filter if/when we get additional data in the JAMIS pull
     private static _invoices: IInvoiceItem[] = [];
     static get Invoices(): IInvoiceItem[] { return this._invoices; }
     static getInvoices(): Promise<IInvoiceItem[]> {

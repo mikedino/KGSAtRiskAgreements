@@ -8,10 +8,10 @@ import Admin from "./components/Admin";
 import NavHeader from "./ui/NavHeader";
 import { IAppProps, IRiskAgreementItem } from "./data/props";
 import { DataSource } from "./data/ds";
-import RiskAgreementForm from "./forms/RiskAgreement";
-import { RiskAgreementService } from "./services/riskAgreement";
+import RiskAgreementForm from "./forms/araForm";
+import { RiskAgreementService } from "./services/araService";
 import AlertDialog from "./ui/Alert";
-import RiskAgreementView from "./forms/RiskAgreementView";
+import RiskAgreementView from "./forms/araView";
 
 import { ThemeProvider, CssBaseline, Box, Stack, Typography, Alert, Backdrop, Fab } from "@mui/material";
 import CircularProgress from '@mui/material/CircularProgress';
@@ -26,10 +26,11 @@ import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
+import { ApproverResolver } from "./services/defaultApprovers";
 
 export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
 
-  const [useDarkTheme, setUseDarkTheme] = useState(true);
+  const [useDarkTheme, setUseDarkTheme] = useState(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [showDialog, setShowDialog] = useState(false);
   const [dialogTitle, setDialogTitle] = useState<string>("");
@@ -74,20 +75,26 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
       });
   }, [])
 
-  const handleCreateAgreement = async (item: IRiskAgreementItem): Promise<void> => {
+  type SubmitMode = "new" | "edit";
+  const handleSubmitAgreement = async (item: IRiskAgreementItem, submitMode: SubmitMode): Promise<void> => {
     setShowBackdrop(true);
     setShowProgress(true);
+    try {
+      // get default approvers
+      const approvers = await ApproverResolver.resolve(item);
+      // save to SharePoint
+      await RiskAgreementService.edit({ ...item, ...approvers});
+      //refresh agreements
+      await DataSource.getAgreeements();
+      setSuccessMessage(submitMode === "new" ? "Successfully created a new At-Risk Agreement!" : "Successfully updaed the At-Risk Agreement!");
+      setShowSuccess(true);
+      setShowProgress(false);
+      history.push("/my-work");
+    } catch (error) {
+      setShowProgress(false);
+      setDialogProps("Error saving Risk Agreement", formatError(error));
+    }
 
-    // save to SharePoint
-    await RiskAgreementService.create(item);
-
-    //refresh agreements
-    await DataSource.getAgreeements();
-
-    setSuccessMessage("Successfully created a new At-Risk Agreement!")
-    setShowProgress(false);
-    setShowSuccess(true);
-    history.push("/my-work");
   };
 
   if (!context || !context.pageContext || !context.pageContext.web) {
@@ -134,7 +141,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
               <RiskAgreementForm
                 context={context}
                 mode="new"
-                onSubmit={handleCreateAgreement}
+                onSubmit={handleSubmitAgreement}
                 onCancel={() => history.push("/my-work")}
               />
             </Route>
@@ -153,7 +160,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
                     item={item}
                     context={context}
                     mode="edit"
-                    onSubmit={handleCreateAgreement}
+                    onSubmit={handleSubmitAgreement}
                     onCancel={() => history.goBack()}
                     {...routeProps}
                   />

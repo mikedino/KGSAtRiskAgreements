@@ -71,26 +71,26 @@ const AgreementsGrid: React.FC = () => {
     });
   };
 
-const getStatusChip = (status: IRiskAgreementItem["araStatus"]): JSX.Element => {
-  const colorMap: Record<AraStatus, "default" | "success" | "warning" | "error" | "info"> = {
-    Draft: "default",           // gray / neutral
-    Submitted: "warning",       // amber/yellow
-    "Under Review": "info",     // blue
-    Approved: "success",        // green
-    Rejected: "error",          // red
-    Resolved: "success",        // green (same as Approved)
-    Cancelled: "default"        // gray / neutral
-  };
+  const getStatusChip = (status: IRiskAgreementItem["araStatus"]): JSX.Element => {
+    const colorMap: Record<AraStatus, "default" | "success" | "warning" | "error" | "info"> = {
+      Draft: "default",           // gray / neutral
+      Submitted: "warning",       // amber/yellow
+      "Under Review": "info",     // blue
+      Approved: "success",        // green
+      Rejected: "error",          // red
+      Resolved: "success",        // green (same as Approved)
+      Cancelled: "default"        // gray / neutral
+    };
 
-  return (
-    <Chip
-      label={status}
-      size="small"
-      color={colorMap[status]}
-      sx={{ fontWeight: 500 }}
-    />
-  );
-};
+    return (
+      <Chip
+        label={status}
+        size="small"
+        color={colorMap[status]}
+        sx={{ fontWeight: 500 }}
+      />
+    );
+  };
 
   const rows = React.useMemo(
     () =>
@@ -165,12 +165,14 @@ const getStatusChip = (status: IRiskAgreementItem["araStatus"]): JSX.Element => 
       width: 170,
       align: "right",
       headerAlign: "right",
-      renderCell: (params) =>
-        params.row.riskFundingRequested.toLocaleString("en-US", {
+      renderCell: (params) => {
+        const value = params.row.riskFundingRequested ?? 0;
+        return value.toLocaleString("en-US", {
           style: "currency",
           currency: "USD",
           maximumFractionDigits: 0
         })
+      }
     }
   ];
 
