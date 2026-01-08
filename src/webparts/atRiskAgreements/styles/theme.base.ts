@@ -1,4 +1,6 @@
 import { createTheme } from "@mui/material/styles";
+// This import is crucial for extending the Material UI theme with DataGrid-specific colors
+import type { } from '@mui/x-data-grid/themeAugmentation';
 
 export const baseTheme = createTheme({
     typography: {
@@ -55,6 +57,16 @@ export const baseTheme = createTheme({
                     fontSize: "10pt",
                 }
             },
-        },
+        }
     },
+    palette: {
+        DataGrid: {
+            // Container background
+            bg: 'transparent',
+            // Pinned rows and columns background
+            pinnedBg: 'transparent',
+            // Column header background
+            headerBg: 'transparent',
+        }
+    }
 });

@@ -8,10 +8,10 @@ import Admin from "./components/Admin";
 import NavHeader from "./ui/NavHeader";
 import { IAppProps, IRiskAgreementItem } from "./data/props";
 import { DataSource } from "./data/ds";
-import RiskAgreementForm from "./forms/araForm";
+import RiskAgreementForm, { CancelReason } from "./forms/araForm";
 import { RiskAgreementService } from "./services/araService";
 import AlertDialog from "./ui/Alert";
-import RiskAgreementView from "./forms/araView";
+import ViewAgreementRoute from "./components/ViewAgreementRoute";
 
 import { ThemeProvider, CssBaseline, Box, Stack, Typography, Alert, Backdrop, Fab } from "@mui/material";
 import CircularProgress from '@mui/material/CircularProgress';
@@ -19,7 +19,6 @@ import CheckIcon from '@mui/icons-material/Check';
 import { darkTheme } from "./styles/darkTheme";
 import { lightTheme } from "./styles/lightTheme";
 import styles from "./styles/styles.module.scss";
-import { ContextInfo } from "gd-sprest";
 import { formatError } from "./services/utils";
 
 import "@fontsource/roboto/300.css";
@@ -83,7 +82,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
       // get default approvers
       const approvers = await ApproverResolver.resolve(item);
       // save to SharePoint
-      await RiskAgreementService.edit({ ...item, ...approvers});
+      await RiskAgreementService.edit({ ...item, ...approvers });
       //refresh agreements
       await DataSource.getAgreeements();
       setSuccessMessage(submitMode === "new" ? "Successfully created a new At-Risk Agreement!" : "Successfully updaed the At-Risk Agreement!");
@@ -137,14 +136,28 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
             <Route path="/dashboard" component={Dashboard} />
             <Route path="/admin" component={Admin} />
 
-            <Route path="/new">
-              <RiskAgreementForm
-                context={context}
-                mode="new"
-                onSubmit={handleSubmitAgreement}
-                onCancel={() => history.push("/my-work")}
-              />
-            </Route>
+            <Route
+              path="/new"
+              render={() => {
+
+                const handleCancel = async (reason: CancelReason): Promise<void> => {
+                  if (reason.type === "draft") {
+                    await RiskAgreementService.delete(reason.draftId);
+                  }
+
+                  history.push("/my-work");
+                };
+
+                return (
+                  <RiskAgreementForm
+                    context={context}
+                    mode="new"
+                    onSubmit={handleSubmitAgreement}
+                    onCancel={handleCancel}
+                  />
+                );
+              }}
+            />
 
             {/* Route to EDIT AGREEMENT */}
             <Route
@@ -169,41 +182,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
             />
 
             {/* Route to VIEW AGREEMENT */}
-            <Route
-              path="/view/:id"
-              render={(routeProps) => {
-                const id = routeProps.match.params.id;
-                const item = DataSource.Agreements.find((a) => a.Id.toString() === id);
-
-                const currentUserEmail = ContextInfo.userEmail;
-
-                // Example async approve function
-                const onApprove = async (comment?: string): Promise<void> => {
-                  console.log("Approving agreement", id, "with comment:", comment);
-                  // TODO: call your API or update your data source here
-                  // e.g., await api.approveAgreement(id, currentUserEmail, comment);
-                };
-
-                // Example async reject function
-                const onReject = async (comment?: string): Promise<void> => {
-                  console.log("Rejecting agreement", id, "with comment:", comment);
-                  // TODO: call your API or update your data source here
-                  // e.g., await api.rejectAgreement(id, currentUserEmail, comment);
-                };
-
-                if (!item) return <div>Agreement not found</div>;
-
-                return (
-                  <RiskAgreementView
-                    item={item}
-                    currentUserEmail={currentUserEmail}
-                    onApprove={onApprove}
-                    onReject={onReject}
-                    {...routeProps}
-                  />
-                );
-              }}
-            />
+            <Route path="/view/:id" component={ViewAgreementRoute} />
 
           </Switch>
         </HashRouter>

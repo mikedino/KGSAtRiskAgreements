@@ -44,7 +44,7 @@ export interface IRiskAgreementItem {
   entity: string;
   projectMgr: IPeoplePicker;
   contractMgr: IPeoplePicker;
-  cmDecision: "Pending" | "Sent to OGP" | "Rejected";
+  cmDecision: ApprovalChoice;
   cmComment: string;
   cmDecisionDate: string;
   riskReason: "Lack of Funding" | "PoP End";

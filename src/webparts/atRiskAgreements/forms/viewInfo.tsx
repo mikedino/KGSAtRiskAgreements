@@ -39,7 +39,7 @@ const AgreementInfoCard = ({
             </Grid>
 
             <Box sx={{ mt: 3 }}>
-                <Typography variant="subtitle2" gutterBottom><AttachFileOutlined /> Attachments</Typography>
+                <Typography variant="subtitle1" gutterBottom><AttachFileOutlined /> Attachments</Typography>
                 <AttachmentsList attachments={attachments} loading={attachmentsLoading} />
             </Box>
 

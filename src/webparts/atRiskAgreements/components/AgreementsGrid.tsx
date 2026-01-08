@@ -5,8 +5,11 @@ import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { useHistory } from "react-router-dom";
 import { DataSource } from "../data/ds";
 import { IRiskAgreementItem, AraStatus } from "../data/props";
+import { useTheme } from "@mui/material/styles";
 
 const AgreementsGrid: React.FC = () => {
+
+  const theme = useTheme();
 
   const history = useHistory();
   const [search, setSearch] = React.useState("");
@@ -14,11 +17,19 @@ const AgreementsGrid: React.FC = () => {
 
   const gridStyles = {
     border: "none",
+    m: 2,
+
+    "& .MuiDataGrid-columnHeader": {
+      backgroundColor: theme.custom?.cardBg
+    },
 
     "& .MuiDataGrid-columnHeaders": {
       borderBottom: "1px solid",
-      borderColor: "divider",
       fontWeight: 600
+    },
+
+    "& .MuiDataGrid-columnSeparator" : {
+      color: theme.custom?.cardBorder
     },
 
     "& .MuiDataGrid-row": {
@@ -37,10 +48,12 @@ const AgreementsGrid: React.FC = () => {
 
     "& .MuiDataGrid-footerContainer": {
       borderTop: "1px solid",
-      borderColor: "divider"
+      //borderColor: "divider",
+      backgroundColor: theme.custom?.cardBg
     }
   };
 
+  //update entity filter based on grid results
   const entities = React.useMemo(
     () =>
       Array.from(
@@ -56,19 +69,22 @@ const AgreementsGrid: React.FC = () => {
   ): IRiskAgreementItem[] => {
     const term = search.toLowerCase();
 
-    return items.filter((item) => {
-      const matchesSearch =
-        !term ||
-        item.projectName?.toLowerCase().includes(term) ||
-        item.invoice?.toLowerCase().includes(term) ||
-        item.entity?.toLowerCase().includes(term) ||
-        item.projectMgr?.Title.toLowerCase().includes(term) ||
-        item.contractMgr?.Title.toLowerCase().includes(term);
+    return items
+      //persistent filter - don't show Draft
+      .filter(item => item.araStatus !== "Draft")
+      .filter((item) => {
+        const matchesSearch =
+          !term ||
+          item.projectName?.toLowerCase().includes(term) ||
+          item.invoice?.toLowerCase().includes(term) ||
+          item.entity?.toLowerCase().includes(term) ||
+          item.projectMgr?.Title.toLowerCase().includes(term) ||
+          item.contractMgr?.Title.toLowerCase().includes(term);
 
-      const matchesEntity = !entity || item.entity === entity;
+        const matchesEntity = !entity || item.entity === entity;
 
-      return matchesSearch && matchesEntity;
-    });
+        return matchesSearch && matchesEntity;
+      });
   };
 
   const getStatusChip = (status: IRiskAgreementItem["araStatus"]): JSX.Element => {
@@ -181,35 +197,57 @@ const AgreementsGrid: React.FC = () => {
       <Typography variant="h4" fontWeight={600} gutterBottom>All Agreements</Typography>
 
       {/* SEARCH + FILTER BAR */}
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 2 }}>
+      <Box
+        sx={{
+          mb: 3,
+          p: 3,
+          bgcolor: theme.custom?.cardBg,
+          border: "1px solid",
+          borderColor: theme.custom?.cardBorder,
+          borderRadius: 3
+        }}
+      >
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+          <TextField
+            label="Search Agreements"
+            placeholder="Search Agreements by Project Name, Invoice, Entity, Contract Mgr, Project Mgr"
+            size="small"
+            fullWidth
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
 
-        <TextField
-          label="Search Agreements"
-          size="small"
-          fullWidth
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+          <TextField
+            label="Filter by Entity"
+            size="small"
+            select
+            sx={{ minWidth: 220 }}
+            value={entityFilter}
+            onChange={(e) => setEntityFilter(e.target.value)}
+          >
+            <MenuItem value="">All Entities</MenuItem>
+            {entities.map((entity) => (
+              <MenuItem key={entity} value={entity}>
+                {entity}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Stack>
+      </Box>
 
-        <TextField
-          label="Filter by Entity"
-          size="small"
-          select
-          sx={{ minWidth: 220 }}
-          value={entityFilter}
-          onChange={(e) => setEntityFilter(e.target.value)}
-        >
-          <MenuItem value="">All Entities</MenuItem>
-          {entities.map((entity) => (
-            <MenuItem key={entity} value={entity}>
-              {entity}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Stack>
-
-      <Box sx={{ height: "calc(100vh - 310px)", bgcolor: "background.paper", borderRadius: 2 }}>
+      {/* AGREEMENTS GRID */}
+      <Box
+        sx={{
+          backgroundColor: theme.custom?.cardBg,
+          border: "1px solid",
+          borderColor: theme.custom?.cardBorder,
+          borderRadius: 3,
+          overflow: "hidden"
+        }}
+      >
         <DataGrid
+          autoHeight
+          density="compact"
           rows={rows}
           columns={columns}
           getRowId={(row) => row.Id}
@@ -221,9 +259,17 @@ const AgreementsGrid: React.FC = () => {
           onRowClick={(params) =>
             history.push(`/view/${params.row.Id}`)
           }
-          sx={gridStyles}
+          getRowClassName={(params) =>
+            params.indexRelativeToCurrentPage % 2 === 0 ? 'even-row' : 'odd-row'
+          }
+          sx={{
+            ...gridStyles,
+            '& .even-row': { backgroundColor: theme.palette.background.default },
+            '& .odd-row': { backgroundColor: theme.custom?.cardBg }
+          }}
         />
       </Box>
+
     </Box>
   );
 };

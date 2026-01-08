@@ -6,6 +6,8 @@ import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, G
 import Edit from "@mui/icons-material/Edit";
 import AgreementInfoCard from "./viewInfo";
 import WorkflowTimeline from "./viewTimeline";
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { useHistory } from "react-router-dom";
 import { buildWorkflowState } from "../services/workflowState";
 import { Web } from "gd-sprest";
 import Strings from "../../../strings";
@@ -28,7 +30,9 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({
     const [actionType, setActionType] = useState<"approve" | "reject" | null>(null);
     const [loading, setLoading] = useState(false);
     const [attachments, setAttachments] = useState<IAttachmentInfo[]>([]);
-    const [attachmentsLoading, setAttachmentsLoading] = useState(true);
+    const [attachmentsLoading, setAttachmentsLoading] = useState(false);
+
+    const history = useHistory();
 
     //get item attachments on load
     useEffect(() => {
@@ -57,7 +61,7 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({
     const workflowSteps = buildWorkflowState(item);
 
     const nextPendingStep = workflowSteps.find(
-        s => s.status === "Pending"
+        s => s.status === "Current"
     );
 
     const canApprove =
@@ -108,8 +112,9 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({
     };
 
     return (
-        <Box sx={{ p: 4 }}>
+        <Box sx={{ p: 2 }}>
             <Box sx={{ mb: 3 }}>
+                <Button startIcon={<ArrowBackIcon />} onClick={() => history.goBack()} sx={{ mb: 2 }}>Back</Button>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
                     <Stack direction="row" alignItems="center" spacing={2}>
                         <Typography variant="h4">{item.Title}</Typography>
@@ -155,11 +160,11 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({
             </Grid>
 
             {/* Comment Modal */}
-            <Dialog open={commentModalOpen} onClose={handleModalCancel}>
+            <Dialog open={commentModalOpen} onClose={handleModalCancel} fullWidth maxWidth="md">
                 <DialogTitle>
                     {actionType === "approve" ? "Approve Agreement" : "Reject Agreement"}
                 </DialogTitle>
-                <DialogContent>
+                <DialogContent sx={{ pt: 2 }}>
                     <TextField
                         label="Comment (optional)"
                         multiline
@@ -169,10 +174,13 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({
                         onChange={(e) => setComment(e.target.value)}
                         autoFocus
                         disabled={loading}
+                        sx={{ mt: 1 }}
                     />
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleModalCancel} disabled={loading}>Cancel</Button>
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                    <Button onClick={handleModalCancel} disabled={loading}>
+                        Cancel
+                    </Button>
                     <Button
                         variant="contained"
                         onClick={handleModalSubmit}

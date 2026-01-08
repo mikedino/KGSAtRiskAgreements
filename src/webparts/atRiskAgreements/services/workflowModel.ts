@@ -2,7 +2,7 @@ import { IRiskAgreementItem } from "../data/props";
 import { IPeoplePicker } from "../data/props";
 
 export type WorkflowStepKey =
-  | "Submission"
+  | "Submitted"
   | "CMReview"
   | "OGPApproval"
   | "LOBApproval"
@@ -18,23 +18,29 @@ type PeopleFieldKey = {
 
 type DateFieldKey = {
   [K in keyof IRiskAgreementItem]:
-    IRiskAgreementItem[K] extends string ? K : never
+  IRiskAgreementItem[K] extends string ? K : never
 }[keyof IRiskAgreementItem];
 
 export interface IWorkflowStep {
   key: WorkflowStepKey;
   label: string;
+  isInitial?: boolean;   // submitted?
+  
   approverField?: PeopleFieldKey;
   approvalField?: keyof IRiskAgreementItem;
+  commentField?: keyof IRiskAgreementItem;
   signDateField?: DateFieldKey;
+
   isRequired: (item: IRiskAgreementItem) => boolean;
   next: WorkflowStepKey;
+  completesOnApprove?: boolean;
 }
 
 export const RiskAgreementWorkflow: IWorkflowStep[] = [
   {
-    key: "Submission",
-    label: "Submitted by PM",
+    key: "Submitted",
+    label: "Submitted",
+    isInitial: true,
     isRequired: () => true,
     next: "CMReview"
   },
@@ -43,6 +49,7 @@ export const RiskAgreementWorkflow: IWorkflowStep[] = [
     label: "Contract Manager Review",
     approverField: "contractMgr",
     approvalField: "cmDecision",
+    commentField: "cmComment",
     signDateField: "cmDecisionDate",
     isRequired: () => true,
     next: "OGPApproval"
@@ -52,6 +59,7 @@ export const RiskAgreementWorkflow: IWorkflowStep[] = [
     label: "OG President Approval",
     approverField: "OGPresident",
     approvalField: "OGPresidentApproval",
+    commentField: "OGPresidentComment",
     signDateField: "OGPresidentSignDate",
     isRequired: () => true,
     next: "LOBApproval"
@@ -61,6 +69,7 @@ export const RiskAgreementWorkflow: IWorkflowStep[] = [
     label: "LOB President Approval",
     approverField: "LOBPresident",
     approvalField: "LOBPresidentApproval",
+    commentField: "LOBPresidentComment",
     signDateField: "LOBPresidentSignDate",
     isRequired: item => item.riskFundingRequested > 50000,
     next: "CEOApproval"
@@ -70,6 +79,7 @@ export const RiskAgreementWorkflow: IWorkflowStep[] = [
     label: "CEO Approval",
     approverField: "CEO",
     approvalField: "CEOApproval",
+    commentField: "CEOComment",
     signDateField: "CEOSignDate",
     isRequired: item => item.riskFundingRequested > 100000,
     next: "SVPApproval"
@@ -79,8 +89,10 @@ export const RiskAgreementWorkflow: IWorkflowStep[] = [
     label: "SVP Contracts Approval",
     approverField: "SVPContracts",
     approvalField: "SVPContractsApproval",
+    commentField: "SVPContractsComment",
     signDateField: "SVPContractsSignDate",
     isRequired: () => true,
-    next: "Approved"
+    next: "Approved",
+    completesOnApprove: true
   }
 ];

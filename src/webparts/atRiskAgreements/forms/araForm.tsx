@@ -16,12 +16,14 @@ import Strings from "../../../strings";
 import AlertDialog from "../ui/Alert";
 import { MuiPeoplePicker } from "../ui/CustomPeoplePicker";
 
+export type CancelReason = { type: "draft"; draftId: number } | { type: "normal" };
+
 interface RiskAgreementFormProps {
   item?: IRiskAgreementItem; // undefined = NEW
   context: WebPartContext;
   mode: "new" | "edit";
   onSubmit: (data: IRiskAgreementItem, mode: "new" | "edit") => void;
-  onCancel: () => void;
+  onCancel: (reason: CancelReason) => void;
 }
 
 type SubmissionType = "existing" | "newOpp";
@@ -136,7 +138,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
   }
 
   // SUBMIT HANDLER
-  const handleSubmit = (e: React.FormEvent):void => {
+  const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
 
     // EDIT mode
@@ -485,7 +487,17 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
 
         {/* Footer */}
         <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 3 }}>
-          <Button variant="outlined" onClick={onCancel}>Cancel</Button>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              if (mode === "new" && draftItemId) {
+                // when creating new and click cancel - we need to delete/cleanup the draft created
+                onCancel({ type: "draft", draftId: draftItemId });
+              } else {
+                onCancel({ type: "normal" });
+              }
+            }}
+          >Cancel</Button>
           <Button type="submit" variant="contained">{mode === "edit" ? 'Save Changes' : 'Submit for Approval'}</Button>
         </Box>
       </Box>

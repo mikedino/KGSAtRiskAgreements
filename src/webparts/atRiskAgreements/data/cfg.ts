@@ -73,7 +73,7 @@ export const Configuration = Helper.SPConfig({
                     name: "cmDecision",
                     title: "CM Decision",
                     type: Helper.SPCfgFieldType.Choice,
-                    choices: ["Pending", "Sent to OGP", "Rejected"],
+                    choices: ["Pending", "Approved", "Rejected"],
                     defaultValue: "Pending"
                 } as Helper.IFieldInfoChoice,
                 {

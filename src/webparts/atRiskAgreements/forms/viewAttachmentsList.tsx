@@ -17,7 +17,7 @@ const AttachmentsList: React.FC<AttachmentsListProps> = ({
 
   if (!attachments.length) {
     return (
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" color="text.secondary" sx={{ p: 1 }}>
         No attachments
       </Typography>
     );

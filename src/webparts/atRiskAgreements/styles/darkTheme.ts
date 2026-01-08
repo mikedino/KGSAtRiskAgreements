@@ -7,8 +7,8 @@ export const darkTheme = createTheme({
     mode: "dark",
 
     primary: { main: "#003057" },     // KGS Navy
-    secondary: { main: "#005C6C" },   // KGS Teal
-    error: { main: "#D64545" },
+    secondary: { main: "#005C6C" },   // KGS Teal 
+    error: { main: "#fd3030" },
     warning: { main: "#F4B740" },
     info: { main: "#4b82ff" },
     success: { main: "#3BA55C" },
@@ -60,17 +60,17 @@ export const darkTheme = createTheme({
           }
         },
 
-        // DEFAULT OUTLINED BUTTON (neutral gray)
-        outlined: {
-          borderColor: "#9FB3C8",
-          color: "#9FB3C8",
+        // // DEFAULT OUTLINED BUTTON (neutral gray)
+        // outlined: {
+        //   borderColor: "#9FB3C8",
+        //   color: "#9FB3C8",
 
-          "&:hover": {
-            borderColor: "#ccd6dd",
-            color: "#ccd6dd",
-            backgroundColor: "rgba(255, 255, 255, 0.06)",
-          }
-        },
+        //   "&:hover": {
+        //     borderColor: "#ccd6dd",
+        //     color: "#ccd6dd",
+        //     backgroundColor: "rgba(255, 255, 255, 0.06)",
+        //   }
+        // },
 
         //  OUTLINED PRIMARY (if explicitly color="primary")
         outlinedPrimary: {
