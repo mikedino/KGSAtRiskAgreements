@@ -8,10 +8,10 @@ export const lightTheme = createTheme({
 
     primary: { main: "#003057" },
     secondary: { main: "#005C6C" },
-    error: { main: "#D64545" },
+    error: { main: "#B00020" },
     warning: { main: "#F4B740" },
     info: { main: "#0078D4" },
-    success: { main: "#3BA55C" },
+    success: { main: "#3BA55C", contrastText: "#000000de" },
 
     background: {
       default: "#ffffff",
@@ -43,11 +43,6 @@ export const lightTheme = createTheme({
 
     MuiButton: {
       styleOverrides: {
-        root: {
-          borderRadius: 8,
-          textTransform: "none",
-          //fontWeight: 600,
-        },
 
         // PRIMARY light mode: Microsoft blue
         containedPrimary: {

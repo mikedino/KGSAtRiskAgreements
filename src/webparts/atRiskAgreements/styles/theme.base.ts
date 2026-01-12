@@ -7,6 +7,16 @@ export const baseTheme = createTheme({
         fontSize: 14, // global baseline
     },
     components: {
+        MuiButton: {
+            styleOverrides: {
+                root: {
+                    textTransform: "none",
+                    fontFamily: "inherit",
+                    borderRadius: 8,
+                    transition: "background-color 200ms ease, color 200ms ease"
+                }
+            }
+        },
         // Smooth transitions globally
         MuiCssBaseline: {
             styleOverrides: {
@@ -55,18 +65,76 @@ export const baseTheme = createTheme({
                 },
                 paper: {
                     fontSize: "10pt",
-                }
+                },
+                inputRoot: ({ theme }) => ({
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                        borderColor: theme.palette.info.main,
+                        borderWidth: 2,
+                    },
+                }),
+            },
+        },
+        //outlined inputs on forms
+        MuiOutlinedInput: {
+            styleOverrides: {
+                root: ({ theme }) => ({
+                    "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: theme.palette.divider,
+                    },
+
+                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                        borderColor: theme.palette.action.hover,
+                    },
+
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                        borderColor: theme.palette.info.main,
+                        borderWidth: 2,
+                    },
+                }),
+            },
+        },
+        //focused label color
+        MuiInputLabel: {
+            styleOverrides: {
+                root: ({ theme }) => ({
+                    "&.Mui-focused": {
+                        color: theme.palette.info.main,
+                    },
+                }),
+            },
+        },
+        //standard filled inputs just in case
+        MuiInput: {
+            styleOverrides: {
+                underline: ({ theme }) => ({
+                    "&:after": {
+                        borderBottomColor: theme.palette.info.main,
+                    },
+                }),
+            },
+        },
+        MuiFilledInput: {
+            styleOverrides: {
+                root: ({ theme }) => ({
+                    "&.Mui-focused": {
+                        backgroundColor: "transparent",
+                    },
+                    "&:after": {
+                        borderBottomColor: theme.palette.info.main,
+                    },
+                }),
             },
         }
     },
-    palette: {
-        DataGrid: {
-            // Container background
-            bg: 'transparent',
-            // Pinned rows and columns background
-            pinnedBg: 'transparent',
-            // Column header background
-            headerBg: 'transparent',
-        }
-    }
+    ///////////// this didn't work -->
+    // palette: {
+    //     DataGrid: {
+    //         // Container background
+    //         bg: 'transparent',
+    //         // Pinned rows and columns background
+    //         pinnedBg: 'transparent',
+    //         // Column header background
+    //         headerBg: 'transparent',
+    //     }
+    // }
 });

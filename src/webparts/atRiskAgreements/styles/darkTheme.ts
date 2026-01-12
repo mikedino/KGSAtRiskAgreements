@@ -8,13 +8,13 @@ export const darkTheme = createTheme({
 
     primary: { main: "#003057" },     // KGS Navy
     secondary: { main: "#005C6C" },   // KGS Teal 
-    error: { main: "#fd3030" },
+    error: { main: "#fd3030", contrastText: "#000000de" },
     warning: { main: "#F4B740" },
-    info: { main: "#4b82ff" },
-    success: { main: "#3BA55C" },
+    info: { main: "#4b82ff", contrastText: "#000000de" },
+    success: { main: "#3BA55C", contrastText: "#000000de" },
 
     background: {
-      default: "#001729",             // Almost black, subtle blue hint
+      default: "#001729", // Almost black, subtle blue hint
       paper: "#003057"
     },
 
@@ -44,12 +44,6 @@ export const darkTheme = createTheme({
   components: {
     MuiButton: {
       styleOverrides: {
-        root: {
-          borderRadius: 8,
-          textTransform: "none",
-          //fontWeight: 600,
-          transition: "background-color 200ms ease, color 200ms ease",
-        },
 
         // PRIMARY button: GOLD
         containedPrimary: {

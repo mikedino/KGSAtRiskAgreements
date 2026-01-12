@@ -223,7 +223,7 @@ export const Configuration = Helper.SPConfig({
                 } as Helper.IFieldInfoNote,
                 {
                     name: "CEOSignDate",
-                    title: "LOB President Signed Date",
+                    title: "CEO Signed Date",
                     type: Helper.SPCfgFieldType.Date,
                     format: SPTypes.DateFormat.DateTime
                 } as Helper.IFieldInfoDate,
