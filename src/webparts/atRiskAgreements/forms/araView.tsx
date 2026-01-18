@@ -114,7 +114,7 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({
     return (
         <Box sx={{ p: 2 }}>
             <Box sx={{ mb: 3 }}>
-                <Button startIcon={<ArrowBackIcon />} onClick={() => history.goBack()} sx={{ mb: 2 }}>Back</Button>
+                <Button startIcon={<ArrowBackIcon />} color="primary" onClick={() => history.goBack()} sx={{ mb: 2 }}>Back</Button>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
                     <Stack direction="row" alignItems="center" spacing={2}>
                         <Typography variant="h4">{item.Title}</Typography>

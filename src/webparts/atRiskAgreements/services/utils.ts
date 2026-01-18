@@ -2,6 +2,14 @@
 import { SPHttpClient, SPHttpClientResponse } from "@microsoft/sp-http";
 import { WebPartContext } from "@microsoft/sp-webpart-base";
 
+// dayjs plugins
+import dayjs from "dayjs";
+import isToday from "dayjs/plugin/isToday";
+import isYesterday from "dayjs/plugin/isYesterday";
+
+dayjs.extend(isToday);
+dayjs.extend(isYesterday);
+
 // format all errors from objects to line of text
 export const formatError = (error: unknown): string => {
     if (error instanceof Error) {
@@ -139,3 +147,33 @@ export const encodeListName = (
         return `_x${hex}_`;
     });
 }
+
+
+/**
+ * Helper function to format dates like SPO like "today" or "yesterday" or long month and
+ * day (e.g. January 11) or if in previous year it's mm/dd/yyyy
+ * @param date - The date as a string or date object
+ * @returns day or date as string
+ */
+export const formatSinceDate = (date?: string | Date): string => {
+    if (!date) return "";
+
+    const d = dayjs(date);
+    const now = dayjs();
+
+    if (d.isToday()) {
+        return "today";
+    }
+
+    if (d.isYesterday()) {
+        return "yesterday";
+    }
+
+    // Previous year → numeric date
+    if (d.year() !== now.year()) {
+        return d.format("MM/DD/YYYY");
+    }
+
+    // Same year → long month, no year
+    return d.format("MMMM D");
+};

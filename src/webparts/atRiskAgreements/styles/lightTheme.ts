@@ -11,7 +11,7 @@ export const lightTheme = createTheme({
     error: { main: "#B00020" },
     warning: { main: "#F4B740" },
     info: { main: "#0078D4" },
-    success: { main: "#3BA55C", contrastText: "#000000de" },
+    success: { main: "#3BA55C" },
 
     background: {
       default: "#ffffff",
@@ -43,7 +43,9 @@ export const lightTheme = createTheme({
 
     MuiButton: {
       styleOverrides: {
-
+        //extend base theme overrides
+        ...(baseTheme.components?.MuiButton?.styleOverrides ?? {}),
+        
         // PRIMARY light mode: Microsoft blue
         containedPrimary: {
           backgroundColor: "#0078D4",

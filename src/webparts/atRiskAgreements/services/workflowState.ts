@@ -13,12 +13,14 @@ export type WorkflowStepStatus =
 export interface WorkflowStepWithStatus extends IWorkflowStep {
     status: WorkflowStepStatus;
     approverName?: string;
-    date?: string;
+    date?: string; // when THIS step was completed
+    sentDate?: string; // when THIS step became current
 }
 
 export function buildWorkflowState(item: IRiskAgreementItem): WorkflowStepWithStatus[] {
 
     let currentFound = false;
+    let lastCompletedDate: string | undefined = item.Created;
 
     return RiskAgreementWorkflow.map(step => {
 
@@ -44,7 +46,15 @@ export function buildWorkflowState(item: IRiskAgreementItem): WorkflowStepWithSt
             ? item[step.approvalField]
             : undefined;
 
+        // Approved
         if (approval === "Approved") {
+            const date =
+                step.signDateField
+                    ? String(item[step.signDateField])
+                    : undefined;
+
+            lastCompletedDate = date;
+
             return {
                 ...step,
                 status: "Approved",
@@ -52,14 +62,19 @@ export function buildWorkflowState(item: IRiskAgreementItem): WorkflowStepWithSt
                     step.approverField
                         ? item[step.approverField]?.Title
                         : undefined,
-                date:
-                    step.signDateField
-                        ? String(item[step.signDateField])
-                        : undefined
+                date
             };
         }
 
+        // Rejected
         if (approval === "Rejected") {
+            const date =
+                step.signDateField
+                    ? String(item[step.signDateField])
+                    : undefined;
+
+            lastCompletedDate = date;
+
             return {
                 ...step,
                 status: "Rejected",
@@ -67,25 +82,26 @@ export function buildWorkflowState(item: IRiskAgreementItem): WorkflowStepWithSt
                     step.approverField
                         ? item[step.approverField]?.Title
                         : undefined,
-                date:
-                    step.signDateField
-                        ? String(item[step.signDateField])
-                        : undefined
+                date
             };
         }
 
+        // Current step
         if (!currentFound) {
             currentFound = true;
+
             return {
                 ...step,
                 status: "Current",
                 approverName:
                     step.approverField
                         ? item[step.approverField]?.Title
-                        : undefined
+                        : undefined,
+                sentDate: lastCompletedDate
             };
         }
 
+        // Future steps
         return {
             ...step,
             status: "Queued",

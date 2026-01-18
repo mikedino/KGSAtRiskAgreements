@@ -1,6 +1,9 @@
 import * as React from "react";
 import { useState, useMemo, useEffect } from "react";
-import { Box, Grid, Typography, TextField, MenuItem, Button, Divider, Autocomplete, Skeleton, List, ListItem, ListItemText } from "@mui/material";
+import {
+  Box, Grid, Typography, TextField, MenuItem, Button, Divider, Autocomplete,
+  Skeleton, List, ListItem, ListItemText, CircularProgress
+} from "@mui/material";
 import AttachFileOutlined from "@mui/icons-material/AttachFileOutlined";
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -31,6 +34,7 @@ type SubmissionType = "existing" | "newOpp";
 const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mode, onSubmit, onCancel }) => {
 
   const [loading, setLoading] = useState<boolean>(true);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
   const [submissionType, setSubmissionType] = useState<SubmissionType>("existing");
   const [showDialog, setShowDialog] = useState(false);
   const [dialogTitle, setDialogTitle] = useState<string>("");
@@ -80,17 +84,41 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
     }
   }, [mode, item]);
 
+
+  // useEffect(() => {
+  //   const loadInvoices = async (): Promise<void> => {
+  //     await DataSource.getInvoices();
+  //   };
+
+  //   loadInvoices()
+  //     .then(() => setLoading(false))
+  //     .catch((error: unknown) => {
+  //       console.error("Failed to load invoices", error);
+  //     });
+  // }, []);
+
+  // lazy-load invoices only after a contract is selected
   useEffect(() => {
-    const loadInvoices = async (): Promise<void> => {
-      await DataSource.getInvoices();
+    const load = async (): Promise<void> => {
+      if (submissionType !== "existing") return;
+      if (!form.contractId) return;
+
+      setInvoiceLoading(true);
+      try {
+        await DataSource.getInvoicesByContract(form.contractId);
+      } catch (e) {
+        console.error("Failed to load invoices", e);
+        setDialogProps("Error loading invoices", "Please try again or contact IT Support.");
+      } finally {
+        setInvoiceLoading(false);
+      }
     };
 
-    loadInvoices()
-      .then(() => setLoading(false))
-      .catch((error: unknown) => {
-        console.error("Failed to load invoices", error);
-      });
-  }, []);
+    load().then(() => setLoading(false)).catch((error: unknown) => {
+      console.error("Failed to load invoices", error);
+    });
+
+  }, [submissionType, form.contractId]);
 
   const peoplePickerContext = {
     absoluteUrl: context.pageContext.web.absoluteUrl,
@@ -112,12 +140,26 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
     }
   };
 
+  // watch submission type and if NEW OPP, update the form projectName to "New Award"
+  useEffect(() => {
+    if (submissionType !== "newOpp") return;
+
+    // ensure the saved backend field is always correct
+    updateField("projectName", "New Award");
+
+    // defensive: ensure we don't treat it like an existing contract
+    updateField("contractId", undefined);
+    updateField("invoice", "");
+  }, [submissionType]);
+
   // memoized list so we don’t re-filter 2700+ invoices on every keystroke.
-  const filteredInvoices = useMemo(() => {
-    if (!form.contractId) return [];
-    const dInvoice = DataSource.Invoices;
-    return dInvoice.filter(i => i.field_49 === form.contractId);
-  }, [form.contractId, DataSource.Invoices]);
+  // const filteredInvoices = useMemo(() => {
+  //   if (!form.contractId) return [];
+  //   const dInvoice = DataSource.Invoices;
+  //   return dInvoice.filter(i => i.field_49 === form.contractId);
+  // }, [form.contractId, DataSource.Invoices]);
+  const filteredInvoices = useMemo(() => DataSource.Invoices, [DataSource.Invoices]);
+
 
   // memoize the selected invoice so that it will render after async update of the Invoices DataSource
   const selectedInvoice = useMemo(() => {
@@ -228,6 +270,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
           onChange={(e) =>
             setSubmissionType(e.target.value as SubmissionType)
           }
+          disabled={mode === "edit"}
         >
           <MenuItem value="existing">Existing Contract</MenuItem>
           <MenuItem value="newOpp">Opportunity / New Contract</MenuItem>
@@ -247,48 +290,50 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
               <Divider sx={{ mt: 1, mb: 2 }} />
             </Grid>
 
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Autocomplete
-                options={DataSource.Contracts}
-                fullWidth
-                autoHighlight
-                noOptionsText="Start typing to search contracts"
-                openOnFocus={false}
-                getOptionLabel={(option) => option.field_20 ?? ""}
-                isOptionEqualToValue={(option, value) => option.field_19 === value.field_19}
-                filterOptions={(options, { inputValue }) => {
-                  const search = inputValue.toLowerCase().trim();
-                  if (!search) return [];
-                  return options
-                    .filter(o =>
-                      o.field_20?.toLowerCase().includes(search) ||
-                      o.field_35?.toLowerCase().includes(search))
-                    .slice(0, 20);
-                }}
-                value={DataSource.Contracts.find((c) => c.field_20 === form.projectName) ?? null}
-                onChange={(_, newValue) => {
-                  updateField("projectName", newValue?.field_20 ?? "");
-                  updateField("contractId", newValue?.field_19 ?? undefined);
-                  // reset invoice when contract changes
-                  updateField("invoice", "");
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Project / Contract Name"
-                    required
-                  />
-                )}
-                renderOption={(props, option) => (
-                  <li {...props} key={option.field_19}>
-                    <Stack>
-                      <Typography fontWeight={500}>{option.field_20}</Typography>
-                      <Typography variant="body2" color="text.secondary">{option.field_35}</Typography>
-                    </Stack>
-                  </li>
-                )}
-              />
-            </Grid>
+            {submissionType === "existing" && (
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Autocomplete
+                  options={DataSource.Contracts}
+                  fullWidth
+                  autoHighlight
+                  noOptionsText="Start typing to search contracts"
+                  openOnFocus={false}
+                  getOptionLabel={(option) => option.field_20 ?? ""}
+                  isOptionEqualToValue={(option, value) => option.field_19 === value.field_19}
+                  filterOptions={(options, { inputValue }) => {
+                    const search = inputValue.toLowerCase().trim();
+                    if (!search) return [];
+                    return options
+                      .filter(o =>
+                        o.field_20?.toLowerCase().includes(search) ||
+                        o.field_35?.toLowerCase().includes(search))
+                      .slice(0, 20);
+                  }}
+                  value={DataSource.Contracts.find((c) => c.field_20 === form.projectName) ?? null}
+                  onChange={(_, newValue) => {
+                    updateField("projectName", newValue?.field_20 ?? "");
+                    updateField("contractId", newValue?.field_19 ?? undefined);
+                    // reset invoice when contract changes
+                    updateField("invoice", "");
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Project / Contract Name"
+                      required
+                    />
+                  )}
+                  renderOption={(props, option) => (
+                    <li {...props} key={option.field_19}>
+                      <Stack>
+                        <Typography fontWeight={500}>{option.field_20}</Typography>
+                        <Typography variant="body2" color="text.secondary">{option.field_35}</Typography>
+                      </Stack>
+                    </li>
+                  )}
+                />
+              </Grid>
+            )}
 
             {submissionType === "existing" && (
               <Grid size={{ xs: 12, md: 6 }}>
@@ -316,7 +361,16 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                       {...params}
                       label="Invoice"
                       required
-                      disabled={!form.contractId}
+                      disabled={!form.contractId || invoiceLoading}
+                      InputProps={{
+                        ...params.InputProps,
+                        endAdornment: (
+                          <>
+                            {invoiceLoading ? <CircularProgress size={18} /> : null}
+                            {params.InputProps.endAdornment}
+                          </>
+                        )
+                      }}
                     />
                   )}
                   renderOption={(props, option) => (
@@ -327,6 +381,18 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                       </Stack>
                     </li>
                   )}
+                />
+              </Grid>
+            )}
+
+            {submissionType === "newOpp" && (
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  label="Contract Name"
+                  fullWidth
+                  required
+                  disabled
+                  value="New Award"
                 />
               </Grid>
             )}

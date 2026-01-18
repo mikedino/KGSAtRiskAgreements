@@ -12,6 +12,7 @@ import RiskAgreementForm, { CancelReason } from "./forms/araForm";
 import { RiskAgreementService } from "./services/araService";
 import AlertDialog from "./ui/Alert";
 import ViewAgreementRoute from "./components/ViewAgreementRoute";
+import { ApproverResolver } from "./services/defaultApprovers";
 
 import { ThemeProvider, CssBaseline, Box, Stack, Typography, Alert, Backdrop, Fab } from "@mui/material";
 import CircularProgress from '@mui/material/CircularProgress';
@@ -20,12 +21,12 @@ import { darkTheme } from "./styles/darkTheme";
 import { lightTheme } from "./styles/lightTheme";
 import styles from "./styles/styles.module.scss";
 import { formatError } from "./services/utils";
+import Strings from "../../strings";
 
 import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
-import { ApproverResolver } from "./services/defaultApprovers";
 
 export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
 
@@ -206,6 +207,8 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
             </Stack>
           )}
         </Backdrop>
+
+        <Typography sx={{ width: "100%", mt: 2, textAlign: "right", fontSize: 10 }} >App Version: {Strings.Version}</Typography>
 
       </Box>
 

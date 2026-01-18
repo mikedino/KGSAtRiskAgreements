@@ -58,16 +58,17 @@ export class DataSource {
                 GetAllItems: true,
                 OrderBy: ["Created"],
                 Select: [
-                    "*", "Author/Id", "Author/Title", "Author/EMail", "projectMgr/Id", "projectMgr/Title", "projectMgr/EMail", 
+                    "*", "Author/Id", "Author/Title", "Author/EMail", "projectMgr/Id", "projectMgr/Title", "projectMgr/EMail",
                     "contractMgr/Id", "contractMgr/Title", "contractMgr/EMail", "entityGM/Id", "entityGM/Title", "entityGM/EMail",
                     "OGPresident/Id", "OGPresident/Title", "OGPresident/EMail", "SVPContracts/Id", "SVPContracts/Title", "SVPContracts/EMail",
-                    "LOBPresident/Id", "LOBPresident/Title", "LOBPresident/EMail", 
+                    "LOBPresident/Id", "LOBPresident/Title", "LOBPresident/EMail",
                     "CEO/Id", "CEO/Title", "CEO/EMail"
                 ],
-                Expand: ["Author", "projectMgr", "contractMgr", "entityGM", "OGPresident", "SVPContracts", 
-                    'LOBPresident', 
+                Expand: ["Author", "projectMgr", "contractMgr", "entityGM", "OGPresident", "SVPContracts",
+                    'LOBPresident',
                     'CEO'
                 ],
+                Filter: "araStatus ne 'Draft'",
                 Top: 5000
             }).execute(
                 // Success
@@ -96,11 +97,11 @@ export class DataSource {
 
     // Load default CEO and SVP Contract from Config list
     private static _config: IConfigItem[] = [];
-    static get CEO(): IPeoplePicker | undefined { 
+    static get CEO(): IPeoplePicker | undefined {
         const ceo = this._config.find(c => c.IsFor === "CEO")?.User
-        return ceo; 
+        return ceo;
     }
-    static get SVPContracts(): IPeoplePicker | undefined { 
+    static get SVPContracts(): IPeoplePicker | undefined {
         const svpc = this._config.find(c => c.IsFor === "SVPContracts")?.User
         return svpc;
     }
@@ -265,43 +266,65 @@ export class DataSource {
     // look to filter if/when we get additional data in the JAMIS pull
     private static _invoices: IInvoiceItem[] = [];
     static get Invoices(): IInvoiceItem[] { return this._invoices; }
-    static getInvoices(): Promise<IInvoiceItem[]> {
-        return new Promise<IInvoiceItem[]>((resolve, reject) => {
+    // static getInvoices(): Promise<IInvoiceItem[]> {
+    //     return new Promise<IInvoiceItem[]>((resolve, reject) => {
 
-            // clear the items
+    //         // clear the items
+    //         this._invoices = [];
+
+    //         // get today's date
+    //         // const today = new Date();
+    //         // today.setHours(0, 0, 0, 0); //set time to midnight local time
+
+    //         // load the data
+    //         Web(Strings.Sites.jamis.url).Lists(Strings.Sites.jamis.lists.InvoiceEP).Items().query({
+    //             GetAllItems: true,
+    //             OrderBy: ["field_42"],
+    //             Select: ["Id", "Title", "field_49", "field_28", "field_14", "InvoiceID1", "field_42"],
+    //             //Filter: `field_62 ge datetime'${today.toISOString()}'`, //Last Bill Date in the future - field is NULL as of 12/24/25
+    //             Top: 5000
+    //         }).execute(
+    //             // Success
+    //             items => {
+    //                 if (items?.results?.length) {
+    //                     this._invoices = items.results as unknown as IInvoiceItem[];
+
+    //                     // resolve with retrieved items
+    //                     resolve(this._invoices);
+
+    //                 } else {
+    //                     //none found - resolve with empty array
+    //                     resolve([])
+    //                 }
+    //             },
+    //             // Error
+    //             error => {
+    //                 reject(new Error(`Error fetching Invoices: ${formatError(error)}`));
+    //             }
+    //         )
+
+    //     });
+    // }
+
+    // only get invoices by contract on the form once contract is selected
+    static getInvoicesByContract(contractId: string): Promise<IInvoiceItem[]> {
+        return new Promise<IInvoiceItem[]>((resolve, reject) => {
             this._invoices = [];
 
-            // get today's date
-            // const today = new Date();
-            // today.setHours(0, 0, 0, 0); //set time to midnight local time
-
-            // load the data
-            Web(Strings.Sites.jamis.url).Lists(Strings.Sites.jamis.lists.InvoiceEP).Items().query({
-                GetAllItems: true,
-                OrderBy: ["field_42"],
-                Select: ["Id", "Title", "field_49", "field_28", "field_14", "InvoiceID1", "field_42"],
-                //Filter: `field_62 ge datetime'${today.toISOString()}'`, //Last Bill Date in the future - field is NULL as of 12/24/25
-                Top: 5000
-            }).execute(
-                // Success
-                items => {
-                    if (items?.results?.length) {
-                        this._invoices = items.results as unknown as IInvoiceItem[];
-
-                        // resolve with retrieved items
-                        resolve(this._invoices);
-
-                    } else {
-                        //none found - resolve with empty array
-                        resolve([])
-                    }
+            Web(Strings.Sites.jamis.url).Lists(Strings.Sites.jamis.lists.InvoiceEP).Items()
+                .query({
+                    GetAllItems: true,
+                    OrderBy: ["field_42"],
+                    Select: ["Id", "Title", "field_49", "field_28", "field_14", "InvoiceID1", "field_42"],
+                    Filter: `field_49 eq '${contractId}'`,
+                    Top: 5000
+                })
+                .execute((items) => {
+                    this._invoices = (items?.results ?? []) as unknown as IInvoiceItem[];
+                    resolve(this._invoices);
                 },
-                // Error
-                error => {
-                    reject(new Error(`Error fetching Invoices: ${formatError(error)}`));
-                }
-            )
-
+                    (error) => reject(new Error(`Error fetching Invoices: ${formatError(error)}`))
+                );
         });
     }
 }

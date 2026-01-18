@@ -30,9 +30,9 @@ const AgreementInfoCard = ({
                 <ReadOnly label="Invoice" value={item.invoice} />
                 <ReadOnly label="Contract Type" value={item.contractType} />
                 <ReadOnly label="Entity" value={item.entity} />
-                <ReadOnly label="Risk Start" value={new Date(item.riskStart).toLocaleDateString()} />
-                <ReadOnly label="Risk End" value={new Date(item.riskEnd).toLocaleDateString()} />
-                <ReadOnly label="PoP End" value={new Date(item.popEnd).toLocaleDateString()} />
+                <ReadOnly label="Risk Start" value={item.riskStart ? new Date(item.riskStart).toLocaleDateString() : "-"} />
+                <ReadOnly label="Risk End" value={item.riskEnd ? new Date(item.riskEnd)?.toLocaleDateString() : "-"} />
+                <ReadOnly label="PoP End" value={item.popEnd ? new Date(item.popEnd).toLocaleDateString() : "-"} />
                 <ReadOnly label="Risk Funding Requested" value={`$${item.riskFundingRequested.toLocaleString()}`} />
                 <ReadOnly label="Project Manager" value={item.projectMgr?.Title} />
                 <ReadOnly label="Contract Manager" value={item.contractMgr?.Title} />

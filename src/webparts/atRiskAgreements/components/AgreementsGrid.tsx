@@ -6,12 +6,14 @@ import { useHistory } from "react-router-dom";
 import { DataSource } from "../data/ds";
 import { IRiskAgreementItem, AraStatus } from "../data/props";
 import { useTheme } from "@mui/material/styles";
+import EmptyState, { EmptyStateProps } from "../ui/EmptyStateBox";
 
 type AgreementViewKey =
   | "all"
   | "active"
   | "pending"
   | "rejected"
+  | "cancelled"
   | "expiring"
   | "expired";
 
@@ -42,8 +44,7 @@ const AgreementsGrid: React.FC = () => {
     {
       key: "active",
       label: "Active",
-      tooltip:
-        "Approved or Resolved agreements with a Risk End date in the future",
+      tooltip: "Approved or Resolved agreements with a Risk End date in the future",
       predicate: a =>
         ["Approved", "Resolved"].includes(a.araStatus) &&
         !!a.riskEnd &&
@@ -63,10 +64,15 @@ const AgreementsGrid: React.FC = () => {
       predicate: a => a.araStatus === "Rejected"
     },
     {
+      key: "cancelled",
+      label: "Cancelled",
+      tooltip: "Cancelled agreements",
+      predicate: a => a.araStatus === "Cancelled"
+    },
+    {
       key: "expiring",
       label: "Expiring soon",
-      tooltip:
-        "Approved or Resolved agreements expiring within 4 weeks",
+      tooltip: "Approved or Resolved agreements expiring within 4 weeks",
       predicate: a =>
         ["Approved", "Resolved"].includes(a.araStatus) &&
         !!a.riskEnd &&
@@ -76,8 +82,7 @@ const AgreementsGrid: React.FC = () => {
     {
       key: "expired",
       label: "Expired",
-      tooltip:
-        "Approved or Resolved agreements with a past Risk End date",
+      tooltip: "Approved or Resolved agreements with a past Risk End date",
       predicate: a =>
         ["Approved", "Resolved"].includes(a.araStatus) &&
         !!a.riskEnd &&
@@ -127,14 +132,35 @@ const AgreementsGrid: React.FC = () => {
     }
   };
 
+  // build entity mapping from entity record
+  const entityMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+
+    DataSource.Entities.forEach(e => {
+      // key = what agreements store (abbr)
+      // value = what users see
+      map.set(e.abbr, e.combinedTitle);
+    });
+
+    return map;
+  }, []);
+
   //update entity filter based on grid results
-  const entities = React.useMemo(
-    () =>
-      Array.from(
-        new Set(DataSource.Agreements.map((a) => a.entity).filter(Boolean))
-      ).sort(),
-    []
-  );
+  const entities = React.useMemo(() => {
+    return Array.from(
+      new Set(
+        DataSource.Agreements
+          .map(a => a.entity) 
+          .filter(Boolean)
+      )
+    )
+      .map(abbr => ({
+        abbr,
+        label: entityMap.get(abbr) ?? abbr
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [entityMap]);
+
 
   // // update status filter based on results
   // const statuses = React.useMemo(
@@ -228,6 +254,17 @@ const AgreementsGrid: React.FC = () => {
     );
   };
 
+  const resetFilters = (): void => {
+    setSearch("");
+    setEntityFilter("");
+    setContractTypeFilter("");
+  };
+
+  const hasActiveFilters =
+    Boolean(search?.trim()) ||
+    Boolean(entityFilter) ||
+    Boolean(contractTypeFilter);
+
   const rows = React.useMemo(
     () =>
       filterAgreements(
@@ -244,25 +281,24 @@ const AgreementsGrid: React.FC = () => {
     {
       field: "Title",
       headerName: "ATR Title",
-      width: 130,
+      width: 150,
+      minWidth: 120
     },
     {
       field: "projectName",
       headerName: "Project",
       flex: 1.6,
-      minWidth: 220
+      minWidth: 200
     },
     {
       field: "invoice",
       headerName: "Invoice",
-      flex: 1,
-      width: 90
+      width: 80
     },
     {
       field: "contractType",
-      headerName: "Contract",
-      flex: 1,
-      minWidth: 100
+      headerName: "Contract Type",
+      minWidth: 80
     },
     {
       field: "entity",
@@ -272,13 +308,13 @@ const AgreementsGrid: React.FC = () => {
     {
       field: "araStatus",
       headerName: "Status",
-      width: 140,
+      minWidth: 130,
       renderCell: (params) => getStatusChip(params.value)
     },
     {
       field: "riskStart",
       headerName: "Risk Start",
-      width: 120,
+      minWidth: 120,
       renderCell: (params) =>
         params.row.riskStart
           ? dayjs(params.row.riskStart).format("MM/DD/YYYY")
@@ -287,7 +323,7 @@ const AgreementsGrid: React.FC = () => {
     {
       field: "riskEnd",
       headerName: "Risk End",
-      width: 120,
+      minWidth: 120,
       renderCell: (params) =>
         params.row.riskEnd
           ? dayjs(params.row.riskEnd).format("MM/DD/YYYY")
@@ -296,7 +332,7 @@ const AgreementsGrid: React.FC = () => {
     {
       field: "popEnd",
       headerName: "PoP End",
-      width: 120,
+      minWidth: 120,
       renderCell: (params) =>
         params.row.popEnd
           ? dayjs(params.row.popEnd).format("MM/DD/YYYY")
@@ -305,7 +341,8 @@ const AgreementsGrid: React.FC = () => {
     {
       field: "riskFundingRequested",
       headerName: "Funding Requested",
-      width: 160,
+      minWidth: 130,
+      flex: 1,
       align: "right",
       headerAlign: "right",
       renderCell: (params) => {
@@ -320,13 +357,54 @@ const AgreementsGrid: React.FC = () => {
     {
       field: "Created",
       headerName: "Created",
-      width: 120,
+      minWidth: 120,
       renderCell: (params) =>
         params.row.Created
           ? dayjs(params.row.Created).format("MM/DD/YYYY")
           : ""
     }
   ];
+
+  const getAgreementsEmptyState = (viewKey: string): EmptyStateProps => {
+    switch (viewKey) {
+      case "active":
+        return {
+          title: "No active agreements",
+          description: "There are no Approved or Resolved agreements with a future Risk End date."
+        };
+      case "pending":
+        return {
+          title: "No pending agreements",
+          description: "There are no Submitted or Under Review agreements right now."
+        };
+      case "rejected":
+        return {
+          title: "No rejected agreements",
+          description: "There are no rejected agreements in this view."
+        };
+      case "cancelled":
+        return {
+          title: "No cancelled agreements",
+          description: "There are no cancelled agreements in this view."
+        };
+      case "expiring":
+        return {
+          title: "Nothing expiring soon",
+          description: "There are no Approved or Resolved agreements expiring within the next 4 weeks."
+        };
+      case "expired":
+        return {
+          title: "No expired agreements",
+          description: "There are no Approved or Resolved agreements with a past Risk End date."
+        };
+      case "all":
+      default:
+        return {
+          title: "No agreements found",
+          description: "Try a different view or adjust your filters."
+        };
+    }
+  };
 
   return (
     <Box sx={{ px: 3, pb: 4 }}>
@@ -343,7 +421,12 @@ const AgreementsGrid: React.FC = () => {
           borderRadius: 3
         }}
       >
-        <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={2}
+          alignContent="center"
+          alignItems={{ md: "flex-end" }}
+        >
           <TextField
             label="Search Agreements"
             placeholder="Search by Project, Invoice, Contract Mgr, Project Mgr"
@@ -362,9 +445,9 @@ const AgreementsGrid: React.FC = () => {
             onChange={(e) => setEntityFilter(e.target.value)}
           >
             <MenuItem value="">All</MenuItem>
-            {entities.map(entity => (
-              <MenuItem key={entity} value={entity}>
-                {entity}
+            {entities.map(e => (
+              <MenuItem key={e.abbr} value={e.abbr}>
+                {e.label}
               </MenuItem>
             ))}
           </TextField>
@@ -384,6 +467,20 @@ const AgreementsGrid: React.FC = () => {
               </MenuItem>
             ))}
           </TextField>
+
+          {/* RESET FILTERS */}
+          <Button
+            size="small"
+            variant="text"
+            disabled={!hasActiveFilters}
+            onClick={resetFilters}
+            sx={{
+              px: 1,
+              whiteSpace: "nowrap"
+            }}
+          >
+            Clear filters
+          </Button>
         </Stack>
       </Box>
 
@@ -452,26 +549,32 @@ const AgreementsGrid: React.FC = () => {
           overflow: "hidden"
         }}
       >
-        <DataGrid
-          autoHeight
-          density="compact"
-          rows={rows}
-          columns={columns}
-          getRowId={(row) => row.Id}
-          disableRowSelectionOnClick
-          pageSizeOptions={[10, 25, 50]}
-          initialState={{
-            sorting: { sortModel: [{ field: "Created", sort: "desc" }] },
-            pagination: { paginationModel: { pageSize: 10, page: 0 } }
-          }}
-          onRowClick={(params) =>
-            history.push(`/view/${params.row.Id}`)
-          }
-          // getRowClassName={(params) =>
-          //   params.indexRelativeToCurrentPage % 2 === 0 ? 'even-row' : 'odd-row'
-          // }
-          sx={gridStyles}
-        />
+        {rows.length === 0 ? (
+          <Box sx={{ p: 2 }}>
+            <EmptyState {...getAgreementsEmptyState(selectedView)} />
+          </Box>
+        ) : (
+          <DataGrid
+            autoHeight
+            density="compact"
+            rows={rows}
+            columns={columns}
+            getRowId={(row) => row.Id}
+            disableRowSelectionOnClick
+            pageSizeOptions={[10, 25, 50]}
+            initialState={{
+              sorting: { sortModel: [{ field: "Created", sort: "desc" }] },
+              pagination: { paginationModel: { pageSize: 10, page: 0 } }
+            }}
+            onRowClick={(params) =>
+              history.push(`/view/${params.row.Id}`)
+            }
+            // getRowClassName={(params) =>
+            //   params.indexRelativeToCurrentPage % 2 === 0 ? 'even-row' : 'odd-row'
+            // }
+            sx={gridStyles}
+          />
+        )}
       </Box>
 
     </Box>

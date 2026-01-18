@@ -1,4 +1,5 @@
 import { createTheme } from "@mui/material/styles";
+import type { Theme } from "@mui/material/styles";
 import { baseTheme } from "./theme.base";
 
 export const darkTheme = createTheme({
@@ -44,7 +45,9 @@ export const darkTheme = createTheme({
   components: {
     MuiButton: {
       styleOverrides: {
-
+        //extend base theme overrides
+        ...(baseTheme.components?.MuiButton?.styleOverrides ?? {}),
+        
         // PRIMARY button: GOLD
         containedPrimary: {
           backgroundColor: "#F2C744",
@@ -101,7 +104,7 @@ export const darkTheme = createTheme({
 
     MuiListItem: {
       styleOverrides: {
-        root: ({ theme }) => ({
+        root: ({ theme }: { theme: Theme }) => ({
           // Only when rendered as an anchor
           '&[component="a"], &[href]': {
             color: theme.palette.info.main,   // #4b82ff

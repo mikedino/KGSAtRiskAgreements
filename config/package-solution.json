@@ -3,7 +3,8 @@
   "solution": {
     "name": "At-Risk Agreements Application",
     "id": "66c0c8b0-5fb6-4ae5-8ca9-229a14299f82",
-    "version": "1.0.0.1",
+    "version": "1.0.0.2",
+    "iconPath": "assets/KGS-Logo-Stacked_96x96.jpg",
     "includeClientSideAssets": true,
     "skipFeatureDeployment": true,
     "isDomainIsolated": false,
@@ -16,10 +17,10 @@
     },
     "metadata": {
       "shortDescription": {
-        "default": "kgs-at-risk-agreements description"
+        "default": "Project Managers & Program Managers are required to submit an 'At-Risk Agreement' for review and approval when their existing contract or potential opportunity could involve KGS working At-Risk for the client."
       },
       "longDescription": {
-        "default": "kgs-at-risk-agreements description"
+        "default": "Project Managers & Program Managers are required to submit an 'At-Risk Agreement' for review and approval when their existing contract or potential opportunity could involve KGS working At-Risk for the client. There are several     reasons that KGS might be working at-risk such as a PoP End Date approaching on an IDIQ Contract with the anticipation         of a new award coming but not received yet, or on an existing contract there has been a funding lapse, or if KGS has received a notice of intent to proceed with next option period but the client has not signed it yet. In order for any contract or opportunity to be worked at-risk, the approval of the Contract Manager, Operating Group President, and         Senior Vice President of Contracts is required. If >$50k, the Line of Business President must approve. If >$100k,         the Chief Executive Officer must approve. If an At-Risk Agreement is approved and is actively in progress, it must         monitored closely as they are approved for a specific dollar value and date range. If risk end date approaches, and the  risk has not been resolved, it must be resubmitted for approval with the updated dates and dollar value."
       },
       "screenshotPaths": [],
       "videoUrl": "",
@@ -30,7 +31,7 @@
         "title": "kgs-at-risk-agreements Feature",
         "description": "The feature that activates elements of the kgs-at-risk-agreements solution.",
         "id": "fc231f3d-577c-40ca-9e82-9186a9ecf7de",
-        "version": "1.0.0.0"
+        "version": "1.0.0.2"
       }
     ]
   },

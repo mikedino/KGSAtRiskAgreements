@@ -4,16 +4,23 @@ import type { } from '@mui/x-data-grid/themeAugmentation';
 
 export const baseTheme = createTheme({
     typography: {
-        fontSize: 14, // global baseline
+        fontSize: 14 // global baseline
     },
     components: {
         MuiButton: {
             styleOverrides: {
                 root: {
                     textTransform: "none",
-                    fontFamily: "inherit",
+                    //fontFamily: "inherit",
                     borderRadius: 8,
                     transition: "background-color 200ms ease, color 200ms ease"
+                }
+            }
+        },
+        MuiButtonBase: {
+            styleOverrides: {
+                root: {
+                    textTransform: "none"
                 }
             }
         },

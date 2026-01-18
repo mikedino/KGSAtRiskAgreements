@@ -19,10 +19,10 @@
     "groupId": "5c03119e-3074-46fd-976b-c60198311f70", // Advanced
     "group": { "default": "Advanced" },
     "title": { "default": "At-Risk Agreements" },
-    "description": { "default": "At-Risk Agreements description" },
+    "description": { "default": "Project Managers & Program Managers are required to submit an 'At-Risk Agreement' for review and approval when their existing contract or potential opportunity could involve KGS working At-Risk for the client." },
     "officeFabricIconFontName": "Commitments",
     "properties": {
-      "description": "At-Risk Agreements"
+      "description": "Project Managers & Program Managers are required to submit an 'At-Risk Agreement' for review and approval when their existing contract or potential opportunity could involve KGS working At-Risk for the client."
     }
   }]
 }
