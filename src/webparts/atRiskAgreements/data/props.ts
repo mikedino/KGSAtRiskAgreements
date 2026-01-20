@@ -83,7 +83,7 @@ export interface IOGPresidentsItem {
 
 export interface IEntitiesItem {
   readonly Id: number;
-  Title: string;
+  Title: string; 
   abbr: string;
   GM: IPeoplePicker;
   combinedTitle: string;

@@ -1,5 +1,6 @@
 import * as React from "react";
 import { AppBar, Toolbar, Typography, Button, useMediaQuery, Box, Stack, Avatar } from "@mui/material";
+import { useAgreements } from "../services/agreementsContext";
 import { useTheme } from "@mui/material/styles";
 import Handshake from "@mui/icons-material/Handshake";
 import AddIcon from "@mui/icons-material/Add";
@@ -7,6 +8,8 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import WorkIcon from "@mui/icons-material/Work";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import Refresh from "@mui/icons-material/Refresh";
+import IconButton from '@mui/material/IconButton';
 import { Link } from "react-router-dom";
 import ThemeSwitcher from "./ThemeSwitcher";
 import { WebPartContext } from "@microsoft/sp-webpart-base";
@@ -19,7 +22,10 @@ interface NavHeaderProps {
 }
 
 const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDarkTheme }) => {
+
     const theme = useTheme();
+
+    const { refresh, isRefreshing } = useAgreements();
 
     // small screens (md = ~900px), large screens (lg = ~1200px)
     const isSmall = useMediaQuery(theme.breakpoints.down("md"));
@@ -50,6 +56,15 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
                     <Button title="All Agreeements" startIcon={<ListAltIcon />} color="inherit" component={Link} to="/all-agreements">{!isSmall && "All Agreements"}</Button>
                     <Button title="Dashboard" startIcon={<DashboardIcon />} color="inherit" component={Link} to="/dashboard">{!isSmall && "Dashboard"}</Button>
                     <Button title="Admin" startIcon={<AdminPanelSettingsIcon />} color="inherit" component={Link} to="/admin">{!isSmall && "Admin"}</Button>
+                    <IconButton
+                        onClick={() => refresh(true)}
+                        disabled={isRefreshing}
+                        size="medium"
+                        aria-label="Refresh Data"
+                        title={isRefreshing ? "Refreshing…" : "Refresh Data"}
+                    >
+                        <Refresh sx={{ animation: isRefreshing ? "spin 1s linear infinite" : undefined }} />
+                    </IconButton>
                 </Stack>
 
                 {/* NEW AGREEMENT BUTTON */}

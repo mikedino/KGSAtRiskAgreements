@@ -41,7 +41,7 @@ export const RiskAgreementWorkflow: IWorkflowStep[] = [
     key: "Submitted",
     label: "Submitted",
     isInitial: true,
-    isRequired: () => true,
+    isRequired: () => true, 
     next: "CMReview"
   },
   {

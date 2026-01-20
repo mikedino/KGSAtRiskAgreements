@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useMemo, useState } from "react";
 import dayjs from "dayjs";
 import { Box, Typography, TextField, MenuItem, Stack, Chip, Tooltip, Button } from "@mui/material";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
@@ -7,6 +8,7 @@ import { DataSource } from "../data/ds";
 import { IRiskAgreementItem, AraStatus } from "../data/props";
 import { useTheme } from "@mui/material/styles";
 import EmptyState, { EmptyStateProps } from "../ui/EmptyStateBox";
+import { useAgreements } from "../services/agreementsContext";
 
 type AgreementViewKey =
   | "all"
@@ -26,15 +28,16 @@ interface AgreementView {
 
 const AgreementsGrid: React.FC = () => {
 
+  const { agreements } = useAgreements();
   const theme = useTheme();
-  const today = dayjs();
+  const today = useMemo(() => dayjs(), []); // compute once per mount
   const history = useHistory();
-  const [search, setSearch] = React.useState("");
-  const [entityFilter, setEntityFilter] = React.useState("");
-  const [contractTypeFilter, setContractTypeFilter] = React.useState("");
-  const [selectedView, setSelectedView] = React.useState<AgreementViewKey>("all");
+  const [search, setSearch] = useState("");
+  const [entityFilter, setEntityFilter] = useState("");
+  const [contractTypeFilter, setContractTypeFilter] = useState("");
+  const [selectedView, setSelectedView] = useState<AgreementViewKey>("all");
 
-  const agreementViews: AgreementView[] = [
+  const agreementViews = useMemo<AgreementView[]>(() => [
     {
       key: "all",
       label: "All",
@@ -88,7 +91,7 @@ const AgreementsGrid: React.FC = () => {
         !!a.riskEnd &&
         dayjs(a.riskEnd).isBefore(today, "day")
     }
-  ];
+  ], [today]);
 
   const gridStyles = {
     border: "none",
@@ -150,7 +153,7 @@ const AgreementsGrid: React.FC = () => {
     return Array.from(
       new Set(
         DataSource.Agreements
-          .map(a => a.entity) 
+          .map(a => a.entity)
           .filter(Boolean)
       )
     )
@@ -159,47 +162,20 @@ const AgreementsGrid: React.FC = () => {
         label: entityMap.get(abbr) ?? abbr
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [entityMap]);
-
-
-  // // update status filter based on results
-  // const statuses = React.useMemo(
-  //   () =>
-  //     Array.from(
-  //       new Set(
-  //         DataSource.Agreements
-  //           .map(a => a.araStatus)
-  //           .filter(s => s && s !== "Draft")
-  //       )
-  //     ).sort(),
-  //   []
-  // );
+  }, [agreements, entityMap]);
 
   // update contract type based on results
-  const contractTypes = React.useMemo(
-    () =>
-      Array.from(
-        new Set(
-          DataSource.Agreements
-            .map(a => a.contractType)
-            .filter(Boolean)
-        )
-      ).sort(),
-    []
-  );
+  const contractTypes = React.useMemo(() => {
+    return Array.from(new Set(agreements.map(a => a.contractType).filter(Boolean))).sort();
+  }, [agreements]);
 
   // compute view counts for each chip
   const viewCounts = React.useMemo(() => {
-    return agreementViews.reduce<Record<AgreementViewKey, number>>(
-      (acc, view) => {
-        acc[view.key] = DataSource.Agreements.filter(a =>
-          a.araStatus !== "Draft" && view.predicate(a)
-        ).length;
-        return acc;
-      },
-      {} as Record<AgreementViewKey, number>
-    );
-  }, []);
+    return agreementViews.reduce<Record<AgreementViewKey, number>>((acc, view) => {
+      acc[view.key] = agreements.filter(a => a.araStatus !== "Draft" && view.predicate(a)).length;
+      return acc;
+    }, {} as Record<AgreementViewKey, number>);
+  }, [agreements, agreementViews]);
 
   const filterAgreements = (
     items: IRiskAgreementItem[],
@@ -213,8 +189,7 @@ const AgreementsGrid: React.FC = () => {
     const viewDef = agreementViews.find(v => v.key === view)!
 
     return items
-      //persistent filter - don't show Draft
-      .filter(item => item.araStatus !== "Draft")
+      //.filter(item => item.araStatus !== "Draft") // filtering in datasource already
       .filter(viewDef.predicate)
       .filter((item) => {
         const matchesSearch =
@@ -265,17 +240,16 @@ const AgreementsGrid: React.FC = () => {
     Boolean(entityFilter) ||
     Boolean(contractTypeFilter);
 
-  const rows = React.useMemo(
-    () =>
-      filterAgreements(
-        DataSource.Agreements,
-        search,
-        entityFilter,
-        contractTypeFilter,
-        selectedView
-      ),
-    [search, entityFilter, contractTypeFilter, selectedView]
-  );
+  // final data grid rows/items
+  const rows = React.useMemo(() => {
+    return filterAgreements(
+      agreements,
+      search,
+      entityFilter,
+      contractTypeFilter,
+      selectedView
+    );
+  }, [agreements, search, entityFilter, contractTypeFilter, selectedView]);
 
   const columns: GridColDef[] = [
     {

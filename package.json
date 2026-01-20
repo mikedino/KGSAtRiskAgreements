@@ -25,6 +25,7 @@
     "@microsoft/sp-webpart-base": "1.21.1",
     "@mui/icons-material": "^7.3.6",
     "@mui/material": "^7.3.6",
+    "@mui/x-charts": "^8.25.0",
     "@mui/x-data-grid": "^8.22.1",
     "@mui/x-date-pickers": "^8.22.1",
     "@pnp/spfx-controls-react": "^3.23.0",

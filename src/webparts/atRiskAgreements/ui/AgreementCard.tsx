@@ -56,9 +56,11 @@ const AgreementCard: React.FC<AgreementCardProps> = ({ item, workflow, onClick }
                             />
 
                             <Stack alignItems="flex-end">
-                                <Typography variant="caption" color="text.secondary">
-                                    with {workflow.currentApprover}
-                                </Typography>
+                                {workflow.currentApprover && (
+                                    <Typography variant="caption" color="text.secondary">
+                                        with {workflow.currentApprover}
+                                    </Typography>
+                                )}
 
                                 {workflow.sentDate && (
                                     <Typography
@@ -111,7 +113,7 @@ const AgreementCard: React.FC<AgreementCardProps> = ({ item, workflow, onClick }
                                 {item.invoice ? "Invoice" : "Program Name"}
                             </Typography>
                             <Typography variant="body2">
-                                {item.invoice || item.programName }
+                                {item.invoice || item.programName}
                             </Typography>
                         </Grid>
 

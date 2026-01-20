@@ -46,7 +46,14 @@ export class DataSource {
 
     // Load all the Risk Agreeements
     private static _agreements: IRiskAgreementItem[] = [];
+    private static _agreementsVersion = 0; // detect refreshes
     static get Agreements(): IRiskAgreementItem[] { return this._agreements; }
+    static get AgreementsVersion(): number { return this._agreementsVersion; }
+    private static setAgreements(items: IRiskAgreementItem[]): void {
+        this._agreements = items;
+        this._agreementsVersion++; // increment "version" (refresh)
+    }
+
     static getAgreeements(): Promise<IRiskAgreementItem[]> {
         return new Promise<IRiskAgreementItem[]>((resolve, reject) => {
 
@@ -74,16 +81,12 @@ export class DataSource {
                 // Success
                 items => {
                     if (items?.results?.length) {
-                        this._agreements = items.results as unknown as IRiskAgreementItem[];
-
-                        console.log("AGREEMENTS", this._agreements);
-
-                        // resolve with retrieved items
-                        resolve(this._agreements);
-
+                        DataSource.setAgreements(items.results as unknown as IRiskAgreementItem[]);
+                        resolve(DataSource.Agreements);
                     } else {
                         //none found - resolve with empty array
-                        resolve([])
+                        DataSource.setAgreements([]);
+                        resolve([]);
                     }
                 },
                 // Error

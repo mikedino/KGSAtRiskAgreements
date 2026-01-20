@@ -8,10 +8,10 @@ export interface IInfoCardProps {
     subtitle?: string;
     icon?: React.ReactNode; // any MUI icon
     iconColor?: "primary" | "secondary" | "error" | "warning" | "info" | "success";
+    footer?: React.ReactNode // optional for things like "top overdue links"
 }
 
-const InfoCard: React.FC<IInfoCardProps> = ({ title, value, subtitle, icon, iconColor = "secondary" }) => {
-
+const InfoCard: React.FC<IInfoCardProps> = ({ title, value, subtitle, icon, iconColor = "secondary", footer }) => {
     const theme = useTheme();
     const resolvedColor = theme.palette[iconColor].main;
 
@@ -21,7 +21,7 @@ const InfoCard: React.FC<IInfoCardProps> = ({ title, value, subtitle, icon, icon
             sx={{
                 p: 2.5,
                 borderRadius: 3,
-                height: "100%",         
+                height: "100%",
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "space-between",
@@ -30,29 +30,38 @@ const InfoCard: React.FC<IInfoCardProps> = ({ title, value, subtitle, icon, icon
                 borderColor: theme.custom?.cardBorder
             }}
         >
-            {/* HEADER + ICON */}
-            <Box display="flex" justifyContent="space-between" alignItems="center">
-                <Typography sx={{ fontSize: 16, fontWeight: 500, color: "text.primary" }}>
-                    {title}
+            <Box>
+                {/* HEADER + ICON */}
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography sx={{ fontSize: 16, fontWeight: 500, color: "text.primary" }}>
+                        {title}
+                    </Typography>
+
+                    {icon !== undefined && (
+                        <Box sx={{ color: resolvedColor, fontSize: 22 }}>
+                            {icon}
+                        </Box>
+                    )}
+                </Box>
+
+                {/* VALUE */}
+                <Typography sx={{ fontSize: 32, fontWeight: 700, mt: 1, color: "text.primary" }}>
+                    {value}
                 </Typography>
 
-                {icon && (
-                    <Box sx={{ color: resolvedColor, fontSize: 22 }}>
-                        {icon}
-                    </Box>
+                {/* SUBTEXT */}
+                {subtitle !== undefined && subtitle !== "" && (
+                    <Typography sx={{ fontSize: 14, color: "text.secondary", mt: 0.5 }}>
+                        {subtitle}
+                    </Typography>
                 )}
             </Box>
 
-            {/* VALUE */}
-            <Typography sx={{ fontSize: 32, fontWeight: 700, mt: 1, color: "text.primary" }}>
-                {value}
-            </Typography>
-
-            {/* SUBTEXT */}
-            {subtitle && (
-                <Typography sx={{ fontSize: 14, color: "text.secondary", mt: 0.5 }}>
-                    {subtitle}
-                </Typography>
+            {/* FOOTER */}
+            {footer !== undefined && (
+                <Box sx={{ mt: 1.25 }}>
+                    {footer}
+                </Box>
             )}
         </Card>
     );
