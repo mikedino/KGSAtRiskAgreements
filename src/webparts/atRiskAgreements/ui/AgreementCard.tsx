@@ -108,7 +108,7 @@ const AgreementCard: React.FC<AgreementCardProps> = ({ item, workflow, onClick }
 
                     {/* Key Details */}
                     <Grid container spacing={1}>
-                        <Grid size={6}>\
+                        <Grid size={6}>
                             <Typography variant="caption" color="text.secondary">
                                 {item.invoice ? "Invoice" : "Program Name"}
                             </Typography>

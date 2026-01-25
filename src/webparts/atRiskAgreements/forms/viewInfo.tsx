@@ -2,7 +2,7 @@ import * as React from "react";
 import { Typography, Card, CardContent, Grid, Box } from "@mui/material";
 import { IRiskAgreementItem, IAttachmentInfo } from "../data/props";
 import AttachmentsList from "./viewAttachmentsList";
-import AttachFileOutlined from "@mui/icons-material/AttachFileOutlined";
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 
 const ReadOnly = ({ label, value }: { label: string; value?: React.ReactNode; }): JSX.Element => (
     <Grid size={{ xs: 12, md: 6 }}>
@@ -38,8 +38,15 @@ const AgreementInfoCard = ({
                 <ReadOnly label="Contract Manager" value={item.contractMgr?.Title} />
             </Grid>
 
+            <Grid container sx={{ mt: 2 }}>
+                <ReadOnly label="Justification" value={item.riskJustification} />
+            </Grid>
+
             <Box sx={{ mt: 3 }}>
-                <Typography variant="subtitle1" gutterBottom><AttachFileOutlined /> Attachments</Typography>
+                <Typography variant="subtitle2" gutterBottom>
+                    <AttachFileIcon sx={{ transform: "rotate(25deg)", fontSize: "medium", marginRight: .5 }} />
+                    Attachments
+                </Typography>
                 <AttachmentsList attachments={attachments} loading={attachmentsLoading} />
             </Box>
 

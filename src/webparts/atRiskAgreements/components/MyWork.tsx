@@ -173,21 +173,21 @@ const MyWork: React.FC = () => {
   const myAgreementViews: MyWorkView[] = [
     {
       key: "action",
-      label: "Actionable",
-      tooltip: "All agreements with your action required",
+      label: "My Action",
+      tooltip: "Agreements requiring your review & action",
       getItems: () => myActionItems
-    },
-    {
-      key: "pending",
-      label: "Pending",
-      tooltip: "My submitted agreements Under Review",
-      getItems: () => myPendingItems
     },
     {
       key: "reviewed",
       label: "My Reviewed",
       tooltip: "Agreements you have reviewed as an approver",
       getItems: () => myReviewedItems
+    },
+    {
+      key: "pending",
+      label: "Pending",
+      tooltip: "My submitted agreements Under Review",
+      getItems: () => myPendingItems
     },
     {
       key: "approved",

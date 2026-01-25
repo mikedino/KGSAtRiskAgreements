@@ -1,9 +1,10 @@
 import * as React from "react";
 import {
     Card, CardContent, Stepper, StepLabel, Step, Typography, Chip,
-    Box, Divider, Stack, Button, ChipProps
+    Box, Divider, Stack, Button, ChipProps, IconButton, Popper, Paper, ClickAwayListener
 } from "@mui/material";
 import { CheckCircle, Cancel, Check, Schedule, RadioButtonUnchecked, RemoveCircleOutline } from "@mui/icons-material";
+import MessageOutlinedIcon from "@mui/icons-material/MessageOutlined";
 import { WorkflowStepWithStatus } from "../services/workflowState";
 import { WorkflowStepStatus } from "../services/workflowState";
 import dayjs from "dayjs";
@@ -20,8 +21,11 @@ const WorkflowTimeline = ({
     onReject: () => Promise<void>;
 }): JSX.Element => {
 
-    const activeStep = steps.findIndex(s => s.status === "Current");
+    // for comment popper
+    const [commentAnchorEl, setCommentAnchorEl] = React.useState<HTMLElement | null>(null);
+    const [openCommentKey, setOpenCommentKey] = React.useState<string | null>(null);
 
+    const activeStep = steps.findIndex(s => s.status === "Current");
     const activeStepObj = activeStep >= 0 ? steps[activeStep] : undefined;
 
     const showActions =
@@ -29,6 +33,35 @@ const WorkflowTimeline = ({
         activeStepObj &&
         !activeStepObj.isInitial &&
         activeStepObj.status === "Current";
+
+    const handleCommentOpen = (stepKey: string, el: HTMLElement): void => {
+        // toggle if clicking same icon
+        setOpenCommentKey((prev) => (prev === stepKey ? null : stepKey));
+        setCommentAnchorEl((prev) => (openCommentKey === stepKey ? null : el));
+    };
+
+    const handleCommentClose = (): void => {
+        setOpenCommentKey(null);
+        setCommentAnchorEl(null);
+    };
+
+    const open = Boolean(openCommentKey) && Boolean(commentAnchorEl);
+    const activeComment = steps.find(s => s.key === openCommentKey)?.comment?.trim();
+
+    // escape on keyboard closes the popper
+    React.useEffect((): (() => void) => {
+        const onKeyDown = (e: KeyboardEvent): void => {
+            if (e.key === "Escape") {
+                handleCommentClose();
+            }
+        };
+
+        window.addEventListener("keydown", onKeyDown);
+
+        return (): void => {
+            window.removeEventListener("keydown", onKeyDown);
+        };
+    }, []);
 
     const WorkflowStepIcon = ({ status }: { status: WorkflowStepStatus }): JSX.Element | null => {
         switch (status) {
@@ -84,9 +117,24 @@ const WorkflowTimeline = ({
                         >
                             <StepLabel icon={<WorkflowStepIcon status={step.status} />} >
                                 <Stack spacing={0.25}>
-                                    {/* Top row: label + status */}
+                                    {/* Top row: label + comment + status */}
                                     <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                        <Typography fontWeight={500}>{step.label}</Typography>
+                                        <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
+                                            <Typography fontWeight={500} noWrap>
+                                                {step.label}
+                                            </Typography>
+
+                                            {!!step.comment?.trim() && (
+                                                <IconButton
+                                                    size="small"
+                                                    aria-label="View comment"
+                                                    onClick={(e) => handleCommentOpen(String(step.key), e.currentTarget)}
+                                                >
+                                                    <MessageOutlinedIcon fontSize="small" />
+                                                </IconButton>
+                                            )}
+                                        </Stack>
+
                                         <Chip size="small" {...getStatusChipProps(step.status)} />
                                     </Stack>
 
@@ -108,6 +156,44 @@ const WorkflowTimeline = ({
                         </Step>
                     ))}
                 </Stepper>
+
+                <Popper
+                    open={open}
+                    anchorEl={commentAnchorEl}
+                    placement="right-start"
+                    modifiers={[
+                        { name: "offset", options: { offset: [0, 8] } }
+                    ]}
+                >
+                    <ClickAwayListener onClickAway={handleCommentClose}>
+                        <Paper
+                            variant="outlined"
+                            sx={{
+                                p: 2,
+                                maxWidth: 350,
+                                minWidth: 150,
+                                border: "1px solid",
+                                borderColor: "divider",
+                                bgcolor: (theme) =>
+                                    theme.palette.mode === "dark"
+                                        ? theme.palette.grey[900]
+                                        : theme.palette.grey[50],
+                                boxShadow: (theme) =>
+                                    theme.palette.mode === "dark"
+                                        ? "0px 6px 18px rgba(0,0,0,0.6)"
+                                        : theme.shadows[4],
+                            }}
+                        >
+                            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                                Comment
+                            </Typography>
+
+                            <Typography variant="caption" sx={{ whiteSpace: "pre-wrap", lineHeight: 1 }}>
+                                {activeComment || "No comment."}
+                            </Typography>
+                        </Paper>
+                    </ClickAwayListener>
+                </Popper>
 
                 {showActions && (
                     <Box sx={{ mt: 3 }}>

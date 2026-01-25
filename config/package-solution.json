@@ -3,7 +3,7 @@
   "solution": {
     "name": "At-Risk Agreements Application",
     "id": "66c0c8b0-5fb6-4ae5-8ca9-229a14299f82",
-    "version": "1.0.0.2",
+    "version": "1.0.0.4",
     "iconPath": "assets/KGS-Logo-Stacked_96x96.jpg",
     "includeClientSideAssets": true,
     "skipFeatureDeployment": true,
@@ -31,7 +31,7 @@
         "title": "kgs-at-risk-agreements Feature",
         "description": "The feature that activates elements of the kgs-at-risk-agreements solution.",
         "id": "fc231f3d-577c-40ca-9e82-9186a9ecf7de",
-        "version": "1.0.0.2"
+        "version": "1.0.0.4"
       }
     ]
   },

@@ -47,13 +47,20 @@ export const darkTheme = createTheme({
       styleOverrides: {
         //extend base theme overrides
         ...(baseTheme.components?.MuiButton?.styleOverrides ?? {}),
-        
+
         // PRIMARY button: GOLD
         containedPrimary: {
           backgroundColor: "#F2C744",
           color: "#003057",
           "&:hover": {
             backgroundColor: "#D9B238",
+          }
+        },
+
+        textPrimary: {
+          color: "#F2C744",
+          "&:hover": {
+            color: "#D9B238",
           }
         },
 
@@ -112,12 +119,28 @@ export const darkTheme = createTheme({
 
             '&:hover': {
               textDecoration: 'underline',
-              color: theme.palette.info.main
+              color: theme.palette.info.light
             },
 
             '&:visited': {
-              color: theme.palette.info.main
+              color: "#b4a0ff"
             }
+          }
+        })
+      }
+    },
+
+    MuiLink: {
+      styleOverrides: {
+        root: ({ theme }: { theme: Theme }) => ({
+          color: theme.palette.info.main,
+          '&:hover': {
+            textDecoration: 'underline',
+            color: theme.palette.info.light
+          },
+
+          '&:visited': {
+            color: "#b4a0ff"
           }
         })
       }

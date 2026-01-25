@@ -5,7 +5,6 @@ import { ChartCard } from "../ui/ChartCard";
 import { buildDashboardKpis } from "../services/dashboardHelpers";
 import { buildMonthlyTrends, buildStatusDistribution, buildAvgStageTimes, buildRiskDistribution } from "../services/dashboardCharts";
 import { Link as RouterLink } from "react-router-dom";
-
 import { LineChart } from "@mui/x-charts/LineChart";
 import { PieChart } from "@mui/x-charts/PieChart";
 import { BarChart } from "@mui/x-charts/BarChart";
@@ -15,27 +14,60 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 import HourglassTop from "@mui/icons-material/HourglassTop";
 import { useAgreements } from "../services/agreementsContext";
+import { ChartsReferenceLine } from "@mui/x-charts/ChartsReferenceLine";
+import { useTheme } from "@mui/material/styles";
 
 const Dashboard: React.FC = () => {
 
+  const theme = useTheme();
+
   // use AgreementsProvider Context
   const { agreements } = useAgreements();
-  //const [items, setItems] = React.useState<IRiskAgreementItem[]>([]);
+
   const kpis = React.useMemo(() => buildDashboardKpis(agreements), [agreements]);
+
   // Chart datasets
   const monthlyTrends = React.useMemo(() => buildMonthlyTrends(agreements, 6), [agreements]);
   const statusDistribution = React.useMemo(() => buildStatusDistribution(agreements), [agreements]);
   const avgStageTimes = React.useMemo(() => buildAvgStageTimes(agreements), [agreements]);
   const riskDistribution = React.useMemo(() => buildRiskDistribution(agreements), [agreements]);
 
-  // // detects app refreshes and resets items
-  // React.useEffect(() => {
-  //   setItems([...(DataSource.Agreements ?? [])]);
-  // }, [DataSource.AgreementsVersion]);
+  // Avg resp time bar chart SLA
+  // const goodValues = avgStageTimes.map(s => (s.avgDays <= 5 ? s.avgDays : 0));
+  // const warnValues = avgStageTimes.map(s => (s.avgDays > 5 && s.avgDays <= 10 ? s.avgDays : 0));
+  // const badValues = avgStageTimes.map(s => (s.avgDays > 10 ? s.avgDays : 0));
 
   // formatting helpers
   const fmtMoney = (n: number): string =>
     n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
+  // wrap bar chart long labels
+  const wrapLabel = (label: string, maxCharsPerLine = 14, maxLines = 2): string => {
+    const words = label.split(" ");
+    const lines: string[] = [];
+    let current = "";
+
+    for (const w of words) {
+      const next = current ? `${current} ${w}` : w;
+      if (next.length <= maxCharsPerLine) {
+        current = next;
+      } else {
+        lines.push(current);
+        current = w;
+        if (lines.length === maxLines - 1) break;
+      }
+    }
+
+    if (current && lines.length < maxLines) lines.push(current);
+
+    // If we had to truncate, add ellipsis to the last line
+    const usedWords = lines.join(" ").split(" ").length;
+    if (usedWords < words.length) {
+      lines[lines.length - 1] = `${lines[lines.length - 1]}…`;
+    }
+
+    return lines.join("\n");
+  };
 
   // assume overdueSummary comes from buildOverdueSummary(items, 7, 3)
   const overdueFooter = kpis.overdueSummary.topOverdue.length > 0 ? (
@@ -170,7 +202,7 @@ const Dashboard: React.FC = () => {
                 { dataKey: "approved", label: "Approved" }
               ]}
               height={300}
-              margin={{ left: 50, right: 20, top: 20, bottom: 30 }}
+              margin={{ left: 20, right: 20, top: 20, bottom: 30 }}
             />
           </ChartCard>
         </Grid>
@@ -182,13 +214,14 @@ const Dashboard: React.FC = () => {
               series={[
                 {
                   data: statusDistribution, // IDistributionPoint[]
-                  innerRadius: 60,
+                  innerRadius: 40,
                   outerRadius: 100,
-                  paddingAngle: 2
+                  paddingAngle: 2,
+                  cornerRadius: 5
                 }
               ]}
               height={300}
-              margin={{ left: 10, right: 10, top: 10, bottom: 10 }}
+              margin={{ left: 10, right: 20, top: 10, bottom: 10 }}
             />
           </ChartCard>
         </Grid>
@@ -197,14 +230,27 @@ const Dashboard: React.FC = () => {
           {/* Stage bar */}
           <ChartCard title="Average Approval Time by Stage">
             <BarChart
-              xAxis={[{ scaleType: "band", data: stageLabels }]}
+              xAxis={[{
+                scaleType: "band",
+                data: stageLabels,
+                valueFormatter: (v) => wrapLabel(String(v), 16, 3),
+                tickLabelStyle: { whiteSpace: "pre-line", fontSize: 12 }
+              }]}
               series={[{
                 data: stageValues,
-                //label: "Avg days"  remove label and it will not show
+                //label: "Avg days",
+                valueFormatter: (v) => `${Number(v).toFixed(1)}d`
               }]}
               height={300}
-              margin={{ left: 50, right: 20, top: 20, bottom: 100 }}
-            />
+              borderRadius={5}
+              margin={{ left: 20, right: 20, top: 20, bottom: 40 }}
+              slotProps={{
+                barLabel: { style: { fontSize: 12 } }
+              }}
+            >
+              <ChartsReferenceLine y={5} lineStyle={{ stroke: theme.palette.warning.main, strokeWidth: 1 }} />
+              <ChartsReferenceLine y={10} lineStyle={{ stroke: "#fa4f58", strokeWidth: 1 }} />
+            </BarChart>
           </ChartCard>
         </Grid>
 
@@ -215,13 +261,14 @@ const Dashboard: React.FC = () => {
               series={[
                 {
                   data: riskDistribution, // IDistributionPoint[]
-                  innerRadius: 60,
+                  innerRadius: 40,
                   outerRadius: 100,
-                  paddingAngle: 2
+                  paddingAngle: 2,
+                  cornerRadius: 5
                 }
               ]}
               height={300}
-              margin={{ left: 10, right: 10, top: 10, bottom: 10 }}
+              margin={{ left: 10, right: 20, top: 10, bottom: 10 }}
             />
           </ChartCard>
         </Grid>

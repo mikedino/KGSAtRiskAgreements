@@ -45,12 +45,19 @@ export const lightTheme = createTheme({
       styleOverrides: {
         //extend base theme overrides
         ...(baseTheme.components?.MuiButton?.styleOverrides ?? {}),
-        
+
         // PRIMARY light mode: Microsoft blue
         containedPrimary: {
           backgroundColor: "#0078D4",
           "&:hover": {
             backgroundColor: "#106EBE",
+          }
+        },
+
+        textPrimary: {
+          color: "#0078D4",
+          "&:hover": {
+            color: "#106EBE",
           }
         },
 

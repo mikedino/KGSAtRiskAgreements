@@ -52,10 +52,6 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
 
                 {/* ROUTER LINKS */}
                 <Stack direction="row" spacing={2}>
-                    <Button title="My Work" startIcon={<WorkIcon />} color="inherit" component={Link} to="/my-work" >{!isSmall && "My Work"}</Button>
-                    <Button title="All Agreeements" startIcon={<ListAltIcon />} color="inherit" component={Link} to="/all-agreements">{!isSmall && "All Agreements"}</Button>
-                    <Button title="Dashboard" startIcon={<DashboardIcon />} color="inherit" component={Link} to="/dashboard">{!isSmall && "Dashboard"}</Button>
-                    <Button title="Admin" startIcon={<AdminPanelSettingsIcon />} color="inherit" component={Link} to="/admin">{!isSmall && "Admin"}</Button>
                     <IconButton
                         onClick={() => refresh(true)}
                         disabled={isRefreshing}
@@ -65,6 +61,10 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
                     >
                         <Refresh sx={{ animation: isRefreshing ? "spin 1s linear infinite" : undefined }} />
                     </IconButton>
+                    <Button title="My Work" startIcon={<WorkIcon />} color="inherit" component={Link} to="/my-work" >{!isSmall && "My Work"}</Button>
+                    <Button title="All Agreeements" startIcon={<ListAltIcon />} color="inherit" component={Link} to="/all-agreements">{!isSmall && "All Agreements"}</Button>
+                    <Button title="Dashboard" startIcon={<DashboardIcon />} color="inherit" component={Link} to="/dashboard">{!isSmall && "Dashboard"}</Button>
+                    <Button title="Admin" startIcon={<AdminPanelSettingsIcon />} color="inherit" component={Link} to="/admin">{!isSmall && "Admin"}</Button>
                 </Stack>
 
                 {/* NEW AGREEMENT BUTTON */}

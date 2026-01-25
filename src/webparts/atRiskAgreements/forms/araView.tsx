@@ -114,7 +114,7 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({
     return (
         <Box sx={{ p: 2 }}>
             <Box sx={{ mb: 3 }}>
-                <Button startIcon={<ArrowBackIcon />} color="primary" onClick={() => history.goBack()} sx={{ mb: 2 }}>Back</Button>
+                <Button startIcon={<ArrowBackIcon />} color="primary" variant="text" onClick={() => history.goBack()} sx={{ mb: 2 }}>Back</Button>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
                     <Stack direction="row" alignItems="center" spacing={2}>
                         <Typography variant="h4">{item.Title}</Typography>
@@ -145,11 +145,11 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({
             </Box>
 
             <Grid container spacing={3}>
-                <Grid size={{ xs: 12, md: 7 }}>
+                <Grid size={{ xs: 12, lg: 6 }}>
                     <AgreementInfoCard item={item} attachments={attachments} attachmentsLoading={attachmentsLoading} />
                 </Grid>
 
-                <Grid size={{ xs: 12, md: 5 }}>
+                <Grid size={{ xs: 12, lg: 6 }}>
                     <WorkflowTimeline
                         steps={workflowSteps}
                         canApprove={!!canApprove}

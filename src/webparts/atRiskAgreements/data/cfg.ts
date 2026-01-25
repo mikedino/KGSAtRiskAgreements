@@ -123,7 +123,7 @@ export const Configuration = Helper.SPConfig({
                     name: "araStatus",
                     title: "Status",
                     type: Helper.SPCfgFieldType.Choice,
-                    choices: ["Draft", "Submitted", "Under Review", "Approved", "Rejected", "Resolved", "Cancelled"],
+                    choices: ["Draft", "Submitted", "Under Review", "Approved", "Rejected", "Resolved", "Canceled"],
                     defaultValue: "Submitted"
                 } as Helper.IFieldInfoChoice,
                 {

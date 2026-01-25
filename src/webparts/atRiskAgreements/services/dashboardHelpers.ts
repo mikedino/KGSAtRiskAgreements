@@ -11,8 +11,9 @@ export interface IMonthlyTrendPoint extends Record<string, string | number> {
 }
 
 export interface IDistributionPoint {
-    name: string;
+    id: number;
     value: number;
+    label: string;
 }
 
 export interface IStageAvgPoint {
@@ -220,7 +221,7 @@ export const buildDashboardKpis = (items: IRiskAgreementItem[]): IDashboardKpis 
         pendingApprovals,
         //overdueApprovals: overdueSummary.overdueCount,
         //oldestPendingDays: overdueSummary.oldestPendingDays,
-        overdueSummary,
+        overdueSummary,  // summary contains the count, days, and link
         approvedThisMonth,
         expiringSoon,
         avgApprovalDays,

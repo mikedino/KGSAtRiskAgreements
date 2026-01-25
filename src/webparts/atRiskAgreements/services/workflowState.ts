@@ -15,6 +15,7 @@ export interface WorkflowStepWithStatus extends IWorkflowStep {
     approverName?: string;
     date?: string; // when THIS step was completed
     sentDate?: string; // when THIS step became current
+    comment?: string
 }
 
 export function buildWorkflowState(item: IRiskAgreementItem): WorkflowStepWithStatus[] {
@@ -62,7 +63,11 @@ export function buildWorkflowState(item: IRiskAgreementItem): WorkflowStepWithSt
                     step.approverField
                         ? item[step.approverField]?.Title
                         : undefined,
-                date
+                date,
+                comment:
+                    step.commentField
+                        ? String(item[step.commentField] ?? "")
+                        : ""
             };
         }
 
@@ -82,7 +87,11 @@ export function buildWorkflowState(item: IRiskAgreementItem): WorkflowStepWithSt
                     step.approverField
                         ? item[step.approverField]?.Title
                         : undefined,
-                date
+                date,
+                comment:
+                    step.commentField
+                        ? String(item[step.commentField] ?? "")
+                        : "",
             };
         }
 
@@ -97,7 +106,11 @@ export function buildWorkflowState(item: IRiskAgreementItem): WorkflowStepWithSt
                     step.approverField
                         ? item[step.approverField]?.Title
                         : undefined,
-                sentDate: lastCompletedDate
+                sentDate: lastCompletedDate,
+                comment:
+                    step.commentField
+                        ? String(item[step.commentField] ?? "")
+                        : "",
             };
         }
 

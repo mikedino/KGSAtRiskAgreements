@@ -21,7 +21,7 @@ export interface IAttachmentInfo extends Types.SP.Attachment {}
 // }
 
 export type ApprovalChoice = "Approved" | "Rejected" | "Not Started";
-export type AraStatus =  "Draft"  | "Submitted"  | "Under Review"  | "Approved"  | "Rejected"  | "Resolved"  | "Cancelled";
+export type AraStatus =  "Draft"  | "Submitted"  | "Under Review"  | "Approved"  | "Rejected"  | "Resolved"  | "Canceled";
 export type ContractType = "FFP/LOE" | "T&M" | "LH" | "Cost Plus/Reimbursable" | "Hybrid";
 
 export interface IRiskAgreementItem {
