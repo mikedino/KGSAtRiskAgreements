@@ -1,6 +1,5 @@
 import dayjs from "dayjs";
-import { IRiskAgreementItem, AraStatus } from "../data/props";
-import { buildWorkflowState, WorkflowStepWithStatus } from "../services/workflowState";
+import { IRiskAgreementItem, AraStatus, IWorkflowActionItem, IWorkflowRunItem } from "../data/props";
 
 export type RiskLevel = "Low" | "Medium" | "High";
 
@@ -47,13 +46,11 @@ export interface IDashboardKpis {
 }
 
 // CORE HELPER FUNCTIONS
-export const isValidDate = (value?: string): boolean => value !== undefined && dayjs(value).isValid();
-
-const getCurrentStep = (item: IRiskAgreementItem): WorkflowStepWithStatus | undefined =>
-    buildWorkflowState(item).find(s => s.status === "Current");
+export const isValidDate = (value?: string): boolean =>
+    value !== undefined && dayjs(value).isValid();
 
 const isInFlight = (item: IRiskAgreementItem): boolean =>
-    item.araStatus === "Under Review";
+    item.araStatus === "Under Review" || item.araStatus === "Mod Review";
 
 const isSuccessComplete = (status: AraStatus): boolean =>
     status === "Approved" || status === "Resolved";
@@ -64,16 +61,16 @@ export const getRiskLevel = (amount: number): RiskLevel => {
     return "High";
 };
 
+
 /**
  * Age of the current step in days:
- * now - sentDate (sentDate is when the step became Current)
+ * now - run.stepAssignedDate (source of truth for when current step became pending)
  */
-export const getCurrentStepAgeDays = (item: IRiskAgreementItem): number | undefined => {
-    const step = getCurrentStep(item);
-    if (step === undefined) return undefined;
-    if (isValidDate(step.sentDate) === false) return undefined;
+export const getCurrentStepAgeDays = (run?: IWorkflowRunItem): number | undefined => {
+    if (!run?.stepAssignedDate) return undefined;
+    if (!isValidDate(run.stepAssignedDate)) return undefined;
 
-    return dayjs().diff(dayjs(step.sentDate as string), "day", true);
+    return dayjs().diff(dayjs(run.stepAssignedDate), "day", true);
 };
 
 
@@ -84,15 +81,17 @@ export const getCurrentStepAgeDays = (item: IRiskAgreementItem): number | undefi
  */
 export const buildOverdueSummary = (
     items: IRiskAgreementItem[],
+    runsByAgreementId: Map<number, IWorkflowRunItem>,
     slaDays: number,
     top = 3
 ): IOverdueSummary => {
     const overdue: IOverdueItemLink[] = [];
 
-    items.forEach((i) => {
-        if (isInFlight(i) === false) return;
+    items.forEach(i => {
+        if (!isInFlight(i)) return;
 
-        const age = getCurrentStepAgeDays(i);
+        const run = runsByAgreementId.get(i.Id);
+        const age = getCurrentStepAgeDays(run);
         if (age === undefined) return;
 
         if (age > slaDays) {
@@ -107,8 +106,8 @@ export const buildOverdueSummary = (
     overdue.sort((a, b) => b.daysOverdue - a.daysOverdue);
 
     const oldestPendingDays = items
-        .filter((i) => isInFlight(i))
-        .map((i) => getCurrentStepAgeDays(i))
+        .filter(i => isInFlight(i))
+        .map(i => getCurrentStepAgeDays(runsByAgreementId.get(i.Id)))
         .filter((d): d is number => d !== undefined)
         .sort((a, b) => b - a)[0];
 
@@ -120,112 +119,166 @@ export const buildOverdueSummary = (
 };
 
 
+
 /**
- * Final approval date: last step with status Approved (by date).
- * Uses workflow-derived dates (ex: SVPContractsSignDate).
+ * Final approval date:
+ * prefer run.completed when run is Completed + outcome Approved.
+ * fallback: last Approved action for the terminal step ("svpContracts").
  */
-export const getFinalApprovalDate = (item: IRiskAgreementItem): string | undefined => {
-    const wf = buildWorkflowState(item);
+export const getFinalApprovalDate = (
+    run: IWorkflowRunItem | undefined,
+    actions: IWorkflowActionItem[]
+): string | undefined => {
+    if (!run) return undefined;
 
-    const approvedSteps = wf
-        .filter(s => s.status === "Approved" && isValidDate(s.date))
-        .sort((a, b) => dayjs(a.date!).valueOf() - dayjs(b.date!).valueOf());
+    if (
+        run.runStatus === "Completed" &&
+        run.outcome === "Approved" &&
+        isValidDate(run.completed)
+    ) {
+        return run.completed;
+    }
 
-    if (approvedSteps.length === 0) return undefined;
+    const last = actions
+        .filter(
+            a =>
+                a.actionType === "Approved" &&
+                a.stepKey === "svpContracts" &&
+                isValidDate(a.actionCompletedDate)
+        )
+        .sort(
+            (a, b) =>
+                new Date(b.actionCompletedDate).getTime() -
+                new Date(a.actionCompletedDate).getTime()
+        )[0];
 
-    return approvedSteps[approvedSteps.length - 1].date;
+    return last?.actionCompletedDate;
+};
+
+
+/**
+ * Total cycle days: Agreement.Created -> final approval date
+ */
+const getApprovalCycleDays = (
+    agreement: IRiskAgreementItem,
+    run: IWorkflowRunItem | undefined,
+    actions: IWorkflowActionItem[]
+): number | undefined => {
+    if (!isValidDate(agreement.Created)) return undefined;
+
+    const end = getFinalApprovalDate(run, actions);
+    if (!end) return undefined;
+
+    return dayjs(end).diff(dayjs(agreement.Created), "day", true);
 };
 
 /**
- * Total cycle days: Created -> final approval date (success only usually).
+ * KPIs:
+ * - pendingApprovals: agreements Under Review or Mod Review
+ * - overdueSummary: based on run.stepAssignedDate
+ * - approvedThisMonth: success-complete + final approval date in this month
+ * - expiringSoon: riskEnd within next 30 days (excluding canceled)
+ * - atRiskValue: sum riskFundingRequested for in-flight only
+ * - avgApprovalDays + delta: cycle days for success-complete, grouped by approval month
  */
-const getApprovalCycleDays = (item: IRiskAgreementItem): number | undefined => {
-    if (isValidDate(item.Created) === false) return undefined;
+export const buildDashboardKpis = (
+  items: IRiskAgreementItem[],
+  runsByAgreementId: Map<number, IWorkflowRunItem>,
+  actionsByRunId: Map<number, IWorkflowActionItem[]>
+): IDashboardKpis => {
+  const now = dayjs();
+  const startOfThisMonth = now.startOf("month");
+  const startOfLastMonth = startOfThisMonth.subtract(1, "month");
+  const endOfLastMonth = startOfThisMonth.subtract(1, "day").endOf("day");
 
-    const end = getFinalApprovalDate(item);
-    if (end === undefined) return undefined;
+  const totalAgreements = items.length | 0;
 
-    // fractional days are fine; you can round later for display
-    return dayjs(end).diff(dayjs(item.Created), "day", true);
-};
+  const pendingApprovals = items.filter(i => isInFlight(i)).length;
 
-/**
- * Pending = Under Review + has Current step
- * Approved this month = Approved/Resolved + final approval date in current month
- * Expiring soon = riskEnd within next 30 days (exclude Cancelled by default; tweak if you want)
- * At-risk value = sum riskFundingRequested for Under Review only
- * Avg approval time = avg cycle days for Approved/Resolved (success complete)
- * Delta = this month avg - last month avg (both success complete)
- */
-export const buildDashboardKpis = (items: IRiskAgreementItem[]): IDashboardKpis => {
-    const now = dayjs();
-    const startOfThisMonth = now.startOf("month");
-    const startOfLastMonth = startOfThisMonth.subtract(1, "month");
-    const endOfLastMonth = startOfThisMonth.subtract(1, "day").endOf("day");
+  const SLA_DAYS = 7;
+  const overdueSummary = buildOverdueSummary(items, runsByAgreementId, SLA_DAYS, 3);
 
-    const totalAgreements = items.length | 0;
+  const approvedThisMonth = items.filter(i => {
+    if (!isSuccessComplete(i.araStatus)) return false;
 
-    const pendingApprovals = items.filter((i) => isInFlight(i) && getCurrentStep(i) !== undefined).length;
+    const run = runsByAgreementId.get(i.Id);
+    const actions = run ? (actionsByRunId.get(run.Id) ?? []) : [];
 
-    const SLA_DAYS = 7; //default "overdue" days
-    const overdueSummary = buildOverdueSummary(items, SLA_DAYS, 3);
+    const final = getFinalApprovalDate(run, actions);
+    return final !== undefined && dayjs(final).isSame(now, "month");
+  }).length;
 
-    const approvedThisMonth = items.filter((i) => {
-        if (isSuccessComplete(i.araStatus) === false) return false;
+  const expiringSoon = items.filter(i => {
+    if (i.araStatus === "Canceled") return false;
+    if (!isValidDate(i.riskEnd)) return false;
 
-        const final = getFinalApprovalDate(i);
-        return final !== undefined && dayjs(final).isSame(now, "month");
-    }).length;
+    const end = dayjs(i.riskEnd);
+    const days = end.diff(now, "day");
+    return days >= 0 && days <= 30;
+  }).length;
 
-    const expiringSoon = items.filter((i) => {
-        if (i.araStatus === "Cancelled") return false;
-        if (isValidDate(i.riskEnd) === false) return false;
+  const atRiskValue = items
+    .filter(i => isInFlight(i))
+    .reduce((sum, i) => sum + (i.riskFundingRequested ?? 0), 0);
 
-        const end = dayjs(i.riskEnd);
-        const days = end.diff(now, "day");
-        return days >= 0 && days <= 30;
-    }).length;
+  const successItems = items.filter(i => isSuccessComplete(i.araStatus));
 
-    const atRiskValue = items
-        .filter((i) => isInFlight(i))
-        .reduce((sum, i) => sum + (i.riskFundingRequested ?? 0), 0);
+  const thisMonthCycleDays = successItems
+    .map(i => {
+      const run = runsByAgreementId.get(i.Id);
+      const actions = run ? (actionsByRunId.get(run.Id) ?? []) : [];
+      const final = getFinalApprovalDate(run, actions);
+      return {
+        days: getApprovalCycleDays(i, run, actions),
+        final
+      };
+    })
+    .filter(
+      x =>
+        x.days !== undefined &&
+        x.final !== undefined &&
+        dayjs(x.final).isSame(now, "month")
+    )
+    .map(x => x.days as number);
 
-    const successItems = items.filter((i) => isSuccessComplete(i.araStatus));
+  const lastMonthCycleDays = successItems
+    .map(i => {
+      const run = runsByAgreementId.get(i.Id);
+      const actions = run ? (actionsByRunId.get(run.Id) ?? []) : [];
+      const final = getFinalApprovalDate(run, actions);
+      return {
+        days: getApprovalCycleDays(i, run, actions),
+        final
+      };
+    })
+    .filter(x => {
+      if (x.days === undefined || x.final === undefined) return false;
+      const d = dayjs(x.final);
+      // inclusive bounds for the last month
+      return (d.isAfter(startOfLastMonth) || d.isSame(startOfLastMonth)) &&
+             (d.isBefore(endOfLastMonth) || d.isSame(endOfLastMonth));
+    })
+    .map(x => x.days as number);
 
-    const thisMonthCycleDays = successItems
-        .map((i) => ({ days: getApprovalCycleDays(i), final: getFinalApprovalDate(i) }))
-        .filter((x) => x.days !== undefined && x.final !== undefined && dayjs(x.final).isSame(now, "month"))
-        .map((x) => x.days as number);
+  const avg = (arr: number[]): number | undefined =>
+    arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : undefined;
 
-    const lastMonthCycleDays = successItems
-        .map((i) => ({ days: getApprovalCycleDays(i), final: getFinalApprovalDate(i) }))
-        .filter((x) => {
-            if (x.days === undefined || x.final === undefined) return false;
-            const d = dayjs(x.final);
-            return d.isAfter(startOfLastMonth) && d.isBefore(endOfLastMonth);
-        })
-        .map((x) => x.days as number);
+  const avgApprovalDays = avg(thisMonthCycleDays);
+  const avgLastMonth = avg(lastMonthCycleDays);
 
-    const avg = (arr: number[]): number | undefined =>
-        arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : undefined;
+  const avgApprovalDaysDelta =
+    avgApprovalDays !== undefined && avgLastMonth !== undefined
+      ? avgApprovalDays - avgLastMonth
+      : undefined;
 
-    const avgApprovalDays = avg(thisMonthCycleDays);
-    const avgLastMonth = avg(lastMonthCycleDays);
-
-    const avgApprovalDaysDelta =
-        avgApprovalDays !== undefined && avgLastMonth !== undefined ? avgApprovalDays - avgLastMonth : undefined;
-
-
-    return {
-        totalAgreements,
-        pendingApprovals,
-        //overdueApprovals: overdueSummary.overdueCount,
-        //oldestPendingDays: overdueSummary.oldestPendingDays,
-        overdueSummary,  // summary contains the count, days, and link
-        approvedThisMonth,
-        expiringSoon,
-        avgApprovalDays,
-        avgApprovalDaysDelta,
-        atRiskValue
-    };
+  return {
+    totalAgreements,
+    pendingApprovals,
+    overdueSummary,
+    approvedThisMonth,
+    expiringSoon,
+    avgApprovalDays,
+    avgApprovalDaysDelta,
+    atRiskValue
+  };
 };

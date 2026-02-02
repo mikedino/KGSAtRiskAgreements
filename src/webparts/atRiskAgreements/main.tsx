@@ -1,18 +1,23 @@
 import * as React from "react";
-import { useState, useEffect } from "react";
-import { HashRouter, Switch, Route, Redirect, useHistory } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { Switch, Route, Redirect, useHistory } from "react-router-dom";
 import MyWork from "./components/MyWork";
 import Agreements from "./components/AgreementsGrid";
 import Dashboard from "./components/Dashboard";
 import Admin from "./components/Admin";
 import NavHeader from "./ui/NavHeader";
 import { IAppProps, IRiskAgreementItem } from "./data/props";
-import { DataSource } from "./data/ds";
 import RiskAgreementForm, { CancelReason } from "./forms/araForm";
-import { RiskAgreementService } from "./services/araService";
+import { RiskAgreementService } from "./services/agreementService";
 import AlertDialog from "./ui/Alert";
 import ViewAgreementRoute from "./components/ViewAgreementRoute";
 import { ApproverResolver } from "./services/defaultApprovers";
+import { AgreementsContext } from "./services/agreementsContext";
+import { WorkflowRunService } from "./services/runService";
+import { WorkflowActionService } from "./services/actionService";
+import { Configuration } from "./data/cfg";
+import { InstallationRequired } from "dattatable";
+import { useAgreementsData } from "./data/agreementsDataCall";
 
 import { ThemeProvider, CssBaseline, Box, Stack, Typography, Alert, Backdrop, Fab } from "@mui/material";
 import CircularProgress from '@mui/material/CircularProgress';
@@ -22,17 +27,18 @@ import { lightTheme } from "./styles/lightTheme";
 import styles from "./styles/styles.module.scss";
 import { formatError } from "./services/utils";
 import Strings from "../../strings";
+import { ContextInfo } from "gd-sprest";
 
 import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
-import { AgreementsContext } from "./services/agreementsContext";
 
-type RefreshMode = "boot" | "refresh";
+type InstallState = "checking" | "ready" | "blocked" | "error";
 
 export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
 
+  const [installState, setInstallState] = React.useState<InstallState>("checking");
   const [useDarkTheme, setUseDarkTheme] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [dialogTitle, setDialogTitle] = useState<string>("");
@@ -43,18 +49,13 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string>("");
 
-  const [isBootLoading, setIsBootLoading] = useState<boolean>(true);
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [agreements, setAgreements] = useState<IRiskAgreementItem[]>([]);
-  const [lastRefreshed, setLastRefreshed] = React.useState<string | undefined>(undefined);
-
   const history = useHistory();
 
-  const setDialogProps = (title: string, message: string): void => {
+  const setDialogProps = useCallback((title: string, message: string): void => {
     setShowDialog(true);
     setDialogTitle(title);
     setDialogMessage(message);
-  };
+  }, []);
 
   const hideDialog = (): void => {
     setShowDialog(false);
@@ -65,49 +66,56 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
     setShowSuccess(false);
   }
 
-  const refresh = React.useCallback(
-    async (override = false, mode: RefreshMode = "refresh"): Promise<void> => {
-      const showBoot = mode === "boot";
-
-      if (showBoot) {
-        // initialize app
-        setIsBootLoading(true);
-      } else {
-        // refreshing datasource
-        setIsRefreshing(true);
-        setBackdropMessage("Refreshing data…");
-        setShowBackdrop(true);
-        setShowProgress(true);
-        setShowSuccess(false); // ensure we're not showing the success UI
-      }
-
-      try {
-        await DataSource.init(override);
-        setAgreements([...(DataSource.Agreements ?? [])]);
-        setLastRefreshed(new Date().toISOString());
-      } catch (error) {
-        setDialogProps("Error refreshing agreements", formatError(error));
-        console.error("refresh error", error);
-      } finally {
-        if (showBoot) {
-          // initialize app
-          setIsBootLoading(false);
-        } else {
-          // refreshing
-          setShowProgress(false);
-          setShowBackdrop(false); // auto-close, no user interaction
-          setBackdropMessage("");
-          setIsRefreshing(false);
-        }
-      }
-    },
-    []
-  );
-
+  // 1) Run install check FIRST
   useEffect(() => {
-    refresh(false, "boot").catch(console.error);
-  }, [refresh]);
+    const checkInstall = async (): Promise<void> => {
+      try {
+        // if not admin/owner, proceed normally
+        if (!ContextInfo.isSiteOwner && !ContextInfo.isSiteAdmin) {
+          setInstallState("ready");
+          return;
+        }
 
+        Configuration.setWebUrl(ContextInfo.webServerRelativeUrl);
+
+        // ✅ use await so try/catch catches failures
+        const needsInstall = await InstallationRequired.requiresInstall({ cfg: Configuration });
+
+        if (needsInstall) {
+          InstallationRequired.showDialog();
+          setInstallState("blocked");
+          return;
+        }
+
+        setInstallState("ready");
+
+      } catch (err) {
+        setDialogProps("Error checking App configuration", formatError(err));
+        setInstallState("error");
+      }
+    };
+
+    checkInstall().catch((e) => {
+      console.error("checkInstall error", e);
+      setDialogProps("Error checking App configuration", formatError(e));
+      setInstallState("error");
+    });
+  }, []);
+
+  const enabled = installState === "ready";
+
+  const {
+    agreements,
+    runsByAgreementId,
+    actionsByRunId,
+    isBootLoading,
+    isRefreshing,
+    lastRefreshed,
+    refresh,
+    fatalError
+  } = useAgreementsData(setDialogProps, enabled);
+
+  /////////////////// SUBMIT FORM HANDLER ///////////////////////
   type SubmitMode = "new" | "edit";
   const handleSubmitAgreement = async (item: IRiskAgreementItem, submitMode: SubmitMode): Promise<void> => {
 
@@ -116,13 +124,41 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
     setShowProgress(true);
 
     try {
-      const approvers = await ApproverResolver.resolve(item);
-      await RiskAgreementService.edit({ ...item, ...approvers });
 
-      // Re-fetch + update state (but don't show the boot loader)
-      await DataSource.getAgreeements();
-      setAgreements([...(DataSource.Agreements ?? [])]);
-      setLastRefreshed(new Date().toISOString());
+      const approvers = await ApproverResolver.resolve(item);
+
+      if (submitMode === "new") {
+
+        // 1) CREATE RUN (LINKED TO AGREEMENT)
+        const run = await WorkflowRunService.createFirstRun(
+          item.Id,
+          item,
+          approvers.OGPresidentId,
+          approvers.cooId,
+          approvers.CEOId,
+          approvers.SVPContractsId
+        );
+
+        // 2) UPDATE AGREEMENT AND POINT TO RUN
+        await RiskAgreementService.edit({ ...item, ...approvers }, run.Id);
+
+        // 3) CREATE INITIAL ACTION ROW
+        await WorkflowActionService.createSubmitted(run, item)
+
+      } else {
+
+        // MODIFICATION PROCESS
+        await RiskAgreementService.edit({ ...item, ...approvers });
+
+        // If edit is “Mod process start”, you will:
+        // - supersede old run
+        // - create new run
+        // - update agreement.currentRunId
+        // - add Restarted/Modified actions
+      }
+
+      // use existing refresh so all maps are rebuilt consistently
+      await refresh(true, "refresh");
 
       setSuccessMessage(submitMode === "new"
         ? "Successfully created a new At-Risk Agreement!"
@@ -132,8 +168,8 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
       setShowProgress(false);
       setBackdropMessage("");
       setShowSuccess(true);
-
       history.push("/my-work");
+
     } catch (error) {
       setShowProgress(false);
       setShowBackdrop(false);
@@ -142,6 +178,21 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
     }
   };
 
+  // Agreements context - avoid unncessary re-renders
+  const agreementsCtxValue = React.useMemo(() => ({
+    agreements,
+    runsByAgreementId,
+    actionsByRunId,
+    isRefreshing,
+    lastRefreshed,
+    refresh
+  }), [agreements, runsByAgreementId, actionsByRunId, isRefreshing, lastRefreshed, refresh]);
+
+
+  /**
+ * PAGE CONTEXT MISSING
+ * Just need a page reset - sat too long
+ */
   if (!context || !context.pageContext || !context.pageContext.web) {
     return (
       <div className={styles.araWrapper}>
@@ -150,6 +201,90 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
     )
   }
 
+  /**
+ * INSTALL / CONFIG GATE
+ * These must run BEFORE the boot loader, otherwise you get "stuck spinning"
+ * while install is blocked or failed.
+ */
+  if (installState === "checking") {
+    return (
+      <ThemeProvider theme={useDarkTheme ? darkTheme : lightTheme}>
+        <CssBaseline />
+        <Box sx={{ height: "70vh", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "background.default", color: "text.primary" }}>
+          <Stack spacing={3} alignItems="center">
+            <CircularProgress size={80} thickness={4} enableTrackSlot color="info" />
+            <Typography variant="h5" fontWeight={500}>Verifying App Configuration...</Typography>
+          </Stack>
+        </Box>
+      </ThemeProvider>
+    );
+  }
+
+  /**
+* INSTALL / CONFIG GATE
+* Blocked - can not run install
+*/
+  if (installState === "blocked") {
+    return (
+      <ThemeProvider theme={useDarkTheme ? darkTheme : lightTheme}>
+        <CssBaseline />
+        <Box sx={{ p: 3, color: "text.primary", mx: "auto", maxWidth: "900px" }}>
+          <Alert severity="info" variant="outlined">
+            Installation or configuration is required before this app can run.
+            If you are an admin, complete the setup dialog. Otherwise, contact your site admin.
+          </Alert>
+
+          {/* keep your dialog available since InstallationRequired.showDialog() is modal-driven */}
+          <AlertDialog open={showDialog} title={dialogTitle} message={dialogMessage} onClose={hideDialog} />
+        </Box>
+      </ThemeProvider>
+    );
+  }
+
+  /**
+* INSTALL / CONFIG GATE
+* ERROR installing
+*/
+  if (installState === "error") {
+    return (
+      <ThemeProvider theme={useDarkTheme ? darkTheme : lightTheme}>
+        <CssBaseline />
+        <Box sx={{ p: 3, color: "text.primary", mx: "auto", maxWidth: "900px" }}>
+          <Alert severity="error" variant="outlined">
+            Unable to validate installation/configuration. Please refresh the page.
+            If the problem persists, contact support.
+          </Alert>
+
+          <AlertDialog open={showDialog} title={dialogTitle} message={dialogMessage} onClose={hideDialog} />
+        </Box>
+      </ThemeProvider>
+    );
+  }
+
+  /**
+   * DATA LOAD FAILURE GATE
+   * If the datasource fails during boot, don't keep spinning forever.
+   */
+  if (fatalError) {
+    return (
+      <ThemeProvider theme={useDarkTheme ? darkTheme : lightTheme}>
+        <CssBaseline />
+        <Box sx={{ p: 3, color: "text.primary", mx: "auto", maxWidth: "900px" }}>
+          <Alert severity="error" variant="outlined">
+            Failed to load application data. Please refresh the page.
+          </Alert>
+
+          {/* still show full error details in your dialog (you already set it in setDialogProps) */}
+          <AlertDialog open={showDialog} title={dialogTitle} message={dialogMessage} onClose={hideDialog} />
+        </Box>
+      </ThemeProvider>
+    );
+  }
+
+  /**
+   * BOOT LOADER
+   * Only happens once install gate is ready and no fatal boot error occurred.
+   */
   if (isBootLoading) {
     return (
       <ThemeProvider theme={useDarkTheme ? darkTheme : lightTheme}>
@@ -160,6 +295,9 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
             <Typography variant="h5" fontWeight={500}>Loading At-Risk Agreement Application…</Typography>
           </Stack>
         </Box>
+
+        {/* Render dialog even while boot loading */}
+        <AlertDialog open={showDialog} title={dialogTitle} message={dialogMessage} onClose={hideDialog} />
       </ThemeProvider>
     );
   }
@@ -168,71 +306,70 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
     <ThemeProvider theme={useDarkTheme ? darkTheme : lightTheme}>
       <CssBaseline />
 
-      <AgreementsContext.Provider value={{ agreements, isRefreshing: isRefreshing, lastRefreshed, refresh }}>
+      <AgreementsContext.Provider value={agreementsCtxValue}>
 
         {/* HEADER WITH THEME TOGGLE */}
         <NavHeader context={context} useDarkTheme={useDarkTheme} setUseDarkTheme={setUseDarkTheme} />
 
         {/* PAGE CONTENT - wrap in default text color otherwise SPO will overwrite */}
         <Box sx={{ p: 3, color: "text.primary", mx: "auto", maxWidth: "1600px" }}>
-          <HashRouter>
-            <Switch>
-              <Route exact path="/"><Redirect to="/my-work" /></Route>
 
-              <Route path="/my-work" component={MyWork} />
-              <Route path="/all-agreements" component={Agreements} />
-              <Route path="/dashboard" component={Dashboard} />
-              <Route path="/admin" component={Admin} />
+          <Switch>
+            <Route exact path="/"><Redirect to="/my-work" /></Route>
 
-              <Route
-                path="/new"
-                render={() => {
+            <Route path="/my-work" component={MyWork} />
+            <Route path="/all-agreements" component={Agreements} />
+            <Route path="/dashboard" component={Dashboard} />
+            <Route path="/admin" component={Admin} />
 
-                  const handleCancel = async (reason: CancelReason): Promise<void> => {
-                    if (reason.type === "draft") {
-                      await RiskAgreementService.delete(reason.draftId);
-                    }
+            <Route
+              path="/new"
+              render={() => {
 
-                    history.push("/my-work");
-                  };
+                const handleCancel = async (reason: CancelReason): Promise<void> => {
+                  if (reason.type === "draft") {
+                    await RiskAgreementService.delete(reason.draftId);
+                  }
 
-                  return (
-                    <RiskAgreementForm
-                      context={context}
-                      mode="new"
-                      onSubmit={handleSubmitAgreement}
-                      onCancel={handleCancel}
-                    />
-                  );
-                }}
-              />
+                  history.push("/my-work");
+                };
 
-              {/* Route to EDIT AGREEMENT */}
-              <Route
-                path="/edit/:id"
-                render={(routeProps) => {
-                  const id = routeProps.match.params.id;
-                  const item = agreements.find((a) => a.Id.toString() === id);
-                  if (item === undefined) return <div>Agreement not found</div>;
+                return (
+                  <RiskAgreementForm
+                    context={context}
+                    mode="new"
+                    onSubmit={handleSubmitAgreement}
+                    onCancel={handleCancel}
+                  />
+                );
+              }}
+            />
 
-                  return (
-                    <RiskAgreementForm
-                      item={item}
-                      context={context}
-                      mode="edit"
-                      onSubmit={handleSubmitAgreement}
-                      onCancel={() => history.goBack()}
-                      {...routeProps}
-                    />
-                  );
-                }}
-              />
+            {/* Route to EDIT AGREEMENT */}
+            <Route
+              path="/edit/:id"
+              render={(routeProps) => {
+                const id = routeProps.match.params.id;
+                const item = agreements.find((a) => a.Id.toString() === id);
+                if (item === undefined) return <div>Agreement not found</div>;
 
-              {/* Route to VIEW AGREEMENT */}
-              <Route path="/view/:id" component={ViewAgreementRoute} />
+                return (
+                  <RiskAgreementForm
+                    item={item}
+                    context={context}
+                    mode="edit"
+                    onSubmit={handleSubmitAgreement}
+                    onCancel={() => history.goBack()}
+                    {...routeProps}
+                  />
+                );
+              }}
+            />
 
-            </Switch>
-          </HashRouter>
+            {/* Route to VIEW AGREEMENT */}
+            <Route path="/view/:id" component={ViewAgreementRoute} />
+
+          </Switch>
 
           <AlertDialog open={showDialog} title={dialogTitle} message={dialogMessage} onClose={hideDialog} />
 
@@ -243,15 +380,15 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
               backgroundColor: "rgba(0, 0, 0, 0.7)", // slightly stronger overlay for light mode
               pointerEvents: showSuccess ? "auto" : "none"
             })}
-            open={showBackdrop}
+            open={showBackdrop || isRefreshing}
             onClick={() => showSuccess && hideSuccess()}
           >
-            {showProgress && (
+            {showProgress || isRefreshing && (
               <Stack spacing={2} alignItems="center">
-                <CircularProgress size={64} sx={{ color: "warning.main" }}/>
-                {backdropMessage !== "" && (
+                <CircularProgress size={64} sx={{ color: "warning.main" }} />
+                {(backdropMessage !== "" || isRefreshing) && (
                   <Typography variant="h6" fontWeight={500}>
-                    {backdropMessage}
+                    {backdropMessage !== "" ? backdropMessage : "Refreshing data…"}
                   </Typography>
                 )}
               </Stack>

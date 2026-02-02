@@ -1,0 +1,223 @@
+import { IPeoplePicker, IRiskAgreementItem, IWorkflowRunItem } from "../data/props";
+import { Web } from "gd-sprest";
+import Strings from "../../../strings";
+import { formatError, encodeListName } from "./utils";
+import { WorkflowStepKey, ActionDecision } from "../data/props";
+import { IWorkflowStep, RiskAgreementWorkflow } from "./workflowModel";
+import { DataSource } from "../data/ds";
+
+export interface IRunDecisionResult {
+    // Did this decision complete the workflow run?
+    completed: boolean;
+
+    // If not completed, what is the new current step?
+    nextStepKey?: WorkflowStepKey;
+
+    // New pending info (if not completed)
+    pendingRole?: string;
+    pendingApproverId?: number;
+    pendingApproverEmail?: string;
+
+    // timestamp used for stepAssignedDate/completed
+    nowIso: string;
+}
+
+export class WorkflowRunService {
+
+    static createFirstRun(
+        agreementId: number,
+        agreement: IRiskAgreementItem,
+        ogPresidentId: number | undefined,
+        cooId: number | undefined,
+        ceoId: number | undefined,
+        svpContractsId: number | undefined
+    ): Promise<IWorkflowRunItem> {
+
+        const today = new Date().toISOString();
+
+        return new Promise<IWorkflowRunItem>((resolve, reject) => {
+
+            Web()
+                .Lists(Strings.Sites.main.lists.WorkflowRuns)
+                .Items()
+                .add({
+                    __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.WorkflowRuns)}ListItem` },
+
+                    // Fix title later
+                    Title: `${agreement.contractName}-RUN-1`,
+
+                    // Lookup to agreement
+                    agreementId,
+
+                    // Run lifecycle
+                    runNumber: 1,
+                    runStatus: "Active",
+                    started: today,
+
+                    // State machine (source of truth)
+                    currentStepKey: "contractMgr",
+                    pendingApproverId: agreement.contractMgr?.Id,
+                    pendingApproverEmail: agreement.contractMgr?.EMail,
+                    stepAssignedDate: today,
+                    pendingRole: "Contract Manager",
+
+                    // Approver snapshots (lookups/users)
+                    contractMgrId: agreement.contractMgr?.Id,
+                    ogPresidentId,
+                    cooId,
+                    ceoId,
+                    svpContractsId
+                })
+                .execute(
+                    // success
+                    (resp) => {
+                        if (!resp?.Id) {
+                            reject(new Error("Run was created but the response did not include an Id. Please refresh."));
+                            return;
+                        }
+
+                        // get the full item back from the list/save
+                        Web()
+                            .Lists(Strings.Sites.main.lists.WorkflowRuns)
+                            .Items()
+                            .getById(resp.Id)
+                            .query({
+                                Select: DataSource.runSelectQuery,
+                                Expand: DataSource.runExpandQuery
+                            })
+                            .execute(
+                                (run) => resolve(run as unknown as IWorkflowRunItem),
+                                (error) => reject(new Error(`Run created but failed to re-fetch it: ${formatError(error)}`))
+                            );
+                    },
+                    // error
+                    (error) => {
+                        reject(new Error(`Error creating Run#1: ${formatError(error)}`));
+                    }
+                );
+        });
+    }
+
+    private static getStep(key: WorkflowStepKey): IWorkflowStep | undefined {
+        return RiskAgreementWorkflow.find(s => s.key === key);
+    }
+
+    // Walk "next" until you find a required step (or end)
+    private static getNextRequiredStepKey(
+        agreement: IRiskAgreementItem,
+        startKey: WorkflowStepKey
+    ): WorkflowStepKey | undefined {
+
+        let current = this.getStep(startKey);
+
+        // If model is misconfigured, bail safely
+        const guardMax = 20;
+        let guard = 0;
+
+        while (current?.next && guard < guardMax) {
+            guard++;
+
+            const nextKey = current.next;
+            const nextStep = this.getStep(nextKey);
+            if (!nextStep) return undefined;
+
+            if (nextStep.isRequired(agreement)) return nextKey;
+
+            // skip not-required and keep walking
+            current = nextStep;
+        }
+
+        return undefined;
+    }
+
+    private static getApproverForStep(run: IWorkflowRunItem, stepKey: WorkflowStepKey): IPeoplePicker | undefined {
+        const step = this.getStep(stepKey);
+        return step?.getApprover ? step.getApprover(run) : undefined;
+    }
+
+    static async applyDecision(
+        agreement: IRiskAgreementItem,
+        run: IWorkflowRunItem,
+        decision: ActionDecision
+    ): Promise<IRunDecisionResult> {
+
+        const nowIso = new Date().toISOString();
+
+        if (decision === "Rejected") {
+            // complete run as rejected
+            await Web()
+                .Lists(Strings.Sites.main.lists.WorkflowRuns)
+                .Items()
+                .getById(run.Id)
+                .update({
+                    __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.WorkflowRuns)}ListItem` },
+
+                    runStatus: "Completed",
+                    outcome: "Rejected",
+                    completed: nowIso,
+
+                    pendingRole: null,
+                    pendingApproverId: null,
+                    pendingApproverEmail: null,
+                    stepAssignedDate: null
+                })
+                .executeAndWait();
+
+            return { completed: true, nowIso };
+        }
+
+        // Approved: move to next required step, or complete run approved
+        const nextKey = this.getNextRequiredStepKey(agreement, run.currentStepKey);
+
+        if (!nextKey) {
+            await Web()
+                .Lists(Strings.Sites.main.lists.WorkflowRuns)
+                .Items()
+                .getById(run.Id)
+                .update({
+                    __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.WorkflowRuns)}ListItem` },
+
+                    runStatus: "Completed",
+                    outcome: "Approved",
+                    completed: nowIso,
+
+                    pendingRole: null,
+                    pendingApproverId: null,
+                    pendingApproverEmail: null,
+                    stepAssignedDate: null
+                })
+                .executeAndWait();
+
+            return { completed: true, nowIso };
+        }
+
+        const nextStep = this.getStep(nextKey);
+        const approver = this.getApproverForStep(run, nextKey);
+
+        await Web()
+            .Lists(Strings.Sites.main.lists.WorkflowRuns)
+            .Items()
+            .getById(run.Id)
+            .update({
+                __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.WorkflowRuns)}ListItem` },
+
+                runStatus: "Active",
+                currentStepKey: nextKey,
+
+                pendingRole: nextStep?.label ?? null,
+                pendingApproverId: approver?.Id ?? null,
+                pendingApproverEmail: approver?.EMail ?? null,
+                stepAssignedDate: nowIso
+            })
+            .executeAndWait();
+
+        return {
+            completed: false,
+            nextStepKey: nextKey,
+            pendingRole: nextStep?.label,
+            pendingApproverId: approver?.Id,
+            pendingApproverEmail: approver?.EMail,
+            nowIso
+        };
+    }
+}

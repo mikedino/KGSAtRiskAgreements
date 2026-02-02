@@ -1,79 +1,92 @@
 import dayjs from "dayjs";
-import { IRiskAgreementItem } from "../data/props";
+import { IRiskAgreementItem, IWorkflowActionItem, IWorkflowRunItem } from "../data/props";
 import {
-    IMonthlyTrendPoint, isValidDate, getFinalApprovalDate, IDistributionPoint,
-    IStageAvgPoint, RiskLevel, getRiskLevel
+  IMonthlyTrendPoint, isValidDate, IDistributionPoint, getFinalApprovalDate,
+  IStageAvgPoint, RiskLevel, getRiskLevel
 } from "./dashboardHelpers";
 import { buildWorkflowState } from "./workflowState";
 import { RiskAgreementWorkflow } from "./workflowModel";
 import { AraStatus } from "../data/props";
 
 const STATUS_ORDER: AraStatus[] = [
+  "Mod Review",
   "Under Review",
   "Submitted",
   "Approved",
   "Resolved",
   "Rejected",
-  "Cancelled"
+  "Canceled"
 ];
 
 const STATUS_LABELS: Record<AraStatus, string> = {
   Draft: "Draft",
   Submitted: "Submitted",
   "Under Review": "Under Review",
+  "Mod Review": "Mod Review",
   Approved: "Approved",
   Resolved: "Resolved",
   Rejected: "Rejected",
-  Cancelled: "Cancelled"
+  Canceled: "Canceled"
 };
 
 const STATUS_COLORS: Record<AraStatus, string> = {
   Draft: "#9e9e9e",            // neutral (shouldn't appear)
   Submitted: "#F4B740",        // warning / yellow
   "Under Review": "#4b82ff",   // info / blue
+  "Mod Review": "#7b61ff",     // purple-ish
   Approved: "#3BA55C",         // green
   Resolved: "#3BA55C",         // green (same outcome)
   Rejected: "#fd3030",         // red
-  Cancelled: "#9e9e9e"         // neutral
+  Canceled: "#9e9e9e"         // neutral
 };
 
 /*
 * Monthly trends (Created vs Approved)
 * This version builds the last N months, so the chart doesn’t jump around.
 */
-export const buildMonthlyTrends = (items: IRiskAgreementItem[], monthsBack = 6): IMonthlyTrendPoint[] => {
-    const now = dayjs();
-    const months: dayjs.Dayjs[] = [];
+export const buildMonthlyTrends = (
+  items: IRiskAgreementItem[],
+  runsByAgreementId: Map<number, IWorkflowRunItem>,
+  actionsByRunId: Map<number, IWorkflowActionItem[]>,
+  monthsBack = 6
+): IMonthlyTrendPoint[] => {
+  const now = dayjs();
+  const months: dayjs.Dayjs[] = [];
 
-    for (let i = monthsBack - 1; i >= 0; i--) {
-        months.push(now.subtract(i, "month").startOf("month"));
+  for (let i = monthsBack - 1; i >= 0; i--) {
+    months.push(now.subtract(i, "month").startOf("month"));
+  }
+
+  const createdCounts = new Map<string, number>();
+  const approvedCounts = new Map<string, number>();
+
+  items.forEach((i) => {
+    if (isValidDate(i.Created)) {
+      const key = dayjs(i.Created).startOf("month").format("YYYY-MM");
+      createdCounts.set(key, (createdCounts.get(key) ?? 0) + 1);
     }
 
-    const createdCounts = new Map<string, number>();
-    const approvedCounts = new Map<string, number>();
+    const run = runsByAgreementId.get(i.Id);
+    const actions = run ? (actionsByRunId.get(run.Id) ?? []) : [];
+    const final = getFinalApprovalDate(run, actions);
 
-    items.forEach((i) => {
-        if (isValidDate(i.Created)) {
-            const key = dayjs(i.Created).startOf("month").format("YYYY-MM");
-            createdCounts.set(key, (createdCounts.get(key) ?? 0) + 1);
-        }
+    if (final) {
+      const key = dayjs(final).startOf("month").format("YYYY-MM");
+      approvedCounts.set(key, (approvedCounts.get(key) ?? 0) + 1);
+    }
+  });
 
-        const final = getFinalApprovalDate(i);
-        if (final !== undefined) {
-            const key = dayjs(final).startOf("month").format("YYYY-MM");
-            approvedCounts.set(key, (approvedCounts.get(key) ?? 0) + 1);
-        }
-    });
-
-    return months.map(m => {
-        const key = m.format("YYYY-MM");
-        return {
-            month: m.format("MMM"),
-            created: createdCounts.get(key) ?? 0,
-            approved: approvedCounts.get(key) ?? 0
-        };
-    });
+  return months.map(m => {
+    const key = m.format("YYYY-MM");
+    return {
+      month: m.format("MMM"),
+      created: createdCounts.get(key) ?? 0,
+      approved: approvedCounts.get(key) ?? 0
+    };
+  });
 };
+
+
 
 // Status distribution (donut)
 export const buildStatusDistribution = (items: IRiskAgreementItem[]): IDistributionPoint[] => {
@@ -96,72 +109,77 @@ export const buildStatusDistribution = (items: IRiskAgreementItem[]): IDistribut
 
 /*
 * Avg approval time by stage (bar)
-* Uses sentDate + date pattern.
+* compute per run:
+* sort completed actions by completed date
+* measure deltas between consecutive completed actions
+* bucket by stepKey
 */
-export const buildAvgStageTimes = (items: IRiskAgreementItem[]): IStageAvgPoint[] => {
+export const buildAvgStageTimes = (
+  items: IRiskAgreementItem[],
+  runsByAgreementId: Map<number, IWorkflowRunItem>,
+  actionsByRunId: Map<number, IWorkflowActionItem[]>
+): IStageAvgPoint[] => {
   const bucket = new Map<string, { label: string; values: number[] }>();
 
-  items.forEach((item) => {
-    const wf = buildWorkflowState(item);
+  items.forEach((agreement) => {
+    const run = runsByAgreementId.get(agreement.Id);
+    if (!run) return;
 
-    let prevCompletedDate: string | undefined = isValidDate(item.Created) ? item.Created : undefined;
+    const actions = actionsByRunId.get(run.Id) ?? [];
+    const wf = buildWorkflowState(agreement, run, actions);
 
-    wf.forEach((step) => {
-      if (step.status === "Skipped" || step.status === "Queued") return;
+    // Use Submitted complete date as starting point (matches your state logic)
+    let prevCompleted: string | undefined =
+      wf.find(s => s.isInitial)?.completeDate ?? agreement.Created;
 
-      // only completed steps
+    wf.forEach(step => {
       if (step.status !== "Approved" && step.status !== "Rejected") return;
-
-      if (isValidDate(step.date) === false) return;
-
-      if (prevCompletedDate === undefined || isValidDate(prevCompletedDate) === false) {
-        prevCompletedDate = step.date;
+      if (!isValidDate(step.completeDate) || !isValidDate(prevCompleted)) {
+        prevCompleted = step.completeDate ?? prevCompleted;
         return;
       }
 
-      const dur = dayjs(step.date as string).diff(dayjs(prevCompletedDate), "day", true);
-      prevCompletedDate = step.date;
+      const dur = dayjs(step.completeDate!).diff(dayjs(prevCompleted!), "day", true);
+      prevCompleted = step.completeDate;
 
-      if (Number.isFinite(dur) === false || dur < 0) return;
+      if (!Number.isFinite(dur) || dur < 0) return;
 
       const key = step.key;
       const existing = bucket.get(key);
 
-      if (existing !== undefined) {
-        existing.values.push(dur);
-      } else {
-        bucket.set(key, { label: step.label, values: [dur] });
-      }
+      if (existing) existing.values.push(dur);
+      else bucket.set(key, { label: step.label, values: [dur] });
     });
   });
 
-  // Return in workflow order, excluding "Submitted" (and any other non-approval steps)
+  // Return in workflow order (no Submitted)
   return RiskAgreementWorkflow
-    .filter((s) => s.key !== "Submitted")
-    .map((s) => {
+    .filter(s => !s.isInitial)
+    .map(s => {
       const b = bucket.get(s.key);
-      if (b === undefined || b.values.length === 0) return undefined;
+      if (!b || b.values.length === 0) return undefined;
 
       return {
-        stage: b.label, // uses the label from workflowState (same as model)
+        stage: b.label,
         avgDays: b.values.reduce((a, c) => a + c, 0) / b.values.length
       };
     })
-    .filter((x): x is IStageAvgPoint => x !== undefined);
+    .filter((x): x is IStageAvgPoint => !!x);
 };
+
 
 // Risk distribution (pie)
 export const buildRiskDistribution = (items: IRiskAgreementItem[]): IDistributionPoint[] => {
-    const counts: Record<RiskLevel, number> = { Low: 0, Medium: 0, High: 0 };
+  const counts: Record<RiskLevel, number> = { Low: 0, Medium: 0, High: 0 };
 
-    items.forEach(i => {
-        const amt = i.riskFundingRequested ?? 0;
-        counts[getRiskLevel(amt)]++;
-    });
+  items.forEach(i => {
+    const amt = i.riskFundingRequested ?? 0;
+    counts[getRiskLevel(amt)]++;
+  });
 
-    return [
-        { id: 1, value: counts.Low, label: "Low (< 50k)" },
-        { id: 2, value: counts.Medium, label: "Medium (50k-100k)" },
-        { id: 3, value: counts.High, label: "High (> 100k)" }
-    ];
+  return [
+    { id: 1, value: counts.Low, label: "Low (< 50k)" },
+    { id: 2, value: counts.Medium, label: "Medium (50k-100k)" },
+    { id: 3, value: counts.High, label: "High (> 100k)" }
+  ];
 };

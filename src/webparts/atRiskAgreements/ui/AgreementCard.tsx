@@ -14,8 +14,16 @@ interface AgreementCardProps {
 const AgreementCard: React.FC<AgreementCardProps> = ({ item, workflow, onClick }) => {
 
     const theme = useTheme();
+    const isResolved = item.araStatus === "Resolved";
+
+    const chipLabel = isResolved ? "Resolved" : workflow.statusLabel;
+
+    const chipColor: "success" | "warning" | "error" | "default" =
+        isResolved ? "success" : workflow.statusColor;
+
     const formatDate = (value?: string): string => value ? new Date(value).toLocaleDateString() : "—"
-    const formatCurrency = (value?: number): string => value && value !== null ? `$${value.toLocaleString()}` : "—";
+    const formatCurrency = (value?: number): string => value === null || value === undefined ? "—" : `$${value.toLocaleString()}`;
+
 
     return (
         <Card onClick={onClick} sx={{
@@ -51,14 +59,20 @@ const AgreementCard: React.FC<AgreementCardProps> = ({ item, workflow, onClick }
                         <Stack alignItems="flex-end" spacing={0.25}>
                             <Chip
                                 size="small"
-                                label={workflow.statusLabel}
-                                color={workflow.statusColor}
+                                label={chipLabel}
+                                color={chipColor}
                             />
 
                             <Stack alignItems="flex-end">
-                                {workflow.currentApprover && (
+                                {!isResolved && workflow.currentApprover && (
                                     <Typography variant="caption" color="text.secondary">
                                         with {workflow.currentApprover}
+                                    </Typography>
+                                )}
+
+                                {isResolved && (
+                                    <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+                                        Risk resolved
                                     </Typography>
                                 )}
 
@@ -75,6 +89,18 @@ const AgreementCard: React.FC<AgreementCardProps> = ({ item, workflow, onClick }
 
                         </Stack>
                     </Stack>
+
+                    {/* FLAG MODIFICATIONS
+                    <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center">
+                        {workflow.isModReview && (
+                            <Chip
+                                size="small"
+                                variant="outlined"
+                                label={workflow.runNumber && workflow.runNumber > 1 ? `Mod #${workflow.runNumber - 1}` : "Mod Review"}
+                            />
+                        )}
+                        <Chip size="small" label={workflow.statusLabel} color={workflow.statusColor} />
+                    </Stack> */}
 
                     {/* My Decision Highlight */}
                     {workflow.myDecision && (

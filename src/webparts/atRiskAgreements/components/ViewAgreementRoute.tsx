@@ -1,99 +1,70 @@
 import * as React from "react";
 import { ContextInfo } from "gd-sprest";
-import { DataSource } from "../data/ds";
-import { IRiskAgreementItem } from "../data/props";
-import { RiskAgreementService } from "../services/araService";
-import RiskAgreementView from "../forms/araView";
 import { Alert, Snackbar } from "@mui/material";
+import { useAgreements } from "../services/agreementsContext";
+import RiskAgreementView from "../forms/araView";
+import { WorkflowDecisionService } from "../services/workflowService";
 
 interface ViewAgreementRouteProps {
-    match: {
-        params: {
-            id: string;
-        };
-    };
+  match: { params: { id: string } };
 }
 
 const ViewAgreementRoute: React.FC<ViewAgreementRouteProps> = ({ match }) => {
-    const id = match.params.id;
-    const currentUserEmail = ContextInfo.userEmail;
+  const agreementId = Number(match.params.id);
+  const currentUserEmail = ContextInfo.userEmail;
 
-    const initialItem = DataSource.Agreements.find(
-        (a) => a.Id.toString() === id
-    );
+  const { agreements, runsByAgreementId, refresh } = useAgreements();
 
-    const [item, setItem] = React.useState<IRiskAgreementItem | undefined>(
-        initialItem
-    );
+  const item = agreements.find(a => a.Id === agreementId);
+  const run = item ? runsByAgreementId.get(item.Id) : undefined;
 
-    const [snackbar, setSnackbar] = React.useState<{
-        message: string;
-        severity: "success" | "error";
-    } | null>(null);
+  const [snackbar, setSnackbar] = React.useState<{ message: string; severity: "success" | "error" } | null>(null);
 
-    const onApprove = async (comment?: string): Promise<void> => {
-        if (!item) return;
+  const onApprove = async (comment?: string): Promise<void> => {
+    if (!item || !run) return;
 
-        const updated = await RiskAgreementService.submitDecision(
-            item,
-            "Approved",
-            comment
-        );
+    // If you’re using the new orchestrator:
+    await WorkflowDecisionService.submitDecision(item, run, "Approved", comment);
 
-        setItem(updated);
-        setSnackbar({
-            message: "Agreement approved successfully",
-            severity: "success",
-        });
-    };
+    await refresh(true);
+    setSnackbar({ message: "Agreement approved successfully", severity: "success" });
+  };
 
-    const onReject = async (comment?: string): Promise<void> => {
-        if (!item) return;
+  const onReject = async (comment?: string): Promise<void> => {
+    if (!item || !run) return;
 
-        const updated = await RiskAgreementService.submitDecision(
-            item,
-            "Rejected",
-            comment
-        );
+    await WorkflowDecisionService.submitDecision(item, run, "Rejected", comment);
 
-        setItem(updated);
-        setSnackbar({
-            message: "Agreement rejected successfully",
-            severity: "error",
-        });
-    };
+    await refresh(true);
+    setSnackbar({ message: "Agreement rejected successfully", severity: "error" });
+  };
 
-    if (!item) {
-        return <div>Agreement not found</div>;
-    }
+  if (!item) return <div>Agreement not found</div>;
+  if (!run) return <div>Workflow run not found</div>;
 
-    return (
-        <>
-            <RiskAgreementView
-                item={item}
-                currentUserEmail={currentUserEmail}
-                onApprove={onApprove}
-                onReject={onReject}
-            />
+  return (
+    <>
+      <RiskAgreementView
+        item={item}
+        currentUserEmail={currentUserEmail}
+        onApprove={onApprove}
+        onReject={onReject}
+      />
 
-            {snackbar && (
-                <Snackbar
-                    open
-                    autoHideDuration={4000}
-                    onClose={() => setSnackbar(null)}
-                    anchorOrigin={{ vertical: "top", horizontal: "right" }}
-                >
-                    <Alert
-                        severity={snackbar.severity}
-                        onClose={() => setSnackbar(null)}
-                        variant="filled"
-                    >
-                        {snackbar.message}
-                    </Alert>
-                </Snackbar>
-            )}
-        </>
-    );
+      {snackbar && (
+        <Snackbar
+          open
+          autoHideDuration={4000}
+          onClose={() => setSnackbar(null)}
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        >
+          <Alert severity={snackbar.severity} onClose={() => setSnackbar(null)} variant="filled">
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      )}
+    </>
+  );
 };
 
 export default ViewAgreementRoute;

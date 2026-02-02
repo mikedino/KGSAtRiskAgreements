@@ -4,12 +4,15 @@ import Strings from "../../../strings";
 /** SharePoint assets for the current site - installed on first run */
 export const Configuration = Helper.SPConfig({
     ListCfg: [
+        /********************************************************************
+         * Agreements (master record)
+         ********************************************************************/
         {
             ListInformation: {
                 Title: Strings.Sites.main.lists.Agreements,
                 Description: "At-Risk Agreements - feeds the ARA Application",
                 OnQuickLaunch: false,
-                BaseTemplate: SPTypes.ListTemplateType.GenericList,
+                BaseTemplate: SPTypes.ListTemplateType.GenericList
                 //Hidden: true
             },
             TitleFieldDescription: "ATR-ENTITY-YEAR-NUMBER",
@@ -33,7 +36,7 @@ export const Configuration = Helper.SPConfig({
                 {
                     name: "contractType",
                     title: "Conract Type",
-                    type: Helper.SPCfgFieldType.Choice,                    
+                    type: Helper.SPCfgFieldType.Choice,
                     choices: ["Cost Plus/Reimbursable", "FFP/LOE", "Hybrid", "T&amp;M", "LH"]
                 } as Helper.IFieldInfoChoice,
                 {
@@ -57,37 +60,15 @@ export const Configuration = Helper.SPConfig({
                 {
                     name: "entity",
                     title: "Entity",
-                    type: Helper.SPCfgFieldType.Text
+                    type: Helper.SPCfgFieldType.Text,
+                    indexed: true
                 },
                 {
                     name: "projectMgr",
                     title: "Project Manager",
                     type: Helper.SPCfgFieldType.User
                 } as Helper.IFieldInfoUser,
-                {
-                    name: "contractMgr",
-                    title: "Contract Manager",
-                    type: Helper.SPCfgFieldType.User
-                } as Helper.IFieldInfoUser,
-                {
-                    name: "cmDecision",
-                    title: "CM Decision",
-                    type: Helper.SPCfgFieldType.Choice,
-                    choices: ["Pending", "Approved", "Rejected"],
-                    defaultValue: "Pending"
-                } as Helper.IFieldInfoChoice,
-                {
-                    name: "cmComment",
-                    title: "CM Comment",
-                    type: Helper.SPCfgFieldType.Note,
-                    noteType: SPTypes.FieldNoteType.TextOnly
-                } as Helper.IFieldInfoNote,
-                {
-                    name: "cmDecisionDate",
-                    title: "CM Decision Date",
-                    type: Helper.SPCfgFieldType.Date,
-                    format: SPTypes.DateFormat.DateTime
-                } as Helper.IFieldInfoDate,
+
                 {
                     name: "riskReason",
                     title: "At-Risk Reason",
@@ -123,110 +104,27 @@ export const Configuration = Helper.SPConfig({
                     name: "araStatus",
                     title: "Status",
                     type: Helper.SPCfgFieldType.Choice,
-                    choices: ["Draft", "Submitted", "Under Review", "Approved", "Rejected", "Resolved", "Canceled"],
-                    defaultValue: "Submitted"
+                    choices: ["Draft", "Submitted", "Under Review", "Mod Review", "Approved", "Rejected", "Resolved", "Canceled"],
+                    defaultValue: "Submitted",
+                    indexed: true
                 } as Helper.IFieldInfoChoice,
                 {
                     name: "entityGM",
                     title: "Entity GM",
                     type: Helper.SPCfgFieldType.User
                 } as Helper.IFieldInfoUser,
+
+                /******** Workflow Pointer (Lookup to WorkflowRuns) ********/
                 {
-                    name: "OGPresident",
-                    title: "OG President",
-                    type: Helper.SPCfgFieldType.User
-                } as Helper.IFieldInfoUser,
-                {
-                    name: "OGPresidentApproval",
-                    title: "OG President Approval",
-                    type: Helper.SPCfgFieldType.Choice,
-                    choices: ["Approved","Rejected","Not Started"],
-                    defaultValue: "Not Started"
-                } as Helper.IFieldInfoChoice,
-                {
-                    name: "OGPresidentComment",
-                    title: "OG President Comment",
-                    type: Helper.SPCfgFieldType.Note,
-                    noteType: SPTypes.FieldNoteType.TextOnly
-                } as Helper.IFieldInfoNote,
-                {
-                    name: "OGPresidentSignDate",
-                    title: "OG President Signed Date",
-                    type: Helper.SPCfgFieldType.Date,
-                    format: SPTypes.DateFormat.DateTime
-                } as Helper.IFieldInfoDate,
-                {
-                    name: "SVPContracts",
-                    title: "SVP Contracts",
-                    type: Helper.SPCfgFieldType.User
-                } as Helper.IFieldInfoUser,
-                {
-                    name: "SVPContractsApproval",
-                    title: "SVP Contracts Approval",
-                    type: Helper.SPCfgFieldType.Choice,
-                    choices: ["Approved","Rejected","Not Started"],
-                    defaultValue: "Not Started"
-                } as Helper.IFieldInfoChoice,
-                {
-                    name: "SVPContractsComment",
-                    title: "SVP Contracts Comment",
-                    type: Helper.SPCfgFieldType.Note,
-                    noteType: SPTypes.FieldNoteType.TextOnly
-                } as Helper.IFieldInfoNote,
-                {
-                    name: "SVPContractsSignDate",
-                    title: "SVP Contracts Signed Date",
-                    type: Helper.SPCfgFieldType.Date,
-                    format: SPTypes.DateFormat.DateTime
-                } as Helper.IFieldInfoDate,
-                {
-                    name: "LOBPresident",
-                    title: "LOB President",
-                    type: Helper.SPCfgFieldType.User
-                } as Helper.IFieldInfoUser,
-                {
-                    name: "LOBPresidentApproval",
-                    title: "LOB President Approval",
-                    type: Helper.SPCfgFieldType.Choice,
-                    choices: ["Approved","Rejected","Not Started"],
-                    defaultValue: "Not Started"
-                } as Helper.IFieldInfoChoice,
-                {
-                    name: "LOBPresidentComment",
-                    title: "LOB President Comment",
-                    type: Helper.SPCfgFieldType.Note,
-                    noteType: SPTypes.FieldNoteType.TextOnly
-                } as Helper.IFieldInfoNote,
-                {
-                    name: "LOBPresidentSignDate",
-                    title: "LOB President Signed Date",
-                    type: Helper.SPCfgFieldType.Date,
-                    format: SPTypes.DateFormat.DateTime
-                } as Helper.IFieldInfoDate,
-                {
-                    name: "CEO",
-                    title: "CEO",
-                    type: Helper.SPCfgFieldType.User
-                } as Helper.IFieldInfoUser,
-                {
-                    name: "CEOApproval",
-                    title: "CEO Approval",
-                    type: Helper.SPCfgFieldType.Choice,
-                    choices: ["Approved","Rejected","Not Started"],
-                    defaultValue: "Not Started"
-                } as Helper.IFieldInfoChoice,
-                {
-                    name: "CEOComment",
-                    title: "CEO Comment",
-                    type: Helper.SPCfgFieldType.Note,
-                    noteType: SPTypes.FieldNoteType.TextOnly
-                } as Helper.IFieldInfoNote,
-                {
-                    name: "CEOSignDate",
-                    title: "CEO Signed Date",
-                    type: Helper.SPCfgFieldType.Date,
-                    format: SPTypes.DateFormat.DateTime
-                } as Helper.IFieldInfoDate,
+                    name: "currentRun",
+                    title: "Current Workflow Run",
+                    type: Helper.SPCfgFieldType.Lookup,
+                    listName: Strings.Sites.main.lists.WorkflowRuns,
+                    description: "Lookup to the current Run info/id",
+                    showField: "ID",
+                    multi: false,
+                    indexed: true
+                } as Helper.IFieldInfoLookup
             ],
             ViewInformation: [
                 {
@@ -234,11 +132,301 @@ export const Configuration = Helper.SPConfig({
                     Default: true,
                     ViewQuery: "<OrderBy><FieldRef Name=\"Created\" Ascending=\"FALSE\" /></OrderBy>",
                     ViewFields: [
-                        "LinkTitle", "projectName", "contractType", "riskStart", "riskEnd", "popEnd", 
-                        "entity", "projectMgr", "riskReason", "riskFundingRequested"
+                        "LinkTitle",
+                        "projectName",
+                        "contractType",
+                        "riskStart",
+                        "riskEnd",
+                        "popEnd",
+                        "entity",
+                        "projectMgr",
+                        "riskReason",
+                        "riskFundingRequested",
+                        "araStatus"
+                    ]
+                }
+            ]
+        },
+
+        /********************************************************************
+         * Workflow Runs (state machine instance per run)
+         ********************************************************************/
+        {
+            ListInformation: {
+                Title: Strings.Sites.main.lists.WorkflowRuns,
+                Description: "ARA Workflow Runs - one row per workflow cycle per agreement",
+                OnQuickLaunch: false,
+                BaseTemplate: SPTypes.ListTemplateType.GenericList
+            },
+            TitleFieldRequired: false,
+            TitleFieldUniqueValues: false,
+            TitleFieldIndexed: false,
+            CustomFields: [
+                /******** Relationship ********/
+                {
+                    name: "agreement",
+                    title: "Agreement",
+                    type: Helper.SPCfgFieldType.Lookup,
+                    listName: Strings.Sites.main.lists.Agreements,
+                    showField: "ID",
+                    multi: false,
+                    indexed: true
+                } as Helper.IFieldInfoLookup,
+
+                {
+                    name: "runNumber",
+                    title: "Run Number",
+                    type: Helper.SPCfgFieldType.Number,
+                    min: 1,
+                    decimals: 0,
+                    defaultValue: "1",
+                    indexed: true
+                } as Helper.IFieldInfoNumber,
+
+                {
+                    name: "runStatus",
+                    title: "Run Status",
+                    type: Helper.SPCfgFieldType.Choice,
+                    choices: ["Active", "Completed", "Superseded"],
+                    defaultValue: "Active",
+                    indexed: true
+                } as Helper.IFieldInfoChoice,
+
+                {
+                    name: "started",
+                    title: "Started",
+                    type: Helper.SPCfgFieldType.Date,
+                    format: SPTypes.DateFormat.DateTime
+                } as Helper.IFieldInfoDate,
+                {
+                    name: "completed",
+                    title: "Completed",
+                    type: Helper.SPCfgFieldType.Date,
+                    format: SPTypes.DateFormat.DateTime
+                } as Helper.IFieldInfoDate,
+
+                {
+                    name: "outcome",
+                    title: "Outcome",
+                    type: Helper.SPCfgFieldType.Choice,
+                    choices: ["Approved", "Rejected"]
+                } as Helper.IFieldInfoChoice,
+
+                /******** Mod / Restart metadata ********/
+                {
+                    name: "restartReason",
+                    title: "Restart Reason",
+                    type: Helper.SPCfgFieldType.Choice,
+                    choices: ["Mod", "Correction", "Reopen", "Other"]
+                } as Helper.IFieldInfoChoice,
+                {
+                    name: "restartComment",
+                    title: "Restart Comment",
+                    type: Helper.SPCfgFieldType.Note,
+                    noteType: SPTypes.FieldNoteType.TextOnly
+                } as Helper.IFieldInfoNote,
+                {
+                    name: "triggerAgreementVersion",
+                    title: "Trigger Agreement Version",
+                    type: Helper.SPCfgFieldType.Number,
+                    min: 1
+                } as Helper.IFieldInfoNumber,
+
+                /******** Current / Pending state (source of truth) ********/
+                {
+                    name: "currentStepKey",
+                    title: "Current Step Key",
+                    type: Helper.SPCfgFieldType.Choice,
+                    choices: ["submit", "contractMgr", "ogPresident", "coo", "ceo", "svpContracts"],
+                    defaultValue: "submit",
+                    indexed: true
+                } as Helper.IFieldInfoChoice,
+                {
+                    name: "pendingRole",
+                    title: "Pending Role",
+                    type: Helper.SPCfgFieldType.Text
+                },
+                {
+                    name: "pendingApproverId",
+                    title: "Pending Approver Id",
+                    type: Helper.SPCfgFieldType.Number,
+                    min: 1
+                } as Helper.IFieldInfoNumber,
+                {
+                    name: "pendingApproverEmail",
+                    title: "Pending Approver Email",
+                    type: Helper.SPCfgFieldType.Text
+                },
+                {
+                    name: "stepAssignedDate",
+                    title: "Step Assigned Date",
+                    type: Helper.SPCfgFieldType.Date,
+                    format: SPTypes.DateFormat.DateTime,
+                    indexed: true
+                } as Helper.IFieldInfoDate,
+
+                /******** Approver assignment snapshot (columns) ********/
+                {
+                    name: "contractMgr",
+                    title: "Contract Manager",
+                    type: Helper.SPCfgFieldType.User
+                } as Helper.IFieldInfoUser,
+                {
+                    name: "ogPresident",
+                    title: "OG President",
+                    type: Helper.SPCfgFieldType.User
+                } as Helper.IFieldInfoUser,
+                {
+                    name: "coo",
+                    title: "COO",
+                    type: Helper.SPCfgFieldType.User
+                } as Helper.IFieldInfoUser,
+                {
+                    name: "ceo",
+                    title: "CEO",
+                    type: Helper.SPCfgFieldType.User
+                } as Helper.IFieldInfoUser,
+                {
+                    name: "svpContracts",
+                    title: "SVP Contracts",
+                    type: Helper.SPCfgFieldType.User
+                } as Helper.IFieldInfoUser
+            ],
+            ViewInformation: [
+                {
+                    ViewName: "Active Runs",
+                    Default: true,
+                    ViewQuery:
+                        "<Where><Eq><FieldRef Name=\"runStatus\" /><Value Type=\"Choice\">Active</Value></Eq></Where>" +
+                        "<OrderBy><FieldRef Name=\"Modified\" Ascending=\"FALSE\" /></OrderBy>",
+                    ViewFields: [
+                        "LinkTitle",
+                        "agreement",
+                        "runNumber",
+                        "runStatus",
+                        "currentStepKey",
+                        "pendingRole",
+                        "pendingApproverEmail",
+                        "stepAssignedDate",
+                        "started"
+                    ]
+                }
+            ]
+        },
+
+        /********************************************************************
+         * Workflow Actions (append-only history)
+         ********************************************************************/
+        {
+            ListInformation: {
+                Title: Strings.Sites.main.lists.WorkflowActions,
+                Description: "ARA Workflow Actions - immutable action history per run",
+                OnQuickLaunch: false,
+                BaseTemplate: SPTypes.ListTemplateType.GenericList
+            },
+            TitleFieldRequired: false,
+            TitleFieldUniqueValues: false,
+            TitleFieldIndexed: false,
+            TitleFieldDescription: "ARA Action",
+            CustomFields: [
+                /******** Relationships ********/
+                {
+                    name: "agreement",
+                    title: "Agreement",
+                    type: Helper.SPCfgFieldType.Lookup,
+                    listName: Strings.Sites.main.lists.Agreements,
+                    showField: "ID",
+                    multi: false,
+                    indexed: true
+                } as Helper.IFieldInfoLookup,
+                {
+                    name: "run",
+                    title: "Workflow Run",
+                    type: Helper.SPCfgFieldType.Lookup,
+                    listName: Strings.Sites.main.lists.WorkflowRuns,
+                    showField: "Id",
+                    multi: false,
+                    indexed: true
+                } as Helper.IFieldInfoLookup,
+
+                /******** What happened ********/
+                {
+                    name: "stepKey",
+                    title: "Step Key",
+                    type: Helper.SPCfgFieldType.Choice,
+                    choices: ["submit", "contractMgr", "ogPresident", "coo", "ceo", "svpContracts"],
+                    indexed: true
+                } as Helper.IFieldInfoChoice,
+                {
+                    name: "actionType",
+                    title: "Action Type",
+                    type: Helper.SPCfgFieldType.Choice,
+                    choices: ["Submitted", "Approved", "Rejected", "Comment", "Returned", "Reassigned", "Modified", "Restarted"],
+                    indexed: true
+                } as Helper.IFieldInfoChoice,
+
+                {
+                    name: "actor",
+                    title: "Actor",
+                    type: Helper.SPCfgFieldType.User,
+                    indexed: true
+                } as Helper.IFieldInfoUser,
+
+                /******** Timing for reporting ********/
+                {
+                    name: "actionCompletedDate",
+                    title: "Action Completed Date",
+                    type: Helper.SPCfgFieldType.Date,
+                    format: SPTypes.DateFormat.DateTime,
+                    indexed: true
+                } as Helper.IFieldInfoDate,
+
+                {
+                    name: "comment",
+                    title: "Comment",
+                    type: Helper.SPCfgFieldType.Note,
+                    noteType: SPTypes.FieldNoteType.TextOnly
+                } as Helper.IFieldInfoNote,
+
+                /******** Optional mod/change fields ********/
+                {
+                    name: "changeSummary",
+                    title: "Change Summary",
+                    type: Helper.SPCfgFieldType.Text
+                },
+                {
+                    name: "changePayloadJson",
+                    title: "Change Payload (JSON)",
+                    type: Helper.SPCfgFieldType.Note,
+                    noteType: SPTypes.FieldNoteType.TextOnly
+                } as Helper.IFieldInfoNote,
+
+                {
+                    name: "sequence",
+                    title: "Sequence",
+                    type: Helper.SPCfgFieldType.Number,
+                    min: 0,
+                    decimals: 0
+                } as Helper.IFieldInfoNumber
+            ],
+            ViewInformation: [
+                {
+                    ViewName: "Recent Actions",
+                    Default: true,
+                    ViewQuery: "<OrderBy><FieldRef Name=\"actionCompletedDate\" Ascending=\"FALSE\" /></OrderBy>",
+                    ViewFields: [
+                        "LinkTitle",
+                        "agreement",
+                        "run",
+                        "stepKey",
+                        "actionType",
+                        "actor",
+                        "actionCompletedDate",
+                        "comment",
+                        "changeSummary"
                     ]
                 }
             ]
         }
     ]
-})
+});

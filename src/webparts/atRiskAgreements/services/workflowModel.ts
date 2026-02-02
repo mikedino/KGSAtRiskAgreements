@@ -1,98 +1,80 @@
-import { IRiskAgreementItem } from "../data/props";
+import { IRiskAgreementItem, IWorkflowRunItem, WorkflowStepKey } from "../data/props";
 import { IPeoplePicker } from "../data/props";
-
-export type WorkflowStepKey =
-  | "Submitted"
-  | "CMReview"
-  | "OGPApproval"
-  | "LOBApproval"
-  | "CEOApproval"
-  | "SVPApproval"
-  | "Approved"
-  | "Resolved";
-
-type PeopleFieldKey = {
-  [K in keyof IRiskAgreementItem]:
-  IRiskAgreementItem[K] extends IPeoplePicker ? K : never
-}[keyof IRiskAgreementItem];
-
-type DateFieldKey = {
-  [K in keyof IRiskAgreementItem]:
-  IRiskAgreementItem[K] extends string ? K : never
-}[keyof IRiskAgreementItem];
 
 export interface IWorkflowStep {
   key: WorkflowStepKey;
   label: string;
-  isInitial?: boolean;   // submitted?
-  
-  approverField?: PeopleFieldKey;
-  approvalField?: keyof IRiskAgreementItem;
-  commentField?: keyof IRiskAgreementItem;
-  signDateField?: DateFieldKey;
+  isInitial?: boolean;
 
-  isRequired: (item: IRiskAgreementItem) => boolean;
-  next: WorkflowStepKey;
+  // Required logic still depends on agreement values (riskFundingRequested)
+  isRequired: (agreement: IRiskAgreementItem) => boolean;
+
+  // Where to find the approver for this step (from the run snapshot)
+  getApprover?: (run: IWorkflowRunItem) => IPeoplePicker | undefined;
+
+  next?: WorkflowStepKey;
   completesOnApprove?: boolean;
 }
 
+// Helper for mapping step -> run approver snapshot
+const getApproverFromRun = (step: WorkflowStepKey, run: IWorkflowRunItem): IPeoplePicker | undefined => {
+  switch (step) {
+    case "contractMgr":
+      return run.contractMgr;
+    case "ogPresident":
+      return run.ogPresident;
+    case "coo":
+      return run.coo;
+    case "ceo":
+      return run.ceo;
+    case "svpContracts":
+      return run.svpContracts;
+    default:
+      return undefined;
+  }
+};
+
 export const RiskAgreementWorkflow: IWorkflowStep[] = [
   {
-    key: "Submitted",
+    key: "submit",
     label: "Submitted",
     isInitial: true,
-    isRequired: () => true, 
-    next: "CMReview"
+    isRequired: () => true,
+    next: "contractMgr"
   },
   {
-    key: "CMReview",
+    key: "contractMgr",
     label: "Contract Manager Review",
-    approverField: "contractMgr",
-    approvalField: "cmDecision",
-    commentField: "cmComment",
-    signDateField: "cmDecisionDate",
     isRequired: () => true,
-    next: "OGPApproval"
+    getApprover: (run) => getApproverFromRun("contractMgr", run),
+    next: "ogPresident"
   },
   {
-    key: "OGPApproval",
+    key: "ogPresident",
     label: "OG President Approval",
-    approverField: "OGPresident",
-    approvalField: "OGPresidentApproval",
-    commentField: "OGPresidentComment",
-    signDateField: "OGPresidentSignDate",
     isRequired: () => true,
-    next: "LOBApproval"
+    getApprover: (run) => getApproverFromRun("ogPresident", run),
+    next: "coo"
   },
   {
-    key: "LOBApproval",
-    label: "LOB President Approval",
-    approverField: "LOBPresident",
-    approvalField: "LOBPresidentApproval",
-    commentField: "LOBPresidentComment",
-    signDateField: "LOBPresidentSignDate",
-    isRequired: item => item.riskFundingRequested > 50000,
-    next: "CEOApproval"
+    key: "coo",
+    label: "COO Approval",
+    isRequired: (agreement) => agreement.riskFundingRequested > 50000,
+    getApprover: (run) => getApproverFromRun("coo", run),
+    next: "ceo"
   },
   {
-    key: "CEOApproval",
+    key: "ceo",
     label: "CEO Approval",
-    approverField: "CEO",
-    approvalField: "CEOApproval",
-    commentField: "CEOComment",
-    signDateField: "CEOSignDate",
-    isRequired: item => item.riskFundingRequested > 100000,
-    next: "SVPApproval"
+    isRequired: (agreement) => agreement.riskFundingRequested > 100000,
+    getApprover: (run) => getApproverFromRun("ceo", run),
+    next: "svpContracts"
   },
   {
-    key: "SVPApproval",
+    key: "svpContracts",
     label: "SVP Contracts Approval",
-    approverField: "SVPContracts",
-    approvalField: "SVPContractsApproval",
-    commentField: "SVPContractsComment",
-    signDateField: "SVPContractsSignDate",
     isRequired: () => true,
-    next: "Approved",
+    getApprover: (run) => getApproverFromRun("svpContracts", run),
     completesOnApprove: true
   }
 ];

@@ -1,11 +1,17 @@
 import * as React from "react";
-import { IRiskAgreementItem } from "../data/props";
+import { IRiskAgreementItem, IWorkflowActionItem, IWorkflowRunItem } from "../data/props";
+import { RefreshMode } from "../data/agreementsDataCall";
 
 export interface IAgreementsContext {
   agreements: IRiskAgreementItem[];
+  // current runs (one per agreement)
+  runsByAgreementId: Map<number, IWorkflowRunItem>;
+  // actions for the current run (runId -> actions[])
+  actionsByRunId: Map<number, IWorkflowActionItem[]>;
+
   isRefreshing: boolean;
   lastRefreshed: string | undefined;
-  refresh: (override?: boolean) => Promise<void>;
+  refresh: (override?: boolean, mode?: RefreshMode) => Promise<void>;
 }
 
 export const AgreementsContext = React.createContext<IAgreementsContext | undefined>(undefined);

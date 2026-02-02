@@ -23,6 +23,8 @@ const Strings = {
             url: ContextInfo.webAbsoluteUrl,
             lists: {
                 Agreements: "AtRiskAgreements",
+                WorkflowRuns: "ARAWorkflowRuns",
+                WorkflowActions: "ARAWorkflowActions",
                 Roles: "ARARoles"
             }
         },
@@ -73,6 +75,6 @@ const Strings = {
             blueGray: "#ccd6dd"
         }
     },
-    Version: "1.0.0.4"
+    Version: "1.1.0.1"
 };
 export default Strings;

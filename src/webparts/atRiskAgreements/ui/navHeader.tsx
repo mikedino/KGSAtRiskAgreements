@@ -25,6 +25,7 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
 
     const theme = useTheme();
 
+    // App-wide data refresh trigger
     const { refresh, isRefreshing } = useAgreements();
 
     // small screens (md = ~900px), large screens (lg = ~1200px)

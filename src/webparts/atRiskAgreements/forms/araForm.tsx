@@ -18,6 +18,7 @@ import { Web } from "gd-sprest";
 import Strings from "../../../strings";
 import AlertDialog from "../ui/Alert";
 import { MuiPeoplePicker } from "../ui/CustomPeoplePicker";
+import { RiskAgreementService } from "../services/agreementService";
 
 export type CancelReason = { type: "draft"; draftId: number } | { type: "normal" };
 
@@ -56,18 +57,9 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
     setShowDialog(false);
   };
 
-  const createDraftItem = async (): Promise<number | undefined> => {
-    const item = await Web().Lists(Strings.Sites.main.lists.Agreements).Items().add({
-      Title: "Draft",
-      araStatus: "Draft"
-    }).executeAndWait();
-
-    return item.Id ?? undefined;
-  };
-
   useEffect(() => {
     if (mode === "new") {
-      createDraftItem()
+      RiskAgreementService.createDraft()
         .then(setDraftItemId)
         .catch((error) => {
           console.error("Error creating temp draft", error)
@@ -83,19 +75,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
       setSubmissionType(item.invoice ? "existing" : "newOpp");
     }
   }, [mode, item]);
-
-
-  // useEffect(() => {
-  //   const loadInvoices = async (): Promise<void> => {
-  //     await DataSource.getInvoices();
-  //   };
-
-  //   loadInvoices()
-  //     .then(() => setLoading(false))
-  //     .catch((error: unknown) => {
-  //       console.error("Failed to load invoices", error);
-  //     });
-  // }, []);
+  
 
   // lazy-load invoices only after a contract is selected
   useEffect(() => {

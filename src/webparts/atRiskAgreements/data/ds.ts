@@ -1,26 +1,34 @@
 import { Web } from "gd-sprest";
-import { WebPartContext } from '@microsoft/sp-webpart-base';
+import { WebPartContext } from "@microsoft/sp-webpart-base";
 import Strings, { setContext } from "../../../strings";
-import { IConfigItem, IContractItem, IEntitiesItem, IInvoiceItem, IOGPresidentsItem, IPeoplePicker, IRiskAgreementItem } from "./props";
+import {
+    IConfigItem,
+    IContractItem,
+    IEntitiesItem,
+    IInvoiceItem,
+    IOGPresidentsItem,
+    IPeoplePicker,
+    IRiskAgreementItem,
+    IWorkflowActionItem,
+    IWorkflowRunItem
+} from "./props";
 import { formatError } from "../services/utils";
 
 export class DataSource {
-
     // prevent this from being initialized twice
     static initialized: boolean = false;
 
     // Initializes the application
     public static init(override: boolean, context?: WebPartContext): PromiseLike<void> {
         return new Promise<void>((resolve, reject) => {
-
             // See if the page context exists
             if (context) {
                 // Set the context
                 setContext(context);
             }
 
-            if (!this.initialized || override) { //ensure this was not already initialized and not manually being refreshed
-
+            if (!this.initialized || override) {
+                //ensure this was not already initialized and not manually being refreshed
                 Promise.all([
                     this.getAgreeements(),
                     this.getConfig(),
@@ -32,16 +40,14 @@ export class DataSource {
                         this.initialized = true;
                         resolve();
                     })
-                    .catch(error => {
+                    .catch((error) => {
                         console.error("Error initializing data", formatError(error));
                         reject(error);
                     });
             } else {
                 resolve();
             }
-
-        })
-
+        });
     }
 
     // Load all the Risk Agreeements
@@ -51,94 +57,199 @@ export class DataSource {
     static get AgreementsVersion(): number { return this._agreementsVersion; }
     private static setAgreements(items: IRiskAgreementItem[]): void {
         this._agreements = items;
-        this._agreementsVersion++; // increment "version" (refresh)
+        this._agreementsVersion++; // increment "version" (refresh) for context
     }
 
     static getAgreeements(): Promise<IRiskAgreementItem[]> {
         return new Promise<IRiskAgreementItem[]>((resolve, reject) => {
-
             // clear the items
             this._agreements = [];
 
+            // NOTE:
+            // Workflow assignments + pending state are no longer stored on Agreements.
+            // Agreements now only store a pointer to the active run via currentRunId.
+            // Current/pending data will be loaded from ARAWorkflowRuns (separate methods).
+            Web(Strings.Sites.main.url)
+                .Lists(Strings.Sites.main.lists.Agreements)
+                .Items()
+                .query({
+                    GetAllItems: true,
+                    OrderBy: ["Created"],
+                    Select: [
+                        "Id", "Title", "projectName", "contractId", "invoice", "contractType", "riskStart", "riskEnd", "popEnd",
+                        "entity", "riskReason", "riskFundingRequested", "riskJustification", "contractName", "programName", "araStatus",
+                        "Author/Id", "Author/Title", "Author/EMail",
+                        "Editor/Id", "Editor/Title", "Editor/EMail",
+                        "projectMgr/Id", "projectMgr/Title", "projectMgr/EMail",
+                        "entityGM/Id", "entityGM/Title", "entityGM/EMail",
+                        "currentRun/Id", "currentRun/Title"
+                    ],
+                    Expand: ["Author", "Editor", "projectMgr", "entityGM", "currentRun"],
+                    Filter: "araStatus ne 'Draft'",
+                    Top: 5000
+                })
+                .execute(
+                    // Success
+                    (items) => {
+                        if (items?.results?.length) {
+                            DataSource.setAgreements(items.results as unknown as IRiskAgreementItem[]);
+                            resolve(DataSource.Agreements);
+                        } else {
+                            //none found - resolve with empty array
+                            DataSource.setAgreements([]);
+                            resolve([]);
+                        }
+                    },
+                    // Error
+                    (error) => {
+                        reject(new Error(`Error fetching Agreements: ${formatError(error)}`));
+                    }
+                );
+        });
+    }
+
+
+    // get all of the WF runs by run ID's
+    // set a re-usable $select and $expand query
+    public static runSelectQuery: string[] = [
+        "Id", "runNumber", "runStatus", "started", "completed", "outcome", "restartReason",
+        "restartComment", "triggerAgreementVersion", "currentStepKey", "pendingRole",
+        "pendingApproverId", "pendingApproverEmail", "stepAssignedDate",
+        "contractMgr/Id", "contractMgr/Title", "contractMgr/EMail",
+        "ogPresident/Id", "ogPresident/Title", "ogPresident/EMail",
+        "coo/Id", "coo/Title", "coo/EMail",
+        "ceo/Id", "ceo/Title", "ceo/EMail",
+        "svpContracts/Id", "svpContracts/Title", "svpContracts/EMail",
+        "agreement/Id"
+    ];
+    public static runExpandQuery: string[] = ["contractMgr", "ogPresident", "coo", "ceo", "svpContracts", "agreement"];
+    static getWorkflowRunsByIds(runIds: number[]): Promise<IWorkflowRunItem[]> {
+        return new Promise<IWorkflowRunItem[]>((resolve, reject) => {
+
+            if (!runIds.length) {
+                resolve([] as IWorkflowRunItem[]);
+                return;
+            }
+
+            // create dynamic filter for all ID's
+            const filter = runIds.map(id => `Id eq ${id}`).join(' or ');
+
             // load the data
-            Web(Strings.Sites.main.url).Lists(Strings.Sites.main.lists.Agreements).Items().query({
-                GetAllItems: true,
-                OrderBy: ["Created"],
-                Select: [
-                    "*", "Author/Id", "Author/Title", "Author/EMail", "projectMgr/Id", "projectMgr/Title", "projectMgr/EMail",
-                    "contractMgr/Id", "contractMgr/Title", "contractMgr/EMail", "entityGM/Id", "entityGM/Title", "entityGM/EMail",
-                    "OGPresident/Id", "OGPresident/Title", "OGPresident/EMail", "SVPContracts/Id", "SVPContracts/Title", "SVPContracts/EMail",
-                    "LOBPresident/Id", "LOBPresident/Title", "LOBPresident/EMail",
-                    "CEO/Id", "CEO/Title", "CEO/EMail"
-                ],
-                Expand: ["Author", "projectMgr", "contractMgr", "entityGM", "OGPresident", "SVPContracts",
-                    'LOBPresident',
-                    'CEO'
-                ],
-                Filter: "araStatus ne 'Draft'",
+            Web().Lists(Strings.Sites.main.lists.WorkflowRuns).Items().query({
+                Select: this.runSelectQuery,
+                Filter: filter,
+                Expand: this.runExpandQuery,
+                OrderBy: ["runNumber asc"],
                 Top: 5000
             }).execute(
                 // Success
-                items => {
+                (items) => {
                     if (items?.results?.length) {
-                        DataSource.setAgreements(items.results as unknown as IRiskAgreementItem[]);
-                        resolve(DataSource.Agreements);
+                        const runs = items.results as unknown as IWorkflowRunItem[];
+
+                        // resolve with retrieved items
+                        resolve(runs);
                     } else {
                         //none found - resolve with empty array
-                        DataSource.setAgreements([]);
                         resolve([]);
                     }
                 },
                 // Error
-                error => {
-                    reject(new Error(`Error fetching Agreements: ${formatError(error)}`));
+                (error) => {
+                    reject(new Error(`Error fetching Runs by Run ID: ${formatError(error)}`));
                 }
             )
 
-        });
+        })
+    }
+
+    // get all of the WF actions by run ID's
+    static getWorkflowActionsByRunIds(runIds: number[]): Promise<IWorkflowActionItem[]> {
+        return new Promise<IWorkflowActionItem[]>((resolve, reject) => {
+
+            if (!runIds.length) {
+                resolve([] as IWorkflowActionItem[]);
+                return;
+            }
+
+            // create dynamic filter for all ID's
+            const filter = runIds.map(id => `run/Id eq ${id}`).join(' or ');
+
+            // load the data
+            Web().Lists(Strings.Sites.main.lists.WorkflowActions).Items().query({
+                Select: [
+                    "Id", "stepKey", "actionType", "actionCompletedDate", "comment", "changeSummary",
+                    "changePayloadJson", "sequence",
+                    "actor/Id", "actor/Title", "actor/EMail",
+                    "agreement/Id", "run/Id"
+                ],
+                Filter: filter,
+                Expand: ["actor", "agreement", "run"],
+                OrderBy: ["Created asc"],
+                Top: 5000
+            }).execute(
+                // Success
+                (items) => {
+                    if (items?.results?.length) {
+                        const actions = items.results as unknown as IWorkflowActionItem[];
+
+                        // resolve with retrieved items
+                        resolve(actions);
+                    } else {
+                        //none found - resolve with empty array
+                        resolve([]);
+                    }
+                },
+                // Error
+                (error) => {
+                    reject(new Error(`Error fetching Actions by Run ID: ${formatError(error)}`));
+                }
+            )
+        })
     }
 
     // Load default CEO and SVP Contract from Config list
     private static _config: IConfigItem[] = [];
     static get CEO(): IPeoplePicker | undefined {
-        const ceo = this._config.find(c => c.IsFor === "CEO")?.User
+        const ceo = this._config.find((c) => c.IsFor === "CEO")?.User;
         return ceo;
     }
     static get SVPContracts(): IPeoplePicker | undefined {
-        const svpc = this._config.find(c => c.IsFor === "SVPContracts")?.User
+        const svpc = this._config.find((c) => c.IsFor === "SVPContracts")?.User;
         return svpc;
     }
     static getConfig(): Promise<IConfigItem[]> {
         return new Promise<IConfigItem[]>((resolve, reject) => {
-
             // clear the items
             this._config = [];
 
             // load the data
-            Web(Strings.Sites.lookups.url).Lists(Strings.Sites.lookups.lists.Config).Items().query({
-                Select: ["Id", "Title", "User/Id", "User/EMail", "User/Title", "IsFor"],
-                Filter: `IsFor eq 'CEO' or IsFor eq 'SVPContracts'`,
-                Expand: ["User"]
-            }).execute(
-                // Success
-                items => {
-                    if (items?.results?.length) {
-                        this._config = items.results as unknown as IConfigItem[];
+            Web(Strings.Sites.lookups.url)
+                .Lists(Strings.Sites.lookups.lists.Config)
+                .Items()
+                .query({
+                    Select: ["Id", "Title", "User/Id", "User/EMail", "User/Title", "IsFor"],
+                    Filter: `IsFor eq 'CEO' or IsFor eq 'SVPContracts'`,
+                    Expand: ["User"]
+                })
+                .execute(
+                    // Success
+                    (items) => {
+                        if (items?.results?.length) {
+                            this._config = items.results as unknown as IConfigItem[];
 
-                        // resolve with retrieved items
-                        resolve(this._config);
-
-                    } else {
-                        //none found - resolve with empty array
-                        resolve([])
+                            // resolve with retrieved items
+                            resolve(this._config);
+                        } else {
+                            //none found - resolve with empty array
+                            resolve([]);
+                        }
+                    },
+                    // Error
+                    (error) => {
+                        reject(new Error(`Error fetching Config: ${formatError(error)}`));
                     }
-                },
-                // Error
-                error => {
-                    reject(new Error(`Error fetching Config: ${formatError(error)}`));
-                }
-            )
-
+                );
         });
     }
 
@@ -147,37 +258,38 @@ export class DataSource {
     static get Entities(): IEntitiesItem[] { return this._entities; }
     static getEntities(): Promise<IEntitiesItem[]> {
         return new Promise<IEntitiesItem[]>((resolve, reject) => {
-
             // clear the items
             this._entities = [];
 
             // load the data
-            Web(Strings.Sites.lookups.url).Lists(Strings.Sites.lookups.lists.Entities).Items().query({
-                GetAllItems: true,
-                OrderBy: ["Title"],
-                Select: ["Id", "Title", "abbr", "GM/EMail", "GM/Title", "GM/Id", "combinedTitle"],
-                Expand: ["GM"],
-                Top: 5000
-            }).execute(
-                // Success
-                items => {
-                    if (items?.results?.length) {
-                        this._entities = items.results as unknown as IEntitiesItem[];
+            Web(Strings.Sites.lookups.url)
+                .Lists(Strings.Sites.lookups.lists.Entities)
+                .Items()
+                .query({
+                    GetAllItems: true,
+                    OrderBy: ["Title"],
+                    Select: ["Id", "Title", "abbr", "GM/EMail", "GM/Title", "GM/Id", "combinedTitle"],
+                    Expand: ["GM"],
+                    Top: 5000
+                })
+                .execute(
+                    // Success
+                    (items) => {
+                        if (items?.results?.length) {
+                            this._entities = items.results as unknown as IEntitiesItem[];
 
-                        // resolve with retrieved items
-                        resolve(this._entities);
-
-                    } else {
-                        //none found - resolve with empty array
-                        resolve([])
+                            // resolve with retrieved items
+                            resolve(this._entities);
+                        } else {
+                            //none found - resolve with empty array
+                            resolve([]);
+                        }
+                    },
+                    // Error
+                    (error) => {
+                        reject(new Error(`Error fetching Entities: ${formatError(error)}`));
                     }
-                },
-                // Error
-                error => {
-                    reject(new Error(`Error fetching Entities: ${formatError(error)}`));
-                }
-            )
-
+                );
         });
     }
 
@@ -186,38 +298,43 @@ export class DataSource {
     static get OGs(): IOGPresidentsItem[] { return this._ogs; }
     static getOGs(): Promise<IOGPresidentsItem[]> {
         return new Promise<IOGPresidentsItem[]>((resolve, reject) => {
-
             // clear the items
             this._ogs = [];
 
             // load the data
-            Web(Strings.Sites.lookups.url).Lists(Strings.Sites.lookups.lists.OGPresidents).Items().query({
-                GetAllItems: true,
-                OrderBy: ["Title"],
-                Select: ["Id", "Title", "LOB", "president/EMail", "president/Title", "president/Id",
-                    "LOBPresident/EMail", "LOBPresident/Title", "LOBPresident/Id", "CM/EMail", "CM/Title", "CM/Id"],
-                Expand: ["president", "LOBPresident", "CM"],
-                Top: 5000
-            }).execute(
-                // Success
-                items => {
-                    if (items?.results?.length) {
-                        this._ogs = items.results as unknown as IOGPresidentsItem[];
+            Web(Strings.Sites.lookups.url)
+                .Lists(Strings.Sites.lookups.lists.OGPresidents)
+                .Items()
+                .query({
+                    GetAllItems: true,
+                    OrderBy: ["Title"],
+                    Select: [
+                        "Id", "Title", "LOB",
+                        "president/EMail", "president/Title", "president/Id",
+                        "coo/EMail", "coo/Title", "coo/Id",
+                        "CM/EMail", "CM/Title", "CM/Id"
+                    ],
+                    Expand: ["president", "coo", "CM"],
+                    Top: 5000
+                })
+                .execute(
+                    // Success
+                    (items) => {
+                        if (items?.results?.length) {
+                            this._ogs = items.results as unknown as IOGPresidentsItem[];
 
-                        // resolve with retrieved items
-                        resolve(this._ogs);
-
-                    } else {
-                        //none found - resolve with empty array
-                        resolve([])
+                            // resolve with retrieved items
+                            resolve(this._ogs);
+                        } else {
+                            //none found - resolve with empty array
+                            resolve([]);
+                        }
+                    },
+                    // Error
+                    (error) => {
+                        reject(new Error(`Error fetching OG Presidents: ${formatError(error)}`));
                     }
-                },
-                // Error
-                error => {
-                    reject(new Error(`Error fetching Entities: ${formatError(error)}`));
-                }
-            )
-
+                );
         });
     }
 
@@ -226,7 +343,6 @@ export class DataSource {
     static get Contracts(): IContractItem[] { return this._contracts; }
     static getContracts(): Promise<IContractItem[]> {
         return new Promise<IContractItem[]>((resolve, reject) => {
-
             // clear the items
             this._contracts = [];
 
@@ -235,86 +351,49 @@ export class DataSource {
             today.setHours(0, 0, 0, 0); //set time to midnight local time
 
             // load the data
-            Web(Strings.Sites.jamis.url).Lists(Strings.Sites.jamis.lists.ContractEP).Items().query({
-                GetAllItems: true,
-                OrderBy: ["field_20"],
-                Select: ["Id", "Title", "field_19", "field_20", "field_35", "field_21", 'field_23', 'field_75'],
-                Filter: `field_16 ge datetime'${today.toISOString()}'`, //Completion Date in the future
-                Top: 5000
-            }).execute(
-                // Success
-                items => {
-                    if (items?.results?.length) {
-                        this._contracts = items.results as unknown as IContractItem[];
+            Web(Strings.Sites.jamis.url)
+                .Lists(Strings.Sites.jamis.lists.ContractEP)
+                .Items()
+                .query({
+                    GetAllItems: true,
+                    OrderBy: ["field_20"],
+                    Select: ["Id", "Title", "field_19", "field_20", "field_35", "field_21", "field_23", "field_75"],
+                    Filter: `field_16 ge datetime'${today.toISOString()}'`, //Completion Date in the future
+                    Top: 5000
+                })
+                .execute(
+                    // Success
+                    (items) => {
+                        if (items?.results?.length) {
+                            this._contracts = items.results as unknown as IContractItem[];
 
-                        // resolve with retrieved items
-                        resolve(this._contracts);
-
-                    } else {
-                        //none found - resolve with empty array
-                        resolve([])
+                            // resolve with retrieved items
+                            resolve(this._contracts);
+                        } else {
+                            //none found - resolve with empty array
+                            resolve([]);
+                        }
+                    },
+                    // Error
+                    (error) => {
+                        reject(new Error(`Error fetching Contracts: ${formatError(error)}`));
                     }
-                },
-                // Error
-                error => {
-                    reject(new Error(`Error fetching Contracts: ${formatError(error)}`));
-                }
-            )
-
+                );
         });
     }
 
     // Load all the Invoices from JAMIS
-    // Currently there are 2700+ with no way to filter so this is loaded on on new/edit forms
-    // look to filter if/when we get additional data in the JAMIS pull
+    // Currently there are 2700+ so this is loaded on on new/edit forms
+    // but only get invoices by contract on the form once contract is selected
     private static _invoices: IInvoiceItem[] = [];
     static get Invoices(): IInvoiceItem[] { return this._invoices; }
-    // static getInvoices(): Promise<IInvoiceItem[]> {
-    //     return new Promise<IInvoiceItem[]>((resolve, reject) => {
-
-    //         // clear the items
-    //         this._invoices = [];
-
-    //         // get today's date
-    //         // const today = new Date();
-    //         // today.setHours(0, 0, 0, 0); //set time to midnight local time
-
-    //         // load the data
-    //         Web(Strings.Sites.jamis.url).Lists(Strings.Sites.jamis.lists.InvoiceEP).Items().query({
-    //             GetAllItems: true,
-    //             OrderBy: ["field_42"],
-    //             Select: ["Id", "Title", "field_49", "field_28", "field_14", "InvoiceID1", "field_42"],
-    //             //Filter: `field_62 ge datetime'${today.toISOString()}'`, //Last Bill Date in the future - field is NULL as of 12/24/25
-    //             Top: 5000
-    //         }).execute(
-    //             // Success
-    //             items => {
-    //                 if (items?.results?.length) {
-    //                     this._invoices = items.results as unknown as IInvoiceItem[];
-
-    //                     // resolve with retrieved items
-    //                     resolve(this._invoices);
-
-    //                 } else {
-    //                     //none found - resolve with empty array
-    //                     resolve([])
-    //                 }
-    //             },
-    //             // Error
-    //             error => {
-    //                 reject(new Error(`Error fetching Invoices: ${formatError(error)}`));
-    //             }
-    //         )
-
-    //     });
-    // }
-
-    // only get invoices by contract on the form once contract is selected
     static getInvoicesByContract(contractId: string): Promise<IInvoiceItem[]> {
         return new Promise<IInvoiceItem[]>((resolve, reject) => {
             this._invoices = [];
 
-            Web(Strings.Sites.jamis.url).Lists(Strings.Sites.jamis.lists.InvoiceEP).Items()
+            Web(Strings.Sites.jamis.url)
+                .Lists(Strings.Sites.jamis.lists.InvoiceEP)
+                .Items()
                 .query({
                     GetAllItems: true,
                     OrderBy: ["field_42"],
@@ -322,12 +401,41 @@ export class DataSource {
                     Filter: `field_49 eq '${contractId}'`,
                     Top: 5000
                 })
-                .execute((items) => {
-                    this._invoices = (items?.results ?? []) as unknown as IInvoiceItem[];
-                    resolve(this._invoices);
-                },
+                .execute(
+                    (items) => {
+                        this._invoices = (items?.results ?? []) as unknown as IInvoiceItem[];
+                        resolve(this._invoices);
+                    },
                     (error) => reject(new Error(`Error fetching Invoices: ${formatError(error)}`))
                 );
         });
     }
+
+    // static async getAgreementById(id: number): Promise<IRiskAgreementItem> {
+
+    //     try {
+    //         const ara = await Web().Lists(Strings.Sites.main.lists.Agreements).Items(id).query({
+    //             Select: [
+    //                 "*", "Author/Id", "Author/Title", "Author/EMail", "projectMgr/Id", "projectMgr/Title", "projectMgr/EMail",
+    //                 "contractMgr/Id", "contractMgr/Title", "contractMgr/EMail", "entityGM/Id", "entityGM/Title", "entityGM/EMail",
+    //                 "OGPresident/Id", "OGPresident/Title", "OGPresident/EMail", "SVPContracts/Id", "SVPContracts/Title", "SVPContracts/EMail",
+    //                 "coo/Id", "coo/Title", "coo/EMail",
+    //                 "CEO/Id", "CEO/Title", "CEO/EMail"
+    //             ],
+    //             Expand: ["Author", "projectMgr", "contractMgr", "entityGM", "OGPresident", "SVPContracts",
+    //                 'coo',
+    //                 'CEO'
+    //             ]
+    //         }).executeAndWait()
+
+    //         return ara as unknown as IRiskAgreementItem
+
+    //     } catch (error) {
+    //         const err = formatError(error);
+    //         console.error("Error fetching Agreement item updates: ", error);
+    //         throw new Error(`Error fetching Agreement: ${err}`);
+    //     }
+
+    // }
+
 }

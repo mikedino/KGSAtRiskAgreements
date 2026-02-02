@@ -15,7 +15,7 @@ type AgreementViewKey =
   | "active"
   | "pending"
   | "rejected"
-  | "cancelled"
+  | "canceled"
   | "expiring"
   | "expired";
 
@@ -67,10 +67,10 @@ const AgreementsGrid: React.FC = () => {
       predicate: a => a.araStatus === "Rejected"
     },
     {
-      key: "cancelled",
-      label: "Cancelled",
-      tooltip: "Cancelled agreements",
-      predicate: a => a.araStatus === "Cancelled"
+      key: "canceled",
+      label: "Canceled",
+      tooltip: "Canceled agreements",
+      predicate: a => a.araStatus === "Canceled"
     },
     {
       key: "expiring",
@@ -213,10 +213,11 @@ const AgreementsGrid: React.FC = () => {
     Draft: "default",
     Submitted: "warning",
     "Under Review": "info",
+    "Mod Review": "info",
     Approved: "success",
     Rejected: "error",
     Resolved: "success",
-    Cancelled: "default"
+    Canceled: "default"
   };
 
   const getStatusChip = (status: IRiskAgreementItem["araStatus"]): JSX.Element => {
@@ -356,10 +357,10 @@ const AgreementsGrid: React.FC = () => {
           title: "No rejected agreements",
           description: "There are no rejected agreements in this view."
         };
-      case "cancelled":
+      case "canceled":
         return {
-          title: "No cancelled agreements",
-          description: "There are no cancelled agreements in this view."
+          title: "No canceled agreements",
+          description: "There are no canceled agreements in this view."
         };
       case "expiring":
         return {

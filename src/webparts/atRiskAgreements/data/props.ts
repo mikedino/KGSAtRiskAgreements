@@ -7,6 +7,11 @@ export interface IAppProps {
   context: WebPartContext;
 }
 
+interface ILookupItem {
+  Id: number;
+  Title?: string;
+}
+
 export interface IPeoplePicker extends IPersonaProps {
   EMail: string;
   Id: number;
@@ -21,32 +26,52 @@ export interface IAttachmentInfo extends Types.SP.Attachment {}
 // }
 
 export type ApprovalChoice = "Approved" | "Rejected" | "Not Started";
-export type AraStatus =  "Draft"  | "Submitted"  | "Under Review"  | "Approved"  | "Rejected"  | "Resolved"  | "Canceled";
+export type AraStatus =  "Draft"  | "Submitted"  | "Under Review" | "Mod Review" | "Approved"  | "Rejected"  | "Resolved"  | "Canceled";
 export type ContractType = "FFP/LOE" | "T&M" | "LH" | "Cost Plus/Reimbursable" | "Hybrid";
 
+export type WorkflowStepKey =
+  | "submit"
+  | "contractMgr"
+  | "ogPresident"
+  | "coo"
+  | "ceo"
+  | "svpContracts";
+
+export type WorkflowRunStatus = "Active" | "Completed" | "Superseded";
+
+export type ActionDecision = "Approved" | "Rejected";
+
+export type WorkflowActionType =
+  | "Submitted"
+  | "Approved"
+  | "Rejected"
+  | "Comment"
+  | "Returned"
+  | "Reassigned"
+  | "Modified"
+  | "Restarted";
+
 export interface IRiskAgreementItem {
-  //System fields
-  readonly Modified: string;
-  readonly Created: string;
-  readonly Editor: IPeoplePicker;
-  readonly Author: IPeoplePicker;
+  // System
   readonly Id: number;
   Title: string;
+  readonly Created: string;
+  readonly Modified: string;
+  readonly Author: IPeoplePicker;
+  readonly Editor: IPeoplePicker;
   Attachments: boolean;
-  // Custom fields
+
+  // Business fields
   projectName: string;
-  contractId?: string; 
+  contractId?: string;
   invoice: string;
   contractType: ContractType;
-  riskStart: string; //date
-  riskEnd: string; //date
-  popEnd: string; //date
+  riskStart: string;
+  riskEnd: string;
+  popEnd: string;
   entity: string;
   projectMgr: IPeoplePicker;
   contractMgr: IPeoplePicker;
-  cmDecision: ApprovalChoice;
-  cmComment: string;
-  cmDecisionDate: string;
   riskReason: "Lack of Funding" | "PoP End";
   riskFundingRequested: number;
   riskJustification: string;
@@ -54,30 +79,79 @@ export interface IRiskAgreementItem {
   programName: string;
   araStatus: AraStatus;
   entityGM: IPeoplePicker;
-  OGPresident: IPeoplePicker;
-  OGPresidentApproval: ApprovalChoice;
-  OGPresidentComment: string;
-  OGPresidentSignDate: string; //date
-  SVPContracts: IPeoplePicker;
-  SVPContractsApproval: ApprovalChoice;
-  SVPContractsComment: string;
-  SVPContractsSignDate: string; //date
-  LOBPresident: IPeoplePicker;
-  LOBPresidentApproval: ApprovalChoice;
-  LOBPresidentComment: string;
-  LOBPresidentSignDate: string; //date
-  CEO: IPeoplePicker;
-  CEOApproval: ApprovalChoice;
-  CEOComment: string;
-  CEOSignDate: string; //date
+
+  // Workflow pointer (SharePoint Lookup column to Runs)
+  currentRun?: ILookupItem;
 }
+
+// "instance state machine" row. One row per run.
+export interface IWorkflowRunItem {
+  // System
+  readonly Id: number;
+  readonly Created: string;
+  readonly Modified: string;
+  readonly Author: IPeoplePicker;
+  readonly Editor: IPeoplePicker;
+
+  agreement: ILookupItem; //lookup to Agreements
+
+  // Run lifecycle
+  runNumber: number;
+  runStatus: WorkflowRunStatus; 
+  started: string; // date-time
+  completed?: string; // date-time
+  outcome?: ActionDecision;
+
+  // Mod/restart metadata (optional but recommended)
+  restartReason?: "Mod" | "Correction" | "Reopen" | "Other";
+  restartComment?: string;
+  triggerAgreementVersion?: number; // track version of Agreement (maybe)
+
+  // Current/pending state (SOURCE OF TRUTH) for easiy view/filter/count
+  currentStepKey: WorkflowStepKey;  // e.g. "contractMgr"
+  pendingRole?: string;             // "Contract Manager"
+  pendingApproverId?: number;       // numeric SP user id (easy filtering)
+  pendingApproverEmail?: string;    // convenience
+  stepAssignedDate?: string;        // when this step became pending (reporting)
+
+  // Approver assignments
+  contractMgr: IPeoplePicker;
+  ogPresident: IPeoplePicker;
+  coo: IPeoplePicker;
+  ceo: IPeoplePicker;
+  svpContracts: IPeoplePicker;
+}
+
+//Append-only rows. This is what renders in the timeline and use for "My Reviewed."
+export interface IWorkflowActionItem {
+  readonly Id: number;
+  readonly Created: string;
+  readonly Modified: string;
+  readonly Author: IPeoplePicker;
+  readonly Editor: IPeoplePicker;
+
+  // Relationships (Lookups)
+  agreement: ILookupItem; //lookup to Agreements
+  run: ILookupItem;   //lookup to Runs
+
+  stepKey: WorkflowStepKey; // role
+  actionType: WorkflowActionType; //what happened
+  actor: IPeoplePicker; // Who did it
+  actionCompletedDate: string; 
+  comment?: string;
+  changeSummary?: string; // Mod/change details (optional)
+  changePayloadJson?: string; // old/new values JSON
+  // Ordering convenience (optional)
+  sequence?: number;
+}
+
 
 export interface IOGPresidentsItem {
   readonly Id: number;
   Title: string;
   president: IPeoplePicker;
   LOB: string;
-  LOBPresident: IPeoplePicker;
+  coo: IPeoplePicker;
   CM: IPeoplePicker;
 }
 

@@ -5,8 +5,7 @@ import {
 } from "@mui/material";
 import { CheckCircle, Cancel, Check, Schedule, RadioButtonUnchecked, RemoveCircleOutline } from "@mui/icons-material";
 import MessageOutlinedIcon from "@mui/icons-material/MessageOutlined";
-import { WorkflowStepWithStatus } from "../services/workflowState";
-import { WorkflowStepStatus } from "../services/workflowState";
+import { WorkflowStepWithStatus, WorkflowStepStatus } from "../services/workflowState";
 import dayjs from "dayjs";
 
 const WorkflowTimeline = ({
@@ -21,7 +20,7 @@ const WorkflowTimeline = ({
     onReject: () => Promise<void>;
 }): JSX.Element => {
 
-    // for comment popper
+    // comment popper
     const [commentAnchorEl, setCommentAnchorEl] = React.useState<HTMLElement | null>(null);
     const [openCommentKey, setOpenCommentKey] = React.useState<string | null>(null);
 
@@ -34,10 +33,20 @@ const WorkflowTimeline = ({
         !activeStepObj.isInitial &&
         activeStepObj.status === "Current";
 
-    const handleCommentOpen = (stepKey: string, el: HTMLElement): void => {
-        // toggle if clicking same icon
-        setOpenCommentKey((prev) => (prev === stepKey ? null : stepKey));
-        setCommentAnchorEl((prev) => (openCommentKey === stepKey ? null : el));
+    const handleCommentToggle = (stepKey: string, el: HTMLElement): void => {
+        setOpenCommentKey(prevKey => {
+            const isSame = prevKey === stepKey;
+
+            // If toggling off, close anchor too
+            if (isSame) {
+                setCommentAnchorEl(null);
+                return null;
+            }
+
+            // toggling on
+            setCommentAnchorEl(el);
+            return stepKey;
+        });
     };
 
     const handleCommentClose = (): void => {
@@ -46,21 +55,16 @@ const WorkflowTimeline = ({
     };
 
     const open = Boolean(openCommentKey) && Boolean(commentAnchorEl);
-    const activeComment = steps.find(s => s.key === openCommentKey)?.comment?.trim();
+    const activeComment = steps.find(s => String(s.key) === openCommentKey)?.comment?.trim();
 
-    // escape on keyboard closes the popper
+    // escape closes popper
     React.useEffect((): (() => void) => {
         const onKeyDown = (e: KeyboardEvent): void => {
-            if (e.key === "Escape") {
-                handleCommentClose();
-            }
+            if (e.key === "Escape") handleCommentClose();
         };
 
         window.addEventListener("keydown", onKeyDown);
-
-        return (): void => {
-            window.removeEventListener("keydown", onKeyDown);
-        };
+        return (): void => window.removeEventListener("keydown", onKeyDown);
     }, []);
 
     const WorkflowStepIcon = ({ status }: { status: WorkflowStepStatus }): JSX.Element | null => {
@@ -98,7 +102,7 @@ const WorkflowTimeline = ({
         }
     };
 
-    const formatDate = (date?: string): string | undefined =>
+    const formatDateTime = (date?: string): string | undefined =>
         date ? dayjs(date).format("MMM D, YYYY h:mm A") : undefined;
 
     return (
@@ -109,61 +113,71 @@ const WorkflowTimeline = ({
                 </Typography>
 
                 <Stepper orientation="vertical" activeStep={activeStep}>
-                    {steps.map(step => (
-                        <Step
-                            key={step.key}
-                            completed={step.status === "Approved"}
-                            expanded
-                        >
-                            <StepLabel icon={<WorkflowStepIcon status={step.status} />} >
-                                <Stack spacing={0.25}>
-                                    {/* Top row: label + comment + status */}
-                                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                        <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
-                                            <Typography fontWeight={500} noWrap>
-                                                {step.label}
-                                            </Typography>
+                    {steps.map(step => {
+                        // ✅ new fields
+                        const complete = formatDateTime(step.completeDate);
+                        const sent = formatDateTime(step.sentDate);
 
-                                            {!!step.comment?.trim() && (
-                                                <IconButton
-                                                    size="small"
-                                                    aria-label="View comment"
-                                                    onClick={(e) => handleCommentOpen(String(step.key), e.currentTarget)}
-                                                >
-                                                    <MessageOutlinedIcon fontSize="small" />
-                                                </IconButton>
-                                            )}
+                        // which date should display?
+                        const dateLine =
+                            step.status === "Current"
+                                ? (sent ? `Pending since ${sent}` : undefined)
+                                : (complete ? complete : undefined);
+
+                        return (
+                            <Step
+                                key={String(step.key)}
+                                completed={step.status === "Approved" || step.status === "Submitted"}
+                                expanded
+                            >
+                                <StepLabel icon={<WorkflowStepIcon status={step.status} />}>
+                                    <Stack spacing={0.25}>
+                                        {/* Top row: label + comment + status */}
+                                        <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                            <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
+                                                <Typography fontWeight={500} noWrap>
+                                                    {step.label}
+                                                </Typography>
+
+                                                {!!step.comment?.trim() && (
+                                                    <IconButton
+                                                        size="small"
+                                                        aria-label="View comment"
+                                                        onClick={(e) => handleCommentToggle(String(step.key), e.currentTarget)}
+                                                    >
+                                                        <MessageOutlinedIcon fontSize="small" />
+                                                    </IconButton>
+                                                )}
+                                            </Stack>
+
+                                            <Chip size="small" {...getStatusChipProps(step.status)} />
                                         </Stack>
 
-                                        <Chip size="small" {...getStatusChipProps(step.status)} />
+                                        {/* Approver */}
+                                        {step.approverName && (
+                                            <Typography variant="body2" color="text.secondary">
+                                                {step.approverName}
+                                            </Typography>
+                                        )}
+
+                                        {/* ✅ Date line */}
+                                        {dateLine && (
+                                            <Typography variant="caption" color="text.secondary">
+                                                {dateLine}
+                                            </Typography>
+                                        )}
                                     </Stack>
-
-                                    {/* Approver name */}
-                                    {step.approverName && (
-                                        <Typography variant="body2" color="text.secondary">
-                                            {step.approverName}
-                                        </Typography>
-                                    )}
-
-                                    {/* Date */}
-                                    {step.date && (
-                                        <Typography variant="caption" color="text.secondary">
-                                            {formatDate(step.date)}
-                                        </Typography>
-                                    )}
-                                </Stack>
-                            </StepLabel>
-                        </Step>
-                    ))}
+                                </StepLabel>
+                            </Step>
+                        );
+                    })}
                 </Stepper>
 
                 <Popper
                     open={open}
                     anchorEl={commentAnchorEl}
                     placement="right-start"
-                    modifiers={[
-                        { name: "offset", options: { offset: [0, 8] } }
-                    ]}
+                    modifiers={[{ name: "offset", options: { offset: [0, 8] } }]}
                 >
                     <ClickAwayListener onClickAway={handleCommentClose}>
                         <Paper
@@ -199,10 +213,22 @@ const WorkflowTimeline = ({
                     <Box sx={{ mt: 3 }}>
                         <Divider sx={{ mb: 2 }} />
                         <Stack direction="row" spacing={2}>
-                            <Button variant="contained" color="success" fullWidth startIcon={<Check />} onClick={onApprove}>
+                            <Button
+                                variant="contained"
+                                color="success"
+                                fullWidth
+                                startIcon={<Check />}
+                                onClick={onApprove}
+                            >
                                 Approve
                             </Button>
-                            <Button variant="outlined" color="error" fullWidth startIcon={<Cancel />} onClick={onReject}>
+                            <Button
+                                variant="outlined"
+                                color="error"
+                                fullWidth
+                                startIcon={<Cancel />}
+                                onClick={onReject}
+                            >
                                 Reject
                             </Button>
                         </Stack>

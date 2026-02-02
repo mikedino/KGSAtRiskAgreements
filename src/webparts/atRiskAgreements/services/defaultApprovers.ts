@@ -4,7 +4,7 @@ import { DataSource } from "../data/ds";
 export interface IDefaultApprovers {
   entityGMId?: number;
   OGPresidentId?: number;
-  LOBPresidentId?: number;
+  cooId?: number;
   CEOId?: number;
   SVPContractsId?: number;
 }
@@ -20,14 +20,14 @@ export class ApproverResolver {
     const contract = DataSource.Contracts.find(c => c.field_19 === item.contractId);
     const OG = DataSource.OGs.find(og => og.Title === contract?.field_75);
 
-    //set OG Pres & LOB Pres
+    //set OG Pres & COO
     const OGPres = OG?.president.Id;
-    const LOBPres = OG?.LOBPresident.Id;
+    const COO = OG?.coo.Id;
 
     return {
       entityGMId: entityGM,
       OGPresidentId: OGPres,
-      LOBPresidentId: LOBPres,
+      cooId: COO,
       CEOId: DataSource.CEO?.Id,
       SVPContractsId: DataSource.SVPContracts?.Id
     };

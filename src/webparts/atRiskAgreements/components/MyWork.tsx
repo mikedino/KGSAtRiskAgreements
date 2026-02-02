@@ -1,13 +1,14 @@
 import * as React from "react";
 import { Box, Button, Grid, Stack, Tooltip } from "@mui/material";
 import InfoCard from "../ui/InfoCard";
-import { DataSource } from "../data/ds";
+import { useAgreements } from "../services/agreementsContext";
 import { ContextInfo } from "gd-sprest";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import CheckCircleOutline from "@mui/icons-material/CheckCircleOutline";
 import ErrorOutline from "@mui/icons-material/ErrorOutline";
-import { IRiskAgreementItem } from "../data/props";
+import { IRiskAgreementItem, IWorkflowRunItem, IWorkflowActionItem, ActionDecision } from "../data/props";
 import { buildWorkflowState, WorkflowStepWithStatus } from "../services/workflowState";
+import { RiskAgreementWorkflow } from "../services/workflowModel";
 import AgreementCard from "../ui/AgreementCard";
 import { useHistory } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
@@ -19,15 +20,19 @@ export interface AgreementWorkflowSummary {
   currentApprover?: string;
   sentDate?: string;
   // only for "My Reviewed" view
-  myDecision?: "Approved" | "Rejected";
+  myDecision?: ActionDecision;
   myDecisionDate?: string;
   myDecisionLabel?: string; // e.g. "CEO Approval"
+  runNumber?: number;
+  isModReview?: boolean;
 }
 
 //Instead of passing around IRiskAgreementItem everywhere, introduce a view model
 //Single source of truth for My Work
 interface MyWorkItem {
   item: IRiskAgreementItem;
+  run: IWorkflowRunItem;
+  actions: IWorkflowActionItem[]; // current run actions
   workflow: WorkflowStepWithStatus[];
   summary: AgreementWorkflowSummary;
 }
@@ -37,6 +42,7 @@ type MyWorkViewKey =
   | "action"
   | "pending"
   | "approved"
+  | "resolved"
   | "all"
   | "reviewed";
 
@@ -49,12 +55,22 @@ interface MyWorkView {
 
 // for my reviewed items
 export interface MyReviewInfo {
-  decision: "Approved" | "Rejected";
+  decision: ActionDecision;
   date?: string;
   label?: string;
 }
 
+// Helper to label step keys
+const getStepLabel = (stepKey?: string): string | undefined => {
+  if (!stepKey) return undefined;
+  const step = RiskAgreementWorkflow.find(s => s.key === stepKey);
+  return step?.label;
+};
+
 const MyWork: React.FC = () => {
+
+  // Agreements context provider
+  const { agreements, runsByAgreementId, actionsByRunId } = useAgreements();
 
   const userId = ContextInfo.userId;
   const history = useHistory();
@@ -91,36 +107,42 @@ const MyWork: React.FC = () => {
 
   //Cache summaries so they don’t rebuild on every render
   const workflowItems = React.useMemo<MyWorkItem[]>(() => {
-    return DataSource.Agreements.map(item => {
-      const workflow = buildWorkflowState(item);
-      return {
-        item,
-        workflow,
-        summary: buildWorkflowSummaryFromSteps(workflow)
-      };
-    });
-  }, [DataSource.Agreements]);
+    return (agreements ?? [])
+      .map(item => {
+        const run = runsByAgreementId.get(item.Id);
+        if (!run) return undefined; // if we ever have an agreement without a run, we need to decide how to handle
+
+        const actions = actionsByRunId.get(run.Id) ?? [];
+
+        const workflow = buildWorkflowState(item, run, actions);
+
+        return {
+          item,
+          run,
+          actions,
+          workflow,
+          summary: buildWorkflowSummaryFromSteps(workflow)
+        };
+      })
+      .filter((x): x is MyWorkItem => !!x);
+  }, [agreements, runsByAgreementId, actionsByRunId]);
+
 
   // find all items I had action on and return decision, date & label
   const getMyReviewInfo = (w: MyWorkItem, userId: number): MyReviewInfo | undefined => {
-    const matches = w.workflow
-      .filter(step => {
-        if (!step.approverField) return false;
-        if (step.status !== "Approved" && step.status !== "Rejected") return false;
-
-        const approver = w.item[step.approverField];
-        return approver?.Id === userId;
-      })
-      .map(step => ({
-        decision: step.status as "Approved" | "Rejected",
-        // prefer the workflow step date (set from signDateField in your builder), fallback to signDateField directly
-        date: step.date || (step.signDateField ? String(w.item[step.signDateField] ?? "") : ""),
-        label: step.label
+    const matches = (w.actions ?? [])
+      .filter(a =>
+        (a.actionType === "Approved" || a.actionType === "Rejected") &&
+        a.actor?.Id === userId
+      )
+      .map(a => ({
+        decision: a.actionType as ActionDecision,
+        date: a.actionCompletedDate,
+        label: getStepLabel(a.stepKey) // stepKey is stored on the action
       }));
 
-    if (matches.length === 0) return undefined;
+    if (!matches.length) return undefined;
 
-    // If multiple, pick most recent decision date (or just first if dates missing)
     matches.sort((a, b) => {
       const aTime = a.date ? new Date(a.date).getTime() : 0;
       const bTime = b.date ? new Date(b.date).getTime() : 0;
@@ -129,6 +151,7 @@ const MyWork: React.FC = () => {
 
     return matches[0];
   };
+
 
   // cache review info map once, then re-use for building the reviewed list and enriching the summary
   // passed to the card
@@ -147,7 +170,7 @@ const MyWork: React.FC = () => {
   const getCardWorkflow = (w: MyWorkItem): AgreementWorkflowSummary => {
     const review = myReviewInfoMap.get(w.item.Id);
 
-    return review
+    const base = review
       ? {
         ...w.summary,
         myDecision: review.decision,
@@ -155,22 +178,33 @@ const MyWork: React.FC = () => {
         myDecisionLabel: review.label
       }
       : w.summary;
+
+    return {
+      ...base,
+      runNumber: w.run.runNumber,
+      isModReview: w.item.araStatus === "Mod Review" || w.run.runNumber > 1
+    };
   };
 
   // get items for counts and views
-  const myActionItems = workflowItems.filter(w => {
-    const current = w.workflow.find(s => s.status === "Current");
-    if (!current?.approverField) return false;
-
-    const approver = w.item[current.approverField];
-    return approver?.Id === userId;
-  });
+  const myActionItems = workflowItems.filter(w => w.run.pendingApproverId === userId);
   const myAgreements = workflowItems.filter(w => w.item.Author?.Id === userId);
-  const myApprovedItems = myAgreements.filter(w => w.summary.statusLabel === "Approved");
-  const myPendingItems = myAgreements.filter(w => w.summary.statusLabel.startsWith("Pending"));
+  const myPendingItems = myAgreements.filter(w =>
+    w.item.araStatus === "Under Review" || w.item.araStatus === "Mod Review"
+  );
+  // Approved (open) = Approved only
+  const myApprovedItems = myAgreements.filter(w => w.item.araStatus === "Approved");
+  // Resolved = Resolved only
+  const myResolvedItems = myAgreements.filter(w => w.item.araStatus === "Resolved");
   const myReviewedItems = workflowItems.filter(w => myReviewInfoMap.has(w.item.Id));
 
-  const myAgreementViews: MyWorkView[] = [
+  // compute total approved for top card
+  const myApprovedTotal = myAgreements.filter(w =>
+    w.item.araStatus === "Approved" || w.item.araStatus === "Resolved"
+  );
+
+  // wrap in useMemo to avoid recomputing viewCounts ever render when nothing changed
+  const myAgreementViews = React.useMemo<MyWorkView[]>(() => [
     {
       key: "action",
       label: "My Action",
@@ -191,9 +225,15 @@ const MyWork: React.FC = () => {
     },
     {
       key: "approved",
-      label: "Approved",
-      tooltip: "My submitted agreements that are approved",
+      label: "Approved (open)",
+      tooltip: "My submitted agreements that are approved and not yet resolved",
       getItems: () => myApprovedItems
+    },
+    {
+      key: "resolved",
+      label: "Resolved",
+      tooltip: "My submitted agreements that are resolved",
+      getItems: () => myResolvedItems
     },
     {
       key: "all",
@@ -201,7 +241,7 @@ const MyWork: React.FC = () => {
       tooltip: "All my submitted agreements",
       getItems: () => myAgreements
     }
-  ];
+  ], [myActionItems, myReviewedItems, myPendingItems, myApprovedItems, myResolvedItems, myAgreements]);
 
   // compute view counts for each chip
   const viewCounts = React.useMemo(() => {
@@ -211,11 +251,11 @@ const MyWork: React.FC = () => {
     }, {} as Record<MyWorkViewKey, number>);
   }, [myAgreementViews]);
 
-  // active list of items is  just a lookup
+  // active list of items is just a lookup
   const activeItems = React.useMemo(() => {
     const view = myAgreementViews.find(v => v.key === selectedView);
     return view ? view.getItems() : myActionItems;
-  }, [myAgreementViews, selectedView, myActionItems, myPendingItems, myReviewedItems]);
+  }, [myAgreementViews, selectedView, myActionItems]);
 
   const getEmptyStateContent = (view: MyWorkViewKey): EmptyStateProps => {
     switch (view) {
@@ -243,6 +283,12 @@ const MyWork: React.FC = () => {
           description: "Agreements you submit and get approved will show here."
         };
 
+      case "resolved":
+        return {
+          title: "No resolved agreements",
+          description: "Once your approved agreements are resolved, they will appear here."
+        };
+        
       case "all":
       default:
         return {
@@ -281,8 +327,8 @@ const MyWork: React.FC = () => {
         <Grid size={4}>
           <InfoCard
             title="Approved"
-            value={myApprovedItems.length}
-            subtitle="Agreements you submitted that are approved"
+            value={myApprovedTotal.length}
+            subtitle="Agreements you submitted that are approved OR resolved"
             icon={<CheckCircleOutline />}
             iconColor="success"
           //onClick={() => setView("myAgreements")}

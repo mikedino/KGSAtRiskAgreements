@@ -22,14 +22,24 @@ const Dashboard: React.FC = () => {
   const theme = useTheme();
 
   // use AgreementsProvider Context
-  const { agreements } = useAgreements();
+  const { agreements, runsByAgreementId, actionsByRunId } = useAgreements();
 
-  const kpis = React.useMemo(() => buildDashboardKpis(agreements), [agreements]);
+  // top cards
+  const kpis = React.useMemo(
+    () => buildDashboardKpis(agreements, runsByAgreementId, actionsByRunId),
+    [agreements, runsByAgreementId, actionsByRunId]
+  );
 
   // Chart datasets
-  const monthlyTrends = React.useMemo(() => buildMonthlyTrends(agreements, 6), [agreements]);
+  const monthlyTrends = React.useMemo(
+    () => buildMonthlyTrends(agreements, runsByAgreementId, actionsByRunId, 6),
+    [agreements, runsByAgreementId, actionsByRunId]
+  );
   const statusDistribution = React.useMemo(() => buildStatusDistribution(agreements), [agreements]);
-  const avgStageTimes = React.useMemo(() => buildAvgStageTimes(agreements), [agreements]);
+  const avgStageTimes = React.useMemo(
+    () => buildAvgStageTimes(agreements, runsByAgreementId, actionsByRunId),
+    [agreements, runsByAgreementId, actionsByRunId]
+  );
   const riskDistribution = React.useMemo(() => buildRiskDistribution(agreements), [agreements]);
 
   // Avg resp time bar chart SLA
