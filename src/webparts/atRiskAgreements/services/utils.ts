@@ -1,7 +1,3 @@
-//import * as moment from "moment";
-import { SPHttpClient, SPHttpClientResponse } from "@microsoft/sp-http";
-import { WebPartContext } from "@microsoft/sp-webpart-base";
-
 // dayjs plugins
 import dayjs from "dayjs";
 import isToday from "dayjs/plugin/isToday";
@@ -66,71 +62,6 @@ export const stringAvatar = (name: string): { sx: { bgcolor: string }; children:
     },
     children: `${name.split(' ')[0][0]}${name.split(' ')[1][0]}`,
   };
-}
-
-
-// get week start and end from today in ISO format
-// export const getWeekRangeISO = (date: Date): { start: string; end: string } => {
-//   const start = moment(date).startOf("week");   // Sunday 00:00:00
-//   const end = moment(date).endOf("week");       // Saturday 23:59:59
-
-//   return {
-//     start: start.toISOString(),
-//     end: end.toISOString()
-//   };
-// };
-
-// // get week start and end from today in Friendly format
-// export const getWeekRangeFriendly = (date: Date): { start: string; end: string } => {
-//   const start = moment(date).startOf("week");   // Sunday 00:00:00
-//   const end = moment(date).endOf("week");       // Saturday 23:59:59
-
-//   return {
-//     start: start.format('MM/D/YYYY'),
-//     end: end.format('MM/D/YYYY')
-//   };
-// };
-
-/**
-   * Sends an email using SharePoint's REST API (SP.Utilities.Utility.SendEmail).
-   * @param context - SPFx web part or extension context.
-   * @param toRecipients - Array of recipient email addresses.
-   * @param subject - Subject line for the email.
-   * @param body - HTML body of the email.
-   * @param ccRecipients - Optional array of Cc email addresses.
-   * @returns Promise<void>
-   */
-export const sendEmailNotification = async (
-  context: WebPartContext,
-  toRecipients: string[],
-  subject: string,
-  body: string
-): Promise<void> => {
-  const webUrl = context.pageContext.web.absoluteUrl;
-  const endpoint = `${webUrl}/_api/SP.Utilities.Utility.SendEmail`;
-  const emailProps = {
-    properties: {
-      To: toRecipients,
-      Subject: subject,
-      Body: body,
-    },
-  };
-  const response: SPHttpClientResponse = await context.spHttpClient.post(
-    endpoint,
-    SPHttpClient.configurations.v1,
-    {
-      headers: {
-        Accept: "application/json;odata=nometadata",
-        "Content-Type": "application/json;odata=nometadata"
-      },
-      body: JSON.stringify(emailProps),
-    }
-  );
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to send email: ${response.status} - ${errorText}`);
-  }
-  console.log(`Email sent to: ${toRecipients.join(", ")}`);
 }
 
 

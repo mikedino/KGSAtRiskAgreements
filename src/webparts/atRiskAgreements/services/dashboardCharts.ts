@@ -46,7 +46,7 @@ const STATUS_COLORS: Record<AraStatus, string> = {
 */
 export const buildMonthlyTrends = (
   items: IRiskAgreementItem[],
-  runsByAgreementId: Map<number, IWorkflowRunItem>,
+  runByAgreementId: Map<number, IWorkflowRunItem>,
   actionsByRunId: Map<number, IWorkflowActionItem[]>,
   monthsBack = 6
 ): IMonthlyTrendPoint[] => {
@@ -66,7 +66,7 @@ export const buildMonthlyTrends = (
       createdCounts.set(key, (createdCounts.get(key) ?? 0) + 1);
     }
 
-    const run = runsByAgreementId.get(i.Id);
+    const run = runByAgreementId.get(i.Id);
     const actions = run ? (actionsByRunId.get(run.Id) ?? []) : [];
     const final = getFinalApprovalDate(run, actions);
 
@@ -116,13 +116,13 @@ export const buildStatusDistribution = (items: IRiskAgreementItem[]): IDistribut
 */
 export const buildAvgStageTimes = (
   items: IRiskAgreementItem[],
-  runsByAgreementId: Map<number, IWorkflowRunItem>,
+  runByAgreementId: Map<number, IWorkflowRunItem>,
   actionsByRunId: Map<number, IWorkflowActionItem[]>
 ): IStageAvgPoint[] => {
   const bucket = new Map<string, { label: string; values: number[] }>();
 
   items.forEach((agreement) => {
-    const run = runsByAgreementId.get(agreement.Id);
+    const run = runByAgreementId.get(agreement.Id);
     if (!run) return;
 
     const actions = actionsByRunId.get(run.Id) ?? [];

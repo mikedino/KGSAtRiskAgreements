@@ -77,14 +77,16 @@ export class DataSource {
                     OrderBy: ["Created"],
                     Select: [
                         "Id", "Title", "projectName", "contractId", "invoice", "contractType", "riskStart", "riskEnd", "popEnd",
-                        "entity", "riskReason", "riskFundingRequested", "riskJustification", "contractName", "programName", "araStatus",
+                        "entity", "riskReason", "riskFundingRequested", "riskJustification", "contractName", "programName",
+                        "araStatus", "Created", "Modified",
                         "Author/Id", "Author/Title", "Author/EMail",
                         "Editor/Id", "Editor/Title", "Editor/EMail",
                         "projectMgr/Id", "projectMgr/Title", "projectMgr/EMail",
                         "entityGM/Id", "entityGM/Title", "entityGM/EMail",
+                        "contractMgr/Id", "contractMgr/Title", "contractMgr/EMail",
                         "currentRun/Id", "currentRun/Title"
                     ],
-                    Expand: ["Author", "Editor", "projectMgr", "entityGM", "currentRun"],
+                    Expand: ["Author", "Editor", "projectMgr", "entityGM", "contractMgr", "currentRun"],
                     Filter: "araStatus ne 'Draft'",
                     Top: 5000
                 })
@@ -108,7 +110,6 @@ export class DataSource {
         });
     }
 
-
     // get all of the WF runs by run ID's
     // set a re-usable $select and $expand query
     public static runSelectQuery: string[] = [
@@ -123,89 +124,155 @@ export class DataSource {
         "agreement/Id"
     ];
     public static runExpandQuery: string[] = ["contractMgr", "ogPresident", "coo", "ceo", "svpContracts", "agreement"];
-    static getWorkflowRunsByIds(runIds: number[]): Promise<IWorkflowRunItem[]> {
+
+    static getCurrentWorkflowRuns(): Promise<IWorkflowRunItem[]> {
         return new Promise<IWorkflowRunItem[]>((resolve, reject) => {
 
-            if (!runIds.length) {
-                resolve([] as IWorkflowRunItem[]);
-                return;
-            }
+            Web().Lists(Strings.Sites.main.lists.WorkflowRuns).Items().query({
+                Select: this.runSelectQuery,
+                Expand: this.runExpandQuery,
+                Filter: `runStatus ne 'Superseded'`,
+                OrderBy: ["agreement/Id asc", "runNumber desc"],
+                Top: 5000
+            }).execute(
+                (items) => resolve((items?.results ?? []) as unknown as IWorkflowRunItem[]),
+                (error) => reject(new Error(`Error fetching Runs (non-superseded): ${formatError(error)}`))
+            );
+        });
+    }
 
-            // create dynamic filter for all ID's
-            const filter = runIds.map(id => `Id eq ${id}`).join(' or ');
+    static getWorkflowRunsByAgreement(agreementId: number[]): Promise<IWorkflowRunItem[]> {
+        return new Promise<IWorkflowRunItem[]>((resolve, reject) => {
 
             // load the data
             Web().Lists(Strings.Sites.main.lists.WorkflowRuns).Items().query({
                 Select: this.runSelectQuery,
-                Filter: filter,
+                Filter: `agreement/Id eq ${agreementId}`,
                 Expand: this.runExpandQuery,
                 OrderBy: ["runNumber asc"],
                 Top: 5000
             }).execute(
-                // Success
-                (items) => {
-                    if (items?.results?.length) {
-                        const runs = items.results as unknown as IWorkflowRunItem[];
-
-                        // resolve with retrieved items
-                        resolve(runs);
-                    } else {
-                        //none found - resolve with empty array
-                        resolve([]);
-                    }
-                },
-                // Error
-                (error) => {
-                    reject(new Error(`Error fetching Runs by Run ID: ${formatError(error)}`));
-                }
+                (items) => resolve((items?.results ?? []) as unknown as IWorkflowRunItem[]),
+                (error) => reject(new Error(`Error fetching all Runs for AgreementId: ${formatError(error)}`))
             )
 
         })
     }
 
     // get all of the WF actions by run ID's
-    static getWorkflowActionsByRunIds(runIds: number[]): Promise<IWorkflowActionItem[]> {
+    // static getWorkflowActionsByRunIds(runIds: number[]): Promise<IWorkflowActionItem[]> {
+    //     return new Promise<IWorkflowActionItem[]>((resolve, reject) => {
+
+    //         if (!runIds.length) {
+    //             resolve([] as IWorkflowActionItem[]);
+    //             return;
+    //         }
+
+    //         // create dynamic filter for all ID's
+    //         const filter = runIds.map(id => `run/Id eq ${id}`).join(' or ');
+
+    //         // load the data
+    //         Web().Lists(Strings.Sites.main.lists.WorkflowActions).Items().query({
+    //             Select: [
+    //                 "Id", "stepKey", "actionType", "actionCompletedDate", "comment", "changeSummary",
+    //                 "changePayloadJson", "sequence",
+    //                 "actor/Id", "actor/Title", "actor/EMail",
+    //                 "agreement/Id", "run/Id"
+    //             ],
+    //             Filter: filter,
+    //             Expand: ["actor", "agreement", "run"],
+    //             OrderBy: ["Id asc"],
+    //             Top: 5000
+    //         }).execute(
+    //             // Success
+    //             (items) => {
+    //                 if (items?.results?.length) {
+    //                     const actions = items.results as unknown as IWorkflowActionItem[];
+
+    //                     // resolve with retrieved items
+    //                     resolve(actions);
+    //                 } else {
+    //                     //none found - resolve with empty array
+    //                     resolve([]);
+    //                 }
+    //             },
+    //             // Error
+    //             (error) => {
+    //                 reject(new Error(`Error fetching Actions by Run ID: ${formatError(error)}`));
+    //             }
+    //         )
+    //     })
+    // }
+
+    // set a re-usable $select query for Actions
+    private static actionsSelectQuery: string[] = [
+        "Id", "stepKey", "actionType", "actionCompletedDate", "comment", "changeSummary", "sequence",
+        "actor/Id", "actor/Title", "actor/EMail", "agreement/Id", "run/Id"
+    ];
+    private static actionsExpandQuery: string[] = ["actor", "agreement", "run"];
+    // get all of the WF actions by ONE agreement - should be used on forms only
+    static getWorkflowActionsByAgreement(agreementId: number): Promise<IWorkflowActionItem[]> {
         return new Promise<IWorkflowActionItem[]>((resolve, reject) => {
 
-            if (!runIds.length) {
-                resolve([] as IWorkflowActionItem[]);
+            Web().Lists(Strings.Sites.main.lists.WorkflowActions).Items().query({
+                Select: this.actionsSelectQuery.concat("changePayloadJson"),
+                Expand: this.actionsExpandQuery,
+                Filter: `agreement/Id eq ${agreementId}`,
+                OrderBy: ["actionCompletedDate desc", "Id desc"],
+                Top: 5000
+            }).execute(
+                (items) => resolve((items?.results ?? []) as unknown as IWorkflowActionItem[]),
+                (error) => reject(new Error(`Error fetching Actions by AgreementId: ${formatError(error)}`))
+            );
+        });
+    }
+
+    // get all of the WF actions by ME - use on MyWork
+    static getMyWorkflowActions(actorId: number, sinceIso?: string): Promise<IWorkflowActionItem[]> {
+        return new Promise<IWorkflowActionItem[]>((resolve, reject) => {
+
+            if (!actorId || actorId <= 0) {
+                resolve([]);
                 return;
             }
 
-            // create dynamic filter for all ID's
-            const filter = runIds.map(id => `run/Id eq ${id}`).join(' or ');
+            const sinceFilter = sinceIso ? ` and actionCompletedDate ge datetime'${sinceIso}'` : "";
 
-            // load the data
+            // If actionCompletedDate is DateTime, the datetime'...' syntax is correct for classic OData.
+            // If it errors, we’ll switch to just: actionCompletedDate ge '${sinceIso}'
+            const filter = `actor/Id eq ${actorId}${sinceFilter}`;
+
             Web().Lists(Strings.Sites.main.lists.WorkflowActions).Items().query({
-                Select: [
-                    "Id", "stepKey", "actionType", "actionCompletedDate", "comment", "changeSummary",
-                    "changePayloadJson", "sequence",
-                    "actor/Id", "actor/Title", "actor/EMail",
-                    "agreement/Id", "run/Id"
-                ],
+                Select: this.actionsSelectQuery,
+                Expand: this.actionsExpandQuery,
                 Filter: filter,
-                Expand: ["actor", "agreement", "run"],
-                OrderBy: ["Created asc"],
+                OrderBy: ["actionCompletedDate desc", "Id desc"],
                 Top: 5000
             }).execute(
-                // Success
-                (items) => {
-                    if (items?.results?.length) {
-                        const actions = items.results as unknown as IWorkflowActionItem[];
+                (items) => resolve((items?.results ?? []) as unknown as IWorkflowActionItem[]),
+                (error) => reject(new Error(`Error fetching My Actions: ${formatError(error)}`))
+            );
+        });
+    }
 
-                        // resolve with retrieved items
-                        resolve(actions);
-                    } else {
-                        //none found - resolve with empty array
-                        resolve([]);
-                    }
-                },
-                // Error
-                (error) => {
-                    reject(new Error(`Error fetching Actions by Run ID: ${formatError(error)}`));
-                }
-            )
-        })
+    // get all of the WF actions by date range - can use on Dashboard later
+    static getWorkflowActionsByDateRange(startIso: string, endIso: string): Promise<IWorkflowActionItem[]> {
+        return new Promise<IWorkflowActionItem[]>((resolve, reject) => {
+
+            const filter =
+                `actionCompletedDate ge datetime'${startIso}' and actionCompletedDate lt datetime'${endIso}'`;
+
+            Web().Lists(Strings.Sites.main.lists.WorkflowActions).Items().query({
+                Select: this.actionsSelectQuery,
+                Expand: this.actionsExpandQuery,
+                Filter: filter,
+                OrderBy: ["actionCompletedDate desc", "Id desc"],
+                Top: 5000
+            }).execute(
+                (items) => resolve((items?.results ?? []) as unknown as IWorkflowActionItem[]),
+                (error) => reject(new Error(`Error fetching Actions by Date Range: ${formatError(error)}`))
+            );
+        });
     }
 
     // Load default CEO and SVP Contract from Config list

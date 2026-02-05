@@ -16,16 +16,15 @@ export class WorkflowDecisionService {
     comment?: string
   ): Promise<void> {
 
-    const currentKey = run.currentStepKey;
-
+    
     // 1) Add Action (audit trail)
-    await WorkflowActionService.createDecision(
-      agreement.Id,
+    await WorkflowActionService.createAction({
+      agreement,
       run,
-      currentKey,
-      decision,
+      stepKey: run.currentStepKey, 
+      actionType: decision,
       comment
-    );
+    });
 
     // 2) Update Run (source of truth)
     const result = await WorkflowRunService.applyDecision(agreement, run, decision);

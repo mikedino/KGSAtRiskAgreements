@@ -6,7 +6,7 @@ import { ContextInfo } from "gd-sprest";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import CheckCircleOutline from "@mui/icons-material/CheckCircleOutline";
 import ErrorOutline from "@mui/icons-material/ErrorOutline";
-import { IRiskAgreementItem, IWorkflowRunItem, IWorkflowActionItem, ActionDecision } from "../data/props";
+import { IRiskAgreementItem, IWorkflowRunItem, ActionDecision } from "../data/props";
 import { buildWorkflowState, WorkflowStepWithStatus } from "../services/workflowState";
 import { RiskAgreementWorkflow } from "../services/workflowModel";
 import AgreementCard from "../ui/AgreementCard";
@@ -32,7 +32,6 @@ export interface AgreementWorkflowSummary {
 interface MyWorkItem {
   item: IRiskAgreementItem;
   run: IWorkflowRunItem;
-  actions: IWorkflowActionItem[]; // current run actions
   workflow: WorkflowStepWithStatus[];
   summary: AgreementWorkflowSummary;
 }
@@ -69,13 +68,17 @@ const getStepLabel = (stepKey?: string): string | undefined => {
 
 const MyWork: React.FC = () => {
 
-  // Agreements context provider
-  const { agreements, runsByAgreementId, actionsByRunId } = useAgreements();
+  // Agreements context provider -- also get MY ACTIONS
+  const { agreements, runByAgreementId, myActions, loadMyActions } = useAgreements();
 
   const userId = ContextInfo.userId;
   const history = useHistory();
   const theme = useTheme();
   const [selectedView, setSelectedView] = React.useState<MyWorkViewKey>("action");
+
+  React.useEffect(() => {
+    loadMyActions(userId).catch((err) => console.error("Error loading my actions", err));
+  }, [userId, loadMyActions]);
 
   // Summary Builder - this takes steps, not the item = no recompute.
   const buildWorkflowSummaryFromSteps = (steps: WorkflowStepWithStatus[]): AgreementWorkflowSummary => {
@@ -109,62 +112,54 @@ const MyWork: React.FC = () => {
   const workflowItems = React.useMemo<MyWorkItem[]>(() => {
     return (agreements ?? [])
       .map(item => {
-        const run = runsByAgreementId.get(item.Id);
-        if (!run) return undefined; // if we ever have an agreement without a run, we need to decide how to handle
+        const run = runByAgreementId.get(item.Id);
+        if (!run) return undefined;
 
-        const actions = actionsByRunId.get(run.Id) ?? [];
-
-        const workflow = buildWorkflowState(item, run, actions);
+        // ✅ no actions on MyWork
+        const workflow = buildWorkflowState(item, run, []);
 
         return {
           item,
           run,
-          actions,
           workflow,
           summary: buildWorkflowSummaryFromSteps(workflow)
         };
       })
       .filter((x): x is MyWorkItem => !!x);
-  }, [agreements, runsByAgreementId, actionsByRunId]);
-
-
-  // find all items I had action on and return decision, date & label
-  const getMyReviewInfo = (w: MyWorkItem, userId: number): MyReviewInfo | undefined => {
-    const matches = (w.actions ?? [])
-      .filter(a =>
-        (a.actionType === "Approved" || a.actionType === "Rejected") &&
-        a.actor?.Id === userId
-      )
-      .map(a => ({
-        decision: a.actionType as ActionDecision,
-        date: a.actionCompletedDate,
-        label: getStepLabel(a.stepKey) // stepKey is stored on the action
-      }));
-
-    if (!matches.length) return undefined;
-
-    matches.sort((a, b) => {
-      const aTime = a.date ? new Date(a.date).getTime() : 0;
-      const bTime = b.date ? new Date(b.date).getTime() : 0;
-      return bTime - aTime;
-    });
-
-    return matches[0];
-  };
-
+  }, [agreements, runByAgreementId]);
 
   // cache review info map once, then re-use for building the reviewed list and enriching the summary
+  // find all items I had action on and return decision, date & label
   // passed to the card
   const myReviewInfoMap = React.useMemo(() => {
     const map = new Map<number, MyReviewInfo>();
 
-    workflowItems.forEach(w => {
-      const info = getMyReviewInfo(w, userId);
-      if (info) map.set(w.item.Id, info);
-    });
+    (myActions ?? [])
+      .filter(a =>
+        (a.actionType === "Approved" || a.actionType === "Rejected") &&
+        a.actor?.Id === userId
+      )
+      .forEach(a => {
+        const agreementId = a.agreement?.Id ?? a.agreement.Id;
+        if (typeof agreementId !== "number") return;
+
+        const existing = map.get(agreementId);
+
+        const newTime = a.actionCompletedDate ? new Date(a.actionCompletedDate).getTime() : 0;
+        const oldTime = existing?.date ? new Date(existing.date).getTime() : 0;
+
+        if (!existing || newTime > oldTime) {
+          map.set(agreementId, {
+            decision: a.actionType as ActionDecision,
+            date: a.actionCompletedDate,
+            label: getStepLabel(a.stepKey)
+          });
+        }
+      });
 
     return map;
-  }, [workflowItems, userId]);
+  }, [myActions, userId]);
+
 
   //Enrich the summary for reviewed cards (also uses the map)
   const getCardWorkflow = (w: MyWorkItem): AgreementWorkflowSummary => {
@@ -288,7 +283,7 @@ const MyWork: React.FC = () => {
           title: "No resolved agreements",
           description: "Once your approved agreements are resolved, they will appear here."
         };
-        
+
       case "all":
       default:
         return {

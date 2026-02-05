@@ -17,8 +17,11 @@ export class ApproverResolver {
     const entityGM = DataSource.Entities.find(e => e.abbr === item.entity)?.GM.Id
 
     //get contract info first > set OG
-    const contract = DataSource.Contracts.find(c => c.field_19 === item.contractId);
-    const OG = DataSource.OGs.find(og => og.Title === contract?.field_75);
+    //const contract = DataSource.Contracts.find(c => c.field_19 === item.contractId);
+    //const OG = DataSource.OGs.find(og => og.Title === contract?.field_75);
+
+    //set OG from form selection
+    const OG = DataSource.OGs.find(og => og.Title === item.og);
 
     //set OG Pres & COO
     const OGPres = OG?.president.Id;

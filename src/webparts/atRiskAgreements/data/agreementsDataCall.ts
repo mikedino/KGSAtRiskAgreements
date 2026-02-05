@@ -7,7 +7,7 @@ export type RefreshMode = "boot" | "refresh";
 
 export interface IAgreementsDataState {
   agreements: IRiskAgreementItem[];
-  runsByAgreementId: Map<number, IWorkflowRunItem>;
+  runByAgreementId: Map<number, IWorkflowRunItem>;
   actionsByRunId: Map<number, IWorkflowActionItem[]>;
   isBootLoading: boolean;
   isRefreshing: boolean;
@@ -17,7 +17,7 @@ export interface IAgreementsDataState {
 }
 
 /**
- * This hook owns the data loading and "refresh pipeline"
+ * This hook owns the data loading and "refresh pipeline" and current state
  * (keeping App clean)
  * DataSource.init -> Agreements -> RunIds -> Runs -> Actions -> Maps
  */
@@ -27,7 +27,7 @@ export const useAgreementsData = (
 ): IAgreementsDataState => {
 
   const [agreements, setAgreements] = React.useState<IRiskAgreementItem[]>([]);
-  const [runsByAgreementId, setRunsByAgreementId] = React.useState<Map<number, IWorkflowRunItem>>(new Map());
+  const [runByAgreementId, setRunByAgreementId] = React.useState<Map<number, IWorkflowRunItem>>(new Map());
   const [actionsByRunId, setActionsByRunId] = React.useState<Map<number, IWorkflowActionItem[]>>(new Map());
 
   const [isBootLoading, setIsBootLoading] = React.useState<boolean>(enabled); // ✅ start boot only if enabled
@@ -62,31 +62,37 @@ export const useAgreementsData = (
       setAgreements(nextAgreements);
 
       // collect current run ids (ignore blanks)
-      const runIds = Array.from(
-        new Set(
-          nextAgreements
-            .map(a => a.currentRun?.Id)
-            .filter((id): id is number => typeof id === "number" && id > 0)
-        )
-      );
+      // const runIds = Array.from(
+      //   new Set(
+      //     nextAgreements
+      //       .map(a => a.currentRun?.Id)
+      //       .filter((id): id is number => typeof id === "number" && id > 0)
+      //   )
+      // );
 
-      if (runIds.length === 0) {
-        setRunsByAgreementId(new Map());
+      // Get WF Runs and WF Actions
+      const runs = await DataSource.getCurrentWorkflowRuns();
+      const actions: IWorkflowActionItem[] = [];
+
+      if (runs.length === 0) {
+        setRunByAgreementId(new Map());
         setActionsByRunId(new Map());
         setLastRefreshed(new Date().toISOString());
         return;
       }
-
-      // Get WF Runs and WF Actions
-      const runs = await DataSource.getWorkflowRunsByIds(runIds);
-      const actions = await DataSource.getWorkflowActionsByRunIds(runIds);
 
       // Map agreementId -> run
       const runMap = new Map<number, IWorkflowRunItem>();
       runs.forEach(r => {
         const agreementId = r.agreement?.Id ?? r.agreement.Id;
         if (typeof agreementId === "number") {
-          runMap.set(agreementId, r);
+          // if multiple runs per agreement in the dataset, keep the most relevant one
+          const existing = runMap.get(agreementId);
+
+          // prefer Active; else highest runNumber
+          if (!existing) runMap.set(agreementId, r);
+          else if (existing.runStatus !== "Active" && r.runStatus === "Active") runMap.set(agreementId, r);
+          else if ((r.runNumber ?? 0) > (existing.runNumber ?? 0)) runMap.set(agreementId, r);
         }
       });
 
@@ -107,7 +113,7 @@ export const useAgreementsData = (
         actionsMap.set(key, bucket);
       });
 
-      setRunsByAgreementId(runMap);
+      setRunByAgreementId(runMap);
       setActionsByRunId(actionsMap);
 
       setLastRefreshed(new Date().toISOString());
@@ -146,7 +152,7 @@ export const useAgreementsData = (
 
   return {
     agreements,
-    runsByAgreementId,
+    runByAgreementId,
     actionsByRunId,
     isBootLoading,
     isRefreshing,

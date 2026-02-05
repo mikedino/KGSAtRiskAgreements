@@ -64,11 +64,16 @@ export const Configuration = Helper.SPConfig({
                     indexed: true
                 },
                 {
+                    name: "og",
+                    title: "Operating Group (OG)",
+                    type: Helper.SPCfgFieldType.Text,
+                    indexed: true
+                },
+                {
                     name: "projectMgr",
                     title: "Project Manager",
                     type: Helper.SPCfgFieldType.User
                 } as Helper.IFieldInfoUser,
-
                 {
                     name: "riskReason",
                     title: "At-Risk Reason",
@@ -172,7 +177,6 @@ export const Configuration = Helper.SPConfig({
                     multi: false,
                     indexed: true
                 } as Helper.IFieldInfoLookup,
-
                 {
                     name: "runNumber",
                     title: "Run Number",
@@ -182,7 +186,6 @@ export const Configuration = Helper.SPConfig({
                     defaultValue: "1",
                     indexed: true
                 } as Helper.IFieldInfoNumber,
-
                 {
                     name: "runStatus",
                     title: "Run Status",
@@ -191,27 +194,33 @@ export const Configuration = Helper.SPConfig({
                     defaultValue: "Active",
                     indexed: true
                 } as Helper.IFieldInfoChoice,
-
                 {
                     name: "started",
                     title: "Started",
                     type: Helper.SPCfgFieldType.Date,
-                    format: SPTypes.DateFormat.DateTime
+                    format: SPTypes.DateFormat.DateTime,
+                    indexed: true
                 } as Helper.IFieldInfoDate,
                 {
                     name: "completed",
                     title: "Completed",
                     type: Helper.SPCfgFieldType.Date,
-                    format: SPTypes.DateFormat.DateTime
+                    format: SPTypes.DateFormat.DateTime,
+                    indexed: true
                 } as Helper.IFieldInfoDate,
-
+                {
+                    name: "hasDecision",
+                    title: "Has Decision",
+                    type: Helper.SPCfgFieldType.Boolean,
+                    description: "Does this run have any decision made yet?",
+                    defaultValue: "0"
+                } as Helper.IFieldInfoDate,
                 {
                     name: "outcome",
                     title: "Outcome",
                     type: Helper.SPCfgFieldType.Choice,
                     choices: ["Approved", "Rejected"]
                 } as Helper.IFieldInfoChoice,
-
                 /******** Mod / Restart metadata ********/
                 {
                     name: "restartReason",
@@ -231,7 +240,6 @@ export const Configuration = Helper.SPConfig({
                     type: Helper.SPCfgFieldType.Number,
                     min: 1
                 } as Helper.IFieldInfoNumber,
-
                 /******** Current / Pending state (source of truth) ********/
                 {
                     name: "currentStepKey",
@@ -250,6 +258,7 @@ export const Configuration = Helper.SPConfig({
                     name: "pendingApproverId",
                     title: "Pending Approver Id",
                     type: Helper.SPCfgFieldType.Number,
+                    indexed: true,
                     min: 1
                 } as Helper.IFieldInfoNumber,
                 {
@@ -355,14 +364,16 @@ export const Configuration = Helper.SPConfig({
                     title: "Step Key",
                     type: Helper.SPCfgFieldType.Choice,
                     choices: ["submit", "contractMgr", "ogPresident", "coo", "ceo", "svpContracts"],
-                    indexed: true
+                    indexed: true,
+                    defaultValue: "submit"
                 } as Helper.IFieldInfoChoice,
                 {
                     name: "actionType",
                     title: "Action Type",
                     type: Helper.SPCfgFieldType.Choice,
                     choices: ["Submitted", "Approved", "Rejected", "Comment", "Returned", "Reassigned", "Modified", "Restarted"],
-                    indexed: true
+                    indexed: true,
+                    defaultValue: "Submitted"
                 } as Helper.IFieldInfoChoice,
 
                 {

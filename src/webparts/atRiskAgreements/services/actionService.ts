@@ -2,7 +2,17 @@ import { IRiskAgreementItem, IWorkflowRunItem } from "../data/props";
 import { Web, ContextInfo } from "gd-sprest";
 import Strings from "../../../strings";
 import { formatError, encodeListName } from "./utils";
-import { WorkflowStepKey, WorkflowActionType, ActionDecision } from "../data/props";
+import { WorkflowStepKey, WorkflowActionType } from "../data/props";
+
+type CreateActionArgs = {
+    agreement: IRiskAgreementItem;
+    run: IWorkflowRunItem;
+    stepKey: WorkflowStepKey;
+    actionType: WorkflowActionType;
+    comment?: string;
+    changeSummary?: string;
+    changePayloadJson?: string;
+};
 
 export class WorkflowActionService {
 
@@ -19,7 +29,7 @@ export class WorkflowActionService {
                     __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.WorkflowActions)}ListItem` },
 
                     // Title - figure out later
-                    Title: `Run-${run.Id}-submit`,
+                    Title: `${agreement.Title}-Run${run.runNumber}-submit`,
 
                     // Lookups
                     agreementId: agreement.Id,
@@ -42,15 +52,10 @@ export class WorkflowActionService {
         });
     }
 
-    static createDecision(
-        agreementId: number,
-        run: IWorkflowRunItem,
-        stepKey: WorkflowStepKey,
-        actionType: Extract<WorkflowActionType, ActionDecision>,
-        comment?: string
-    ): Promise<void> {
-
+    static createAction(args: CreateActionArgs): Promise<void> {
         const now = new Date().toISOString();
+
+        const title = `${args.agreement?.Title}-Run${args.run?.runNumber}-${args.stepKey}-${args.actionType}`;
 
         return new Promise<void>((resolve, reject) => {
             Web()
@@ -58,18 +63,20 @@ export class WorkflowActionService {
                 .Items()
                 .add({
                     __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.WorkflowActions)}ListItem` },
-                    Title: `Run-${run.Id}-${stepKey}-${actionType}`,
-                    agreementId,
-                    runId: run.Id,
-                    stepKey,
-                    actionType,
+                    Title: title,
+                    agreementId: args.agreement?.Id,
+                    runId: args.run?.Id,
+                    stepKey: args.stepKey,
+                    actionType: args.actionType,
                     actorId: ContextInfo.userId,
                     actionCompletedDate: now,
-                    comment: comment ?? ""
+                    comment: args.comment ?? "",
+                    ...(args.changeSummary ? { changeSummary: args.changeSummary } : {}),
+                    ...(args.changePayloadJson ? { changePayloadJson: args.changePayloadJson } : {})
                 })
                 .execute(
                     () => resolve(),
-                    (error) => reject(new Error(`Error creating decision action: ${formatError(error)}`))
+                    (error) => reject(new Error(`Error creating workflow action: ${formatError(error)}`))
                 );
         });
     }

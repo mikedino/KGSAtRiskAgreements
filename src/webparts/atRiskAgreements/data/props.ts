@@ -51,6 +51,8 @@ export type WorkflowActionType =
   | "Modified"
   | "Restarted";
 
+export type RunRestartReason = "Mod" | "Correction" | "Reopen" | "Other";
+
 export interface IRiskAgreementItem {
   // System
   readonly Id: number;
@@ -70,8 +72,9 @@ export interface IRiskAgreementItem {
   riskEnd: string;
   popEnd: string;
   entity: string;
-  projectMgr: IPeoplePicker;
-  contractMgr: IPeoplePicker;
+  og: string;
+  projectMgr?: IPeoplePicker;
+  contractMgr?: IPeoplePicker;
   riskReason: "Lack of Funding" | "PoP End";
   riskFundingRequested: number;
   riskJustification: string;
@@ -101,9 +104,10 @@ export interface IWorkflowRunItem {
   started: string; // date-time
   completed?: string; // date-time
   outcome?: ActionDecision;
+  hasDecision: boolean; // does this run have any decision yet?
 
   // Mod/restart metadata (optional but recommended)
-  restartReason?: "Mod" | "Correction" | "Reopen" | "Other";
+  restartReason?: RunRestartReason;
   restartComment?: string;
   triggerAgreementVersion?: number; // track version of Agreement (maybe)
 
@@ -142,7 +146,7 @@ export interface IWorkflowActionItem {
   changeSummary?: string; // Mod/change details (optional)
   changePayloadJson?: string; // old/new values JSON
   // Ordering convenience (optional)
-  sequence?: number;
+  sequence?: number; 
 }
 
 

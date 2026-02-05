@@ -81,7 +81,7 @@ export const getCurrentStepAgeDays = (run?: IWorkflowRunItem): number | undefine
  */
 export const buildOverdueSummary = (
     items: IRiskAgreementItem[],
-    runsByAgreementId: Map<number, IWorkflowRunItem>,
+    runByAgreementId: Map<number, IWorkflowRunItem>,
     slaDays: number,
     top = 3
 ): IOverdueSummary => {
@@ -90,7 +90,7 @@ export const buildOverdueSummary = (
     items.forEach(i => {
         if (!isInFlight(i)) return;
 
-        const run = runsByAgreementId.get(i.Id);
+        const run = runByAgreementId.get(i.Id);
         const age = getCurrentStepAgeDays(run);
         if (age === undefined) return;
 
@@ -107,7 +107,7 @@ export const buildOverdueSummary = (
 
     const oldestPendingDays = items
         .filter(i => isInFlight(i))
-        .map(i => getCurrentStepAgeDays(runsByAgreementId.get(i.Id)))
+        .map(i => getCurrentStepAgeDays(runByAgreementId.get(i.Id)))
         .filter((d): d is number => d !== undefined)
         .sort((a, b) => b - a)[0];
 
@@ -183,7 +183,7 @@ const getApprovalCycleDays = (
  */
 export const buildDashboardKpis = (
   items: IRiskAgreementItem[],
-  runsByAgreementId: Map<number, IWorkflowRunItem>,
+  runByAgreementId: Map<number, IWorkflowRunItem>,
   actionsByRunId: Map<number, IWorkflowActionItem[]>
 ): IDashboardKpis => {
   const now = dayjs();
@@ -196,12 +196,12 @@ export const buildDashboardKpis = (
   const pendingApprovals = items.filter(i => isInFlight(i)).length;
 
   const SLA_DAYS = 7;
-  const overdueSummary = buildOverdueSummary(items, runsByAgreementId, SLA_DAYS, 3);
+  const overdueSummary = buildOverdueSummary(items, runByAgreementId, SLA_DAYS, 3);
 
   const approvedThisMonth = items.filter(i => {
     if (!isSuccessComplete(i.araStatus)) return false;
 
-    const run = runsByAgreementId.get(i.Id);
+    const run = runByAgreementId.get(i.Id);
     const actions = run ? (actionsByRunId.get(run.Id) ?? []) : [];
 
     const final = getFinalApprovalDate(run, actions);
@@ -225,7 +225,7 @@ export const buildDashboardKpis = (
 
   const thisMonthCycleDays = successItems
     .map(i => {
-      const run = runsByAgreementId.get(i.Id);
+      const run = runByAgreementId.get(i.Id);
       const actions = run ? (actionsByRunId.get(run.Id) ?? []) : [];
       const final = getFinalApprovalDate(run, actions);
       return {
@@ -243,7 +243,7 @@ export const buildDashboardKpis = (
 
   const lastMonthCycleDays = successItems
     .map(i => {
-      const run = runsByAgreementId.get(i.Id);
+      const run = runByAgreementId.get(i.Id);
       const actions = run ? (actionsByRunId.get(run.Id) ?? []) : [];
       const final = getFinalApprovalDate(run, actions);
       return {

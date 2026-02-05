@@ -4,10 +4,12 @@ import { RefreshMode } from "../data/agreementsDataCall";
 
 export interface IAgreementsContext {
   agreements: IRiskAgreementItem[];
-  // current runs (one per agreement)
-  runsByAgreementId: Map<number, IWorkflowRunItem>;
-  // actions for the current run (runId -> actions[])
+  runByAgreementId: Map<number, IWorkflowRunItem>;
   actionsByRunId: Map<number, IWorkflowActionItem[]>;
+
+  myActions: IWorkflowActionItem[];
+  isMyActionsLoading: boolean;
+  loadMyActions: (userId: number, force?: boolean) => Promise<void>;
 
   isRefreshing: boolean;
   lastRefreshed: string | undefined;

@@ -6,8 +6,8 @@ import Agreements from "./components/AgreementsGrid";
 import Dashboard from "./components/Dashboard";
 import Admin from "./components/Admin";
 import NavHeader from "./ui/NavHeader";
-import { IAppProps, IRiskAgreementItem } from "./data/props";
-import RiskAgreementForm, { CancelReason } from "./forms/araForm";
+import { IAppProps, IRiskAgreementItem, IWorkflowActionItem, IWorkflowRunItem } from "./data/props";
+import RiskAgreementForm, { CancelReason, formModMeta } from "./forms/araForm";
 import { RiskAgreementService } from "./services/agreementService";
 import AlertDialog from "./ui/Alert";
 import ViewAgreementRoute from "./components/ViewAgreementRoute";
@@ -33,6 +33,7 @@ import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
+import { DataSource } from "./data/ds";
 
 type InstallState = "checking" | "ready" | "blocked" | "error";
 
@@ -48,6 +49,9 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
   const [backdropMessage, setBackdropMessage] = useState<string>("");
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string>("");
+  //my actions - only loaded for MyWork
+  const [myActions, setMyActions] = React.useState<IWorkflowActionItem[]>([]);
+  const [isMyActionsLoading, setIsMyActionsLoading] = React.useState(false);
 
   const history = useHistory();
 
@@ -104,9 +108,25 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
 
   const enabled = installState === "ready";
 
+  const loadMyActions = React.useCallback(async (userId: number, force = false) => {
+    if (!userId || userId <= 0) return;
+    if (!force && myActions.length > 0) return;
+
+    try {
+      setIsMyActionsLoading(true);
+      const actions = await DataSource.getMyWorkflowActions(userId);
+      setMyActions(actions ?? []);
+    } catch (e) {
+      console.error("loadMyActions error", e);
+      setMyActions([]);
+    } finally {
+      setIsMyActionsLoading(false);
+    }
+  }, [myActions.length]);
+
   const {
     agreements,
-    runsByAgreementId,
+    runByAgreementId,
     actionsByRunId,
     isBootLoading,
     isRefreshing,
@@ -115,9 +135,18 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
     fatalError
   } = useAgreementsData(setDialogProps, enabled);
 
+  // ensure valid run exists
+  const getCurrentRunOrThrow = (agreementId: number): IWorkflowRunItem => {
+    const run = runByAgreementId.get(agreementId);
+    if (!run?.Id) {
+      throw new Error(`Cannot start MOD process: Agreement ${agreementId} has no currentRun loaded. Refresh and try again.`);
+    }
+    return run;
+  };
+
   /////////////////// SUBMIT FORM HANDLER ///////////////////////
   type SubmitMode = "new" | "edit";
-  const handleSubmitAgreement = async (item: IRiskAgreementItem, submitMode: SubmitMode): Promise<void> => {
+  const handleSubmitAgreement = async (item: IRiskAgreementItem, submitMode: SubmitMode, modMeta: formModMeta): Promise<void> => {
 
     setBackdropMessage("Saving agreement…");
     setShowBackdrop(true);
@@ -129,7 +158,10 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
 
       if (submitMode === "new") {
 
-        // 1) CREATE RUN (LINKED TO AGREEMENT)
+        // 1) UPDATE AGREEMENT BUSINESS DATA
+        await RiskAgreementService.edit({ ...item, ...approvers }, "Under Review");
+
+        // 2) CREATE RUN (LINKED TO AGREEMENT)
         const run = await WorkflowRunService.createFirstRun(
           item.Id,
           item,
@@ -139,22 +171,74 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
           approvers.SVPContractsId
         );
 
-        // 2) UPDATE AGREEMENT AND POINT TO RUN
-        await RiskAgreementService.edit({ ...item, ...approvers }, run.Id);
+        // 3) LINK RUN TO AGREEMENT
+        await RiskAgreementService.updateRunId(item.Id, run.Id);
 
-        // 3) CREATE INITIAL ACTION ROW
-        await WorkflowActionService.createSubmitted(run, item)
+        // 4) CREATE INITIAL ACTION ROW
+        await WorkflowActionService.createAction({
+          agreement: item,
+          run: run,
+          stepKey: "submit",
+          actionType: "Restarted"
+        });
 
       } else {
 
         // MODIFICATION PROCESS
-        await RiskAgreementService.edit({ ...item, ...approvers });
 
-        // If edit is “Mod process start”, you will:
-        // - supersede old run
-        // - create new run
-        // - update agreement.currentRunId
-        // - add Restarted/Modified actions
+        // 1) Get old/current run
+        const oldRun = getCurrentRunOrThrow(item.Id);
+
+        // check to see if any approval decision has been made
+        if (!oldRun.hasDecision) {
+          // No one approved/rejected yet: so just save edits and exit - NO WF RESTART
+          await RiskAgreementService.edit({ ...item, ...approvers }, item.araStatus);
+          return;
+        }
+
+        // 2) Save edits
+        await RiskAgreementService.edit({ ...item, ...approvers }, "Mod Review");
+
+        // 3) Incement run number & create new run
+        const newRunNumber = (oldRun.runNumber ?? 0) + 1;
+        const newRun = await WorkflowRunService.createRestartRun(
+          item.Id,
+          item,
+          newRunNumber,
+          approvers.OGPresidentId,
+          approvers.cooId,
+          approvers.CEOId,
+          approvers.SVPContractsId,
+          "Mod",
+          "test restart comment"
+        );
+
+        // 4) Flip agreement pointer (UPDATE) asap
+        await RiskAgreementService.updateRunId(item.Id, newRun.Id);
+
+        // 5) Supercede old run
+        await WorkflowRunService.supercedeOldRun(oldRun.Id, "Mod", modMeta?.comment);
+
+        // 6) Action 1 - stop old run
+        await WorkflowActionService.createAction({
+          agreement: item,
+          run: oldRun,
+          stepKey: oldRun.currentStepKey,
+          actionType: "Restarted",
+          comment: modMeta?.comment ? `Restarted due to modification. ${modMeta.comment}` : "Restarted due to modification."
+        });
+
+        // 7) Action 2 - CREATE INITIAL ACTION ROW FOR NEW RUN
+        await WorkflowActionService.createAction({
+          agreement: item,
+          run: newRun,
+          stepKey: "submit",
+          actionType: "Modified",
+          comment: modMeta?.comment ?? "",
+          changeSummary: modMeta?.changeSummary,
+          changePayloadJson: modMeta?.changePayloadJson
+        });
+
       }
 
       // use existing refresh so all maps are rebuilt consistently
@@ -181,12 +265,19 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
   // Agreements context - avoid unncessary re-renders
   const agreementsCtxValue = React.useMemo(() => ({
     agreements,
-    runsByAgreementId,
+    runByAgreementId,
     actionsByRunId,
     isRefreshing,
     lastRefreshed,
-    refresh
-  }), [agreements, runsByAgreementId, actionsByRunId, isRefreshing, lastRefreshed, refresh]);
+    refresh,
+
+    myActions,
+    isMyActionsLoading,
+    loadMyActions //nothing loads unless a page calls it
+  }), [
+    agreements, runByAgreementId, actionsByRunId, isRefreshing, lastRefreshed, refresh,
+    myActions, isMyActionsLoading, loadMyActions
+  ]);
 
 
   /**
@@ -321,49 +412,44 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
             <Route path="/all-agreements" component={Agreements} />
             <Route path="/dashboard" component={Dashboard} />
             <Route path="/admin" component={Admin} />
+            <Route path="/new" render={() => {
 
-            <Route
-              path="/new"
-              render={() => {
+              const handleCancel = async (reason: CancelReason): Promise<void> => {
+                if (reason.type === "draft") {
+                  await RiskAgreementService.delete(reason.draftId);
+                }
 
-                const handleCancel = async (reason: CancelReason): Promise<void> => {
-                  if (reason.type === "draft") {
-                    await RiskAgreementService.delete(reason.draftId);
-                  }
+                history.push("/my-work");
+              };
 
-                  history.push("/my-work");
-                };
-
-                return (
-                  <RiskAgreementForm
-                    context={context}
-                    mode="new"
-                    onSubmit={handleSubmitAgreement}
-                    onCancel={handleCancel}
-                  />
-                );
-              }}
+              return (
+                <RiskAgreementForm
+                  context={context}
+                  mode="new"
+                  onSubmit={handleSubmitAgreement}
+                  onCancel={handleCancel}
+                />
+              );
+            }}
             />
 
             {/* Route to EDIT AGREEMENT */}
-            <Route
-              path="/edit/:id"
-              render={(routeProps) => {
-                const id = routeProps.match.params.id;
-                const item = agreements.find((a) => a.Id.toString() === id);
-                if (item === undefined) return <div>Agreement not found</div>;
+            <Route path="/edit/:id" render={(routeProps) => {
+              const id = routeProps.match.params.id;
+              const item = agreements.find((a) => a.Id.toString() === id);
+              if (item === undefined) return <div>Agreement not found</div>;
 
-                return (
-                  <RiskAgreementForm
-                    item={item}
-                    context={context}
-                    mode="edit"
-                    onSubmit={handleSubmitAgreement}
-                    onCancel={() => history.goBack()}
-                    {...routeProps}
-                  />
-                );
-              }}
+              return (
+                <RiskAgreementForm
+                  item={item}
+                  context={context}
+                  mode="edit"
+                  onSubmit={handleSubmitAgreement}
+                  onCancel={() => history.goBack()}
+                  {...routeProps}
+                />
+              );
+            }}
             />
 
             {/* Route to VIEW AGREEMENT */}

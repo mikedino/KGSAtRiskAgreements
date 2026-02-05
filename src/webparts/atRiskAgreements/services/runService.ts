@@ -1,4 +1,4 @@
-import { IPeoplePicker, IRiskAgreementItem, IWorkflowRunItem } from "../data/props";
+import { IPeoplePicker, IRiskAgreementItem, IWorkflowRunItem, RunRestartReason } from "../data/props";
 import { Web } from "gd-sprest";
 import Strings from "../../../strings";
 import { formatError, encodeListName } from "./utils";
@@ -24,44 +24,50 @@ export interface IRunDecisionResult {
 
 export class WorkflowRunService {
 
-    static createFirstRun(
+    static createRun(
         agreementId: number,
         agreement: IRiskAgreementItem,
-        ogPresidentId: number | undefined,
-        cooId: number | undefined,
-        ceoId: number | undefined,
-        svpContractsId: number | undefined
+        runNumber: number,
+        ogPresidentId?: number,
+        cooId?: number,
+        ceoId?: number,
+        svpContractsId?: number,
+        restartReason?: RunRestartReason,
+        restartComment?: string
     ): Promise<IWorkflowRunItem> {
 
         const today = new Date().toISOString();
+        const titleBase = agreement.Title || agreement.contractName || agreement.projectName || `Agreement-${agreementId}`;
 
         return new Promise<IWorkflowRunItem>((resolve, reject) => {
-
             Web()
                 .Lists(Strings.Sites.main.lists.WorkflowRuns)
                 .Items()
                 .add({
                     __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.WorkflowRuns)}ListItem` },
 
-                    // Fix title later
-                    Title: `${agreement.contractName}-RUN-1`,
+                    Title: `${titleBase}-RUN-${runNumber}`,
 
                     // Lookup to agreement
                     agreementId,
 
                     // Run lifecycle
-                    runNumber: 1,
+                    runNumber,
                     runStatus: "Active",
                     started: today,
 
-                    // State machine (source of truth)
+                    // Mod metadata (only if provided)
+                    ...(restartReason ? { restartReason } : {}),
+                    ...(restartComment ? { restartComment } : {}),
+
+                    // State machine
                     currentStepKey: "contractMgr",
                     pendingApproverId: agreement.contractMgr?.Id,
                     pendingApproverEmail: agreement.contractMgr?.EMail,
                     stepAssignedDate: today,
                     pendingRole: "Contract Manager",
 
-                    // Approver snapshots (lookups/users)
+                    // Approver snapshots
                     contractMgrId: agreement.contractMgr?.Id,
                     ogPresidentId,
                     cooId,
@@ -69,18 +75,17 @@ export class WorkflowRunService {
                     svpContractsId
                 })
                 .execute(
-                    // success
                     (resp) => {
-                        if (!resp?.Id) {
-                            reject(new Error("Run was created but the response did not include an Id. Please refresh."));
+                        const id = resp?.Id;
+                        if (!id) {
+                            reject(new Error("Run was created but response did not include an Id. Please refresh."));
                             return;
                         }
 
-                        // get the full item back from the list/save
                         Web()
                             .Lists(Strings.Sites.main.lists.WorkflowRuns)
                             .Items()
-                            .getById(resp.Id)
+                            .getById(id)
                             .query({
                                 Select: DataSource.runSelectQuery,
                                 Expand: DataSource.runExpandQuery
@@ -90,13 +95,127 @@ export class WorkflowRunService {
                                 (error) => reject(new Error(`Run created but failed to re-fetch it: ${formatError(error)}`))
                             );
                     },
-                    // error
-                    (error) => {
-                        reject(new Error(`Error creating Run#1: ${formatError(error)}`));
-                    }
+                    (error) => reject(new Error(`Error creating Run#${runNumber}: ${formatError(error)}`))
                 );
         });
     }
+
+    static createFirstRun(
+        agreementId: number,
+        agreement: IRiskAgreementItem,
+        ogPresidentId?: number,
+        cooId?: number,
+        ceoId?: number,
+        svpContractsId?: number
+    ): Promise<IWorkflowRunItem> {
+        return WorkflowRunService.createRun(
+            agreementId,
+            agreement,
+            1,
+            ogPresidentId,
+            cooId,
+            ceoId,
+            svpContractsId
+        );
+    }
+
+    static createRestartRun(
+        agreementId: number,
+        agreement: IRiskAgreementItem,
+        nextRunNumber: number,
+        ogPresidentId?: number,
+        cooId?: number,
+        ceoId?: number,
+        svpContractsId?: number,
+        restartReason?: RunRestartReason,
+        restartComment?: string   
+    ): Promise<IWorkflowRunItem> {
+        return WorkflowRunService.createRun(
+            agreementId,
+            agreement,
+            nextRunNumber,
+            ogPresidentId,
+            cooId,
+            ceoId,
+            svpContractsId,
+            restartReason,
+            restartComment
+        );
+    }
+
+    // static createFirstRun(
+    //     agreementId: number,
+    //     agreement: IRiskAgreementItem,
+    //     ogPresidentId: number | undefined,
+    //     cooId: number | undefined,
+    //     ceoId: number | undefined,
+    //     svpContractsId: number | undefined
+    // ): Promise<IWorkflowRunItem> {
+
+    //     const today = new Date().toISOString();
+
+    //     return new Promise<IWorkflowRunItem>((resolve, reject) => {
+
+    //         Web()
+    //             .Lists(Strings.Sites.main.lists.WorkflowRuns)
+    //             .Items()
+    //             .add({
+    //                 __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.WorkflowRuns)}ListItem` },
+
+    //                 // Fix title later
+    //                 Title: `${agreement.contractName}-RUN-1`,
+
+    //                 // Lookup to agreement
+    //                 agreementId,
+
+    //                 // Run lifecycle
+    //                 runNumber: 1,
+    //                 runStatus: "Active",
+    //                 started: today,
+
+    //                 // State machine (source of truth)
+    //                 currentStepKey: "contractMgr",
+    //                 pendingApproverId: agreement.contractMgr?.Id,
+    //                 pendingApproverEmail: agreement.contractMgr?.EMail,
+    //                 stepAssignedDate: today,
+    //                 pendingRole: "Contract Manager",
+
+    //                 // Approver snapshots (lookups/users)
+    //                 contractMgrId: agreement.contractMgr?.Id,
+    //                 ogPresidentId,
+    //                 cooId,
+    //                 ceoId,
+    //                 svpContractsId
+    //             })
+    //             .execute(
+    //                 // success
+    //                 (resp) => {
+    //                     if (!resp?.Id) {
+    //                         reject(new Error("Run was created but the response did not include an Id. Please refresh."));
+    //                         return;
+    //                     }
+
+    //                     // get the full item back from the list/save
+    //                     Web()
+    //                         .Lists(Strings.Sites.main.lists.WorkflowRuns)
+    //                         .Items()
+    //                         .getById(resp.Id)
+    //                         .query({
+    //                             Select: DataSource.runSelectQuery,
+    //                             Expand: DataSource.runExpandQuery
+    //                         })
+    //                         .execute(
+    //                             (run) => resolve(run as unknown as IWorkflowRunItem),
+    //                             (error) => reject(new Error(`Run created but failed to re-fetch it: ${formatError(error)}`))
+    //                         );
+    //                 },
+    //                 // error
+    //                 (error) => {
+    //                     reject(new Error(`Error creating Run#1: ${formatError(error)}`));
+    //                 }
+    //             );
+    //     });
+    // }
 
     private static getStep(key: WorkflowStepKey): IWorkflowStep | undefined {
         return RiskAgreementWorkflow.find(s => s.key === key);
@@ -155,6 +274,7 @@ export class WorkflowRunService {
                     runStatus: "Completed",
                     outcome: "Rejected",
                     completed: nowIso,
+                    hasDecision: "1", //true 
 
                     pendingRole: null,
                     pendingApproverId: null,
@@ -219,5 +339,29 @@ export class WorkflowRunService {
             pendingApproverEmail: approver?.EMail,
             nowIso
         };
+    }
+
+    static supercedeOldRun(runId: number, restartReason?: RunRestartReason, restartComment?: string): Promise<void> {
+
+        const today = new Date().toISOString();
+
+        return new Promise<void>((resolve, reject) => {
+
+            Web()
+                .Lists(Strings.Sites.main.lists.WorkflowRuns)
+                .Items()
+                .getById(runId)
+                .update({
+                    __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.WorkflowRuns)}ListItem` },
+                    runStatus: "Superseded",
+                    completed: today,
+                    restartReason,
+                    restartComment
+                })
+                .execute(
+                    () => resolve(),
+                    (error) => reject(new Error(`Error superceding prior Run: ${formatError(error)}`))
+                );
+        });
     }
 }

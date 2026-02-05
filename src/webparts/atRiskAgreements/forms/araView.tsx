@@ -1,6 +1,5 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { IRiskAgreementItem, IAttachmentInfo } from "../data/props";
 import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, TextField, Typography } from "@mui/material";
 import Edit from "@mui/icons-material/Edit";
@@ -29,9 +28,10 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
     const [loading, setLoading] = useState(false);
     const [attachments, setAttachments] = useState<IAttachmentInfo[]>([]);
     const [attachmentsLoading, setAttachmentsLoading] = useState(false);
+    const [editConfirmOpen, setEditConfirmOpen] = useState(false);
 
-    const { runsByAgreementId, actionsByRunId } = useAgreements();
-    const run = runsByAgreementId.get(item.Id);
+    const { runByAgreementId, actionsByRunId } = useAgreements();
+    const run = runByAgreementId.get(item.Id);
     const actions = run ? (actionsByRunId.get(run.Id) ?? []) : [];
     const workflowSteps = run ? buildWorkflowState(item, run, actions) : [];
 
@@ -60,6 +60,30 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
             setAttachmentsLoading(false);
         });
     }, [item.Id, item.Attachments]);
+
+    // helper to see if anyone has reviewed yet
+    const hasAnyDecision = React.useMemo(() => {
+        return workflowSteps.some(
+            (step) => step.status === "Approved" || step.status === "Rejected"
+        );
+    }, [workflowSteps]);
+
+    const handleEditClick = (e: React.MouseEvent<HTMLButtonElement>): void => {
+        if (hasAnyDecision) {
+            e.preventDefault(); // stop navigation
+            setEditConfirmOpen(true);
+            return;
+        }
+
+        history.push(`/edit/${item.Id}`);
+    };
+
+    const handleEditCancel = (): void => setEditConfirmOpen(false);
+
+    const handleEditConfirm = (): void => {
+        setEditConfirmOpen(false);
+        history.push(`/edit/${item.Id}`);
+    };
 
     const canApprove = !!run && run.runStatus === "Active" && run.pendingApproverId === ContextInfo.userId;
 
@@ -142,8 +166,7 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                             startIcon={<Edit />}
                             variant="contained"
                             color="primary"
-                            component={Link}
-                            to={`/edit/${item.Id}`}
+                            onClick={handleEditClick}
                         >
                             Edit
                         </Button>
@@ -202,6 +225,30 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                         color={actionType === "approve" ? "primary" : "error"}
                     >
                         {actionType === "approve" ? "Approve" : "Reject"}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog open={editConfirmOpen} onClose={handleEditCancel} maxWidth="sm" fullWidth>
+                <DialogTitle>Modify Agreement?</DialogTitle>
+
+                <DialogContent>
+                    <Typography variant="body1" sx={{ mt: 1 }}>
+                        Are you sure you want to modify this Agreement?
+                    </Typography>
+
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        At least one approver has already made a decision. If you continue, the approval workflow will be restarted.
+                    </Typography>
+                </DialogContent>
+
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                    <Button onClick={handleEditCancel}>
+                        Cancel
+                    </Button>
+
+                    <Button variant="contained" color="warning" onClick={handleEditConfirm}>
+                        Yes, continue
                     </Button>
                 </DialogActions>
             </Dialog>

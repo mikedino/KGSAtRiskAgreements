@@ -13,17 +13,16 @@ const ViewAgreementRoute: React.FC<ViewAgreementRouteProps> = ({ match }) => {
   const agreementId = Number(match.params.id);
   const currentUserEmail = ContextInfo.userEmail;
 
-  const { agreements, runsByAgreementId, refresh } = useAgreements();
+  const { agreements, runByAgreementId, refresh } = useAgreements();
 
   const item = agreements.find(a => a.Id === agreementId);
-  const run = item ? runsByAgreementId.get(item.Id) : undefined;
+  const run = item ? runByAgreementId.get(item.Id) : undefined;
 
   const [snackbar, setSnackbar] = React.useState<{ message: string; severity: "success" | "error" } | null>(null);
 
   const onApprove = async (comment?: string): Promise<void> => {
     if (!item || !run) return;
 
-    // If you’re using the new orchestrator:
     await WorkflowDecisionService.submitDecision(item, run, "Approved", comment);
 
     await refresh(true);

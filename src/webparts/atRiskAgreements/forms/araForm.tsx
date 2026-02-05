@@ -10,7 +10,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { Dayjs } from 'dayjs';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
-import { ContractType, IAttachmentInfo, IRiskAgreementItem } from "../data/props";
+import { ContractType, IAttachmentInfo, IContractItem, IRiskAgreementItem } from "../data/props";
 import { IPersonaProps, Stack } from "@fluentui/react";
 import CurrencyField from "../ui/CurrencyField";
 import { DataSource } from "../data/ds";
@@ -19,14 +19,21 @@ import Strings from "../../../strings";
 import AlertDialog from "../ui/Alert";
 import { MuiPeoplePicker } from "../ui/CustomPeoplePicker";
 import { RiskAgreementService } from "../services/agreementService";
+import { buildAgreementDelta, formatDeltaSummary } from "../services/agreementDiff";
 
 export type CancelReason = { type: "draft"; draftId: number } | { type: "normal" };
+
+export type formModMeta = {
+  comment?: string;              // user-entered reason
+  changeSummary?: string;        // auto summary
+  changePayloadJson?: string;    // auto diff json
+};
 
 interface RiskAgreementFormProps {
   item?: IRiskAgreementItem; // undefined = NEW
   context: WebPartContext;
   mode: "new" | "edit";
-  onSubmit: (data: IRiskAgreementItem, mode: "new" | "edit") => void;
+  onSubmit: (data: IRiskAgreementItem, mode: "new" | "edit", modMeta?: formModMeta) => void;
   onCancel: (reason: CancelReason) => void;
 }
 
@@ -42,6 +49,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
   const [dialogMessage, setDialogMessage] = useState<string>("");
   const [draftItemId, setDraftItemId] = useState<number | undefined>(undefined);
   const [attachments, setAttachments] = useState<IAttachmentInfo[]>([]);
+  const [cmTouched, setCmTouched] = useState(false);
   const [form, setForm] = useState<IRiskAgreementItem>({
     riskFundingRequested: 0,
     ...(item ?? {})
@@ -75,7 +83,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
       setSubmissionType(item.invoice ? "existing" : "newOpp");
     }
   }, [mode, item]);
-  
+
 
   // lazy-load invoices only after a contract is selected
   useEffect(() => {
@@ -110,14 +118,28 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handlePeoplePicker = async (items: IPersonaProps[], field: keyof IRiskAgreementItem): Promise<void> => {
-    if (items.length > 0) {
-      updateField(field, {
-        Id: parseInt(items[0].id!, 10),
-        EMail: items[0].secondaryText!,
-        Title: items[0].text!
-      });
+  const handlePeoplePicker = (items: IPersonaProps[], field: keyof IRiskAgreementItem): void => {
+    if (!items.length) {
+      updateField(field, undefined); // allow undefined if clearing field
+      return;
     }
+
+    updateField(field, {
+      Id: parseInt(items[0].id!, 10),
+      EMail: items[0].secondaryText!,
+      Title: items[0].text!
+    });
+  };
+
+  // helper for contract onChange to find OG and set, then find CM and set
+  const applyOgAndCmFromContract = (contract: IContractItem | null): void => {
+    const ogTitle = contract?.field_75 ?? "";
+    const ogRec = DataSource.OGs.find(o => o.Title === ogTitle);
+
+    updateField("og", ogTitle ?? ""); //maybe no match
+    updateField("contractMgr", ogRec?.CM);
+
+    setCmTouched(false);
   };
 
   // watch submission type and if NEW OPP, update the form projectName to "New Award"
@@ -133,13 +155,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
   }, [submissionType]);
 
   // memoized list so we don’t re-filter 2700+ invoices on every keystroke.
-  // const filteredInvoices = useMemo(() => {
-  //   if (!form.contractId) return [];
-  //   const dInvoice = DataSource.Invoices;
-  //   return dInvoice.filter(i => i.field_49 === form.contractId);
-  // }, [form.contractId, DataSource.Invoices]);
   const filteredInvoices = useMemo(() => DataSource.Invoices, [DataSource.Invoices]);
-
 
   // memoize the selected invoice so that it will render after async update of the Invoices DataSource
   const selectedInvoice = useMemo(() => {
@@ -170,7 +186,11 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
         return;
       }
 
-      onSubmit(form, mode);
+      const formDelta = buildAgreementDelta(item!, form); // item is only undefined on NEW forms
+      const changeSummary = formatDeltaSummary(formDelta);
+      const changePayloadJson = JSON.stringify(formDelta);
+
+      onSubmit(form, mode, { changeSummary, changePayloadJson, comment: "insert comment" });
       return;
     }
 
@@ -293,6 +313,8 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                   onChange={(_, newValue) => {
                     updateField("projectName", newValue?.field_20 ?? "");
                     updateField("contractId", newValue?.field_19 ?? undefined);
+                    // force defaults for OG and CM
+                    applyOgAndCmFromContract(newValue);
                     // reset invoice when contract changes
                     updateField("invoice", "");
                   }}
@@ -404,7 +426,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
             {submissionType === "existing" && (
               <Grid size={{ xs: 12, md: 6 }}>
                 <DatePicker
-                  label="PoP End Date"
+                  label="Contractual PoP End Date"
                   value={form.popEnd ? dayjs(form.popEnd) : null}
                   onChange={(value: Dayjs | null) =>
                     updateField("popEnd", value ? value.format("MM/DD/YYYY") : "")
@@ -430,6 +452,33 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                select
+                label="Operating Group"
+                required
+                fullWidth
+                value={form.og ?? ""}
+                onChange={(e) => {
+                  // on change, default CM only if not touched (or CM empty)
+                  const newOg = e.target.value;
+                  updateField("og", newOg);
+
+                  if (!cmTouched || !form.contractMgr?.Id) {
+                    const ogRec = DataSource.OGs.find(o => o.Title === newOg);
+                    updateField("contractMgr", ogRec?.CM);
+                  }
+                }}
+              >
+                <MenuItem value="">Select OG</MenuItem>
+                {DataSource.OGs.map((e) => (
+                  <MenuItem key={e.Id} value={e.Title}>
+                    {e.Title}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
               <MuiPeoplePicker
                 label="Project Manager"
                 context={peoplePickerContext}
@@ -446,7 +495,10 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                 context={peoplePickerContext}
                 value={form.contractMgr?.EMail ? [form.contractMgr.EMail] : []}
                 required
-                onChange={(items) => handlePeoplePicker(items, "contractMgr")}
+                onChange={(items) => {
+                  setCmTouched(true);
+                  handlePeoplePicker(items, "contractMgr");
+                }}
                 selectionLimit={1}
               />
             </Grid>

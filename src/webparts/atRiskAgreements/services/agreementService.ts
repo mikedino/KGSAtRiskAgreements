@@ -1,4 +1,4 @@
-import { IRiskAgreementItem } from "../data/props";
+import { AraStatus, IRiskAgreementItem } from "../data/props";
 import { Web } from "gd-sprest";
 import Strings from "../../../strings";
 import { formatError, encodeListName } from "./utils";
@@ -16,7 +16,7 @@ export class RiskAgreementService {
     return item.Id ?? undefined;
   }
 
-  static async edit(item: IRiskAgreementItem, currentRunId?: number): Promise<void> {
+  static async edit(item: IRiskAgreementItem, araStatus: AraStatus): Promise<void> {
 
     if (!item?.Id) {
       throw new Error("Cannot submit Risk Agreement: item.Id is missing. Refresh and try again or contact IT support.");
@@ -30,8 +30,9 @@ export class RiskAgreementService {
       await Web().Lists(Strings.Sites.main.lists.Agreements).Items().getById(item.Id).update({
         __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.Agreements)}ListItem` },
         Title: `ATR-${item.entity}-${year}-${trackingNo}`,
-        araStatus: "Under Review",
+        araStatus,
         projectName: item.projectName,
+        contractId: item.contractId,
         invoice: item.invoice,
         contractType: item.contractType,
         riskStart: item.riskStart || null,
@@ -44,8 +45,7 @@ export class RiskAgreementService {
         riskFundingRequested: item.riskFundingRequested,
         riskJustification: item.riskJustification,
         contractName: item.contractName,
-        programName: item.programName,
-        currentRunId
+        programName: item.programName
       })
         .executeAndWait();
 
@@ -53,6 +53,26 @@ export class RiskAgreementService {
       const err = formatError(error);
       console.error("Error updating Risk Agreement: ", error);
       throw new Error(`Error submitting Risk Agreement: ${err}`);
+    }
+  }
+
+  static async updateRunId(itemId: number, currentRunId: number): Promise<void> {
+
+    if (!itemId || !currentRunId) {
+      throw new Error("Cannot submit Risk Agreement: item.Id or run.Id is missing. Refresh and try again or contact IT support.");
+    }
+
+    try {
+
+      await Web().Lists(Strings.Sites.main.lists.Agreements).Items().getById(itemId).update({
+        __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.Agreements)}ListItem` },
+        currentRunId
+      }).executeAndWait();
+
+    } catch (error) {
+      const err = formatError(error);
+      console.error("Error updating Risk Agreement > Run Id: ", error);
+      throw new Error(`Error submitting Risk Agreement > Run Id: ${err}`);
     }
   }
 
