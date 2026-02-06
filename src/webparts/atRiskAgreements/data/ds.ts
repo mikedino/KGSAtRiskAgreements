@@ -50,6 +50,18 @@ export class DataSource {
         });
     }
 
+    public static agreementSelectQuery: string[] = [
+        "Id", "Title", "projectName", "contractId", "invoice", "contractType", "riskStart", "riskEnd", "popEnd",
+        "entity", "riskReason", "riskFundingRequested", "riskJustification", "contractName", "programName",
+        "araStatus", "Created", "Modified", "og", "hasSubcontract",
+        "Author/Id", "Author/Title", "Author/EMail",
+        "Editor/Id", "Editor/Title", "Editor/EMail",
+        "projectMgr/Id", "projectMgr/Title", "projectMgr/EMail",
+        "entityGM/Id", "entityGM/Title", "entityGM/EMail",
+        "contractMgr/Id", "contractMgr/Title", "contractMgr/EMail",
+        "currentRun/Id", "currentRun/Title"
+    ];
+    public static agreementExpandQuery: string[] = ["Author", "Editor", "projectMgr", "entityGM", "contractMgr", "currentRun"];
     // Load all the Risk Agreeements
     private static _agreements: IRiskAgreementItem[] = [];
     private static _agreementsVersion = 0; // detect refreshes
@@ -75,18 +87,8 @@ export class DataSource {
                 .query({
                     GetAllItems: true,
                     OrderBy: ["Created"],
-                    Select: [
-                        "Id", "Title", "projectName", "contractId", "invoice", "contractType", "riskStart", "riskEnd", "popEnd",
-                        "entity", "riskReason", "riskFundingRequested", "riskJustification", "contractName", "programName",
-                        "araStatus", "Created", "Modified", "og", "hasSubcontract",
-                        "Author/Id", "Author/Title", "Author/EMail",
-                        "Editor/Id", "Editor/Title", "Editor/EMail",
-                        "projectMgr/Id", "projectMgr/Title", "projectMgr/EMail",
-                        "entityGM/Id", "entityGM/Title", "entityGM/EMail",
-                        "contractMgr/Id", "contractMgr/Title", "contractMgr/EMail",
-                        "currentRun/Id", "currentRun/Title"
-                    ],
-                    Expand: ["Author", "Editor", "projectMgr", "entityGM", "contractMgr", "currentRun"],
+                    Select: this.agreementSelectQuery,
+                    Expand: this.agreementExpandQuery,
                     Filter: "araStatus ne 'Draft'",
                     Top: 5000
                 })
@@ -114,7 +116,7 @@ export class DataSource {
     // set a re-usable $select and $expand query
     public static runSelectQuery: string[] = [
         "Id", "runNumber", "runStatus", "started", "completed", "outcome", "restartReason",
-        "restartComment", "triggerAgreementVersion", "currentStepKey", "pendingRole",
+        "restartComment", "triggerAgreementVersion", "currentStepKey", "pendingRole", "hasDecision",
         "pendingApproverId", "pendingApproverEmail", "stepAssignedDate",
         "contractMgr/Id", "contractMgr/Title", "contractMgr/EMail",
         "ogPresident/Id", "ogPresident/Title", "ogPresident/EMail",
@@ -141,7 +143,7 @@ export class DataSource {
         });
     }
 
-    static getWorkflowRunsByAgreement(agreementId: number[]): Promise<IWorkflowRunItem[]> {
+    static getWorkflowRunsByAgreement(agreementId: number): Promise<IWorkflowRunItem[]> {
         return new Promise<IWorkflowRunItem[]>((resolve, reject) => {
 
             // load the data

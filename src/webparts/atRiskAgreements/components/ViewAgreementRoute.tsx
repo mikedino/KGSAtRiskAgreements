@@ -13,7 +13,7 @@ const ViewAgreementRoute: React.FC<ViewAgreementRouteProps> = ({ match }) => {
   const agreementId = Number(match.params.id);
   const currentUserEmail = ContextInfo.userEmail;
 
-  const { agreements, runByAgreementId, refresh } = useAgreements();
+  const { agreements, runByAgreementId, refresh, loadAgreementDetail } = useAgreements();
 
   const item = agreements.find(a => a.Id === agreementId);
   const run = item ? runByAgreementId.get(item.Id) : undefined;
@@ -26,6 +26,8 @@ const ViewAgreementRoute: React.FC<ViewAgreementRouteProps> = ({ match }) => {
     await WorkflowDecisionService.submitDecision(item, run, "Approved", comment);
 
     await refresh(true);
+    await loadAgreementDetail(item.Id, true); // updates full timeline/actions for this agreement
+
     setSnackbar({ message: "Agreement approved successfully", severity: "success" });
   };
 
@@ -35,6 +37,8 @@ const ViewAgreementRoute: React.FC<ViewAgreementRouteProps> = ({ match }) => {
     await WorkflowDecisionService.submitDecision(item, run, "Rejected", comment);
 
     await refresh(true);
+    await loadAgreementDetail(item.Id, true); // updates full timeline/actions for this agreement
+    
     setSnackbar({ message: "Agreement rejected successfully", severity: "error" });
   };
 

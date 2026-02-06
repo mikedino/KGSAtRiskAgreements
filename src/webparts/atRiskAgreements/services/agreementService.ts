@@ -3,6 +3,7 @@ import { Web } from "gd-sprest";
 import Strings from "../../../strings";
 import { formatError, encodeListName } from "./utils";
 import dayjs from 'dayjs';
+import { DataSource } from "../data/ds";
 
 export class RiskAgreementService {
 
@@ -16,18 +17,14 @@ export class RiskAgreementService {
     return item.Id ?? undefined;
   }
 
-  static async edit(item: IRiskAgreementItem, araStatus: AraStatus): Promise<void> {
+  static async edit(item: IRiskAgreementItem, araStatus: AraStatus): Promise<IRiskAgreementItem> {
 
-    if (!item?.Id) {
-      throw new Error("Cannot submit Risk Agreement: item.Id is missing. Refresh and try again or contact IT support.");
-    }
+    return new Promise<IRiskAgreementItem>((resolve, reject) => {
 
-    const year = dayjs().format("YYYY");
-    const trackingNo = item.Id.toString().padStart(4, "0");
+      const year = dayjs().format("YYYY");
+      const trackingNo = item.Id.toString().padStart(4, "0");
 
-    try {
-
-      await Web().Lists(Strings.Sites.main.lists.Agreements).Items().getById(item.Id).update({
+      Web().Lists(Strings.Sites.main.lists.Agreements).Items().getById(item.Id).update({
         __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.Agreements)}ListItem` },
         Title: `ATR-${item.entity}-${year}-${trackingNo}`,
         araStatus,
@@ -48,14 +45,25 @@ export class RiskAgreementService {
         riskJustification: item.riskJustification,
         contractName: item.contractName,
         programName: item.programName
-      })
-        .executeAndWait();
+      }).execute(
+        (resp) => {
+          if (!resp?.existsFl) {
+            reject(new Error("Agreement was updated but response did not include a success message. Please refresh."));
+            return;
+          }
 
-    } catch (error) {
-      const err = formatError(error);
-      console.error("Error updating Risk Agreement: ", error);
-      throw new Error(`Error submitting Risk Agreement: ${err}`);
-    }
+          Web().Lists(Strings.Sites.main.lists.Agreements).Items().getById(item.Id).query({
+            Select: DataSource.agreementSelectQuery,
+            Expand: DataSource.agreementExpandQuery
+          }).execute(
+              (agreement) => resolve(agreement as unknown as IRiskAgreementItem),
+              (error) => reject(new Error(`Agreement created but failed to re-fetch it: ${formatError(error)}`))
+            );
+        },
+        (error) => reject(new Error(`Error updating Agreement${item.Id}: ${formatError(error)}`))
+      );
+
+    })
   }
 
   static async updateRunId(itemId: number, currentRunId: number): Promise<void> {

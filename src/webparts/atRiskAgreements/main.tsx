@@ -49,9 +49,17 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
   const [backdropMessage, setBackdropMessage] = useState<string>("");
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string>("");
+
   //my actions - only loaded for MyWork
   const [myActions, setMyActions] = React.useState<IWorkflowActionItem[]>([]);
   const [isMyActionsLoading, setIsMyActionsLoading] = React.useState(false);
+
+  //runs and actions by agreement - only loaded for VIEW item
+  const [runsByAgreementId, setRunsByAgreementId] = React.useState<Map<number, IWorkflowRunItem[]>>(new Map());
+  const [actionsByAgreementId, setActionsByAgreementId] = React.useState<Map<number, IWorkflowActionItem[]>>(new Map());
+  // track per-agreement load state
+  const [agreementDetailLoading, setAgreementDetailLoading] = React.useState<Map<number, boolean>>(new Map());
+
 
   const history = useHistory();
 
@@ -108,6 +116,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
 
   const enabled = installState === "ready";
 
+  ///////////// MY WORK / MY ACTIONS CALLBACK ////////////
   const loadMyActions = React.useCallback(async (userId: number, force = false) => {
     if (!userId || userId <= 0) return;
     if (!force && myActions.length > 0) return;
@@ -124,10 +133,82 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
     }
   }, [myActions.length]);
 
+  ///////////// AGREEMENT DETAIL AND LOAD STATE ////////////
+  const isAgreementDetailLoading = React.useCallback((agreementId: number): boolean => {
+    return agreementDetailLoading.get(agreementId) ?? false;
+  }, [agreementDetailLoading]);
+
+  const loadAgreementDetail = React.useCallback(async (agreementId: number, force = false): Promise<void> => {
+    if (!agreementId || agreementId <= 0) return;
+
+    // already loaded?
+    if (!force && runsByAgreementId.has(agreementId) && actionsByAgreementId.has(agreementId)) return;
+
+    // already loading?
+    if (agreementDetailLoading.get(agreementId)) return;
+
+    setAgreementDetailLoading(prev => {
+      const next = new Map(prev);
+      next.set(agreementId, true);
+      return next;
+    });
+
+    try {
+      // ✅ do BOTH calls in parallel
+      const [runs, actions] = await Promise.all([
+        DataSource.getWorkflowRunsByAgreement(agreementId),
+        DataSource.getWorkflowActionsByAgreement(agreementId)
+      ]);
+
+      // sort runs newest first (optional)
+      const sortedRuns = [...(runs ?? [])].sort((a, b) => (b.runNumber ?? 0) - (a.runNumber ?? 0));
+
+      // sort actions newest first (recommended for timeline poppers)
+      const sortedActions = [...(actions ?? [])].sort((a, b) =>
+        new Date(b.actionCompletedDate).getTime() - new Date(a.actionCompletedDate).getTime()
+      );
+
+      setRunsByAgreementId(prev => {
+        const next = new Map(prev);
+        next.set(agreementId, sortedRuns);
+        return next;
+      });
+
+      setActionsByAgreementId(prev => {
+        const next = new Map(prev);
+        next.set(agreementId, sortedActions);
+        return next;
+      });
+
+    } catch (err) {
+      console.error("loadAgreementDetail error", err);
+
+      // still set empty so UI doesn't keep retrying every render
+      setRunsByAgreementId(prev => {
+        const next = new Map(prev);
+        next.set(agreementId, []);
+        return next;
+      });
+
+      setActionsByAgreementId(prev => {
+        const next = new Map(prev);
+        next.set(agreementId, []);
+        return next;
+      });
+
+    } finally {
+      setAgreementDetailLoading(prev => {
+        const next = new Map(prev);
+        next.set(agreementId, false);
+        return next;
+      });
+    }
+  }, [runsByAgreementId, actionsByAgreementId, agreementDetailLoading]);
+
+  ///////////// SET DATA STATE ////////////
   const {
     agreements,
     runByAgreementId,
-    actionsByRunId,
     isBootLoading,
     isRefreshing,
     lastRefreshed,
@@ -152,6 +233,8 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
     setShowBackdrop(true);
     setShowProgress(true);
 
+    let didRestartWorkflow = false;
+
     try {
 
       const approvers = await ApproverResolver.resolve(item);
@@ -159,12 +242,12 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
       if (submitMode === "new") {
 
         // 1) UPDATE AGREEMENT BUSINESS DATA
-        await RiskAgreementService.edit({ ...item, ...approvers }, "Under Review");
+        const agreement = await RiskAgreementService.edit({ ...item, ...approvers }, "Under Review");
 
         // 2) CREATE RUN (LINKED TO AGREEMENT)
-        const run = await WorkflowRunService.createFirstRun(
+        const firstRun = await WorkflowRunService.createFirstRun(
           item.Id,
-          item,
+          agreement,
           approvers.OGPresidentId,
           approvers.cooId,
           approvers.CEOId,
@@ -172,81 +255,83 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
         );
 
         // 3) LINK RUN TO AGREEMENT
-        await RiskAgreementService.updateRunId(item.Id, run.Id);
+        await RiskAgreementService.updateRunId(item.Id, firstRun.Id);
 
         // 4) CREATE INITIAL ACTION ROW
-        await WorkflowActionService.createAction({
-          agreement: item,
-          run: run,
-          stepKey: "submit",
-          actionType: "Restarted"
-        });
+        await WorkflowActionService.createSubmitted(agreement, firstRun.Id);
 
       } else {
 
         // MODIFICATION PROCESS
 
-        // 1) Get old/current run
+        // Get old/current run
         const oldRun = getCurrentRunOrThrow(item.Id);
 
         // check to see if any approval decision has been made
         if (!oldRun.hasDecision) {
-          // No one approved/rejected yet: so just save edits and exit - NO WF RESTART
+          // save only — NO WF restart
           await RiskAgreementService.edit({ ...item, ...approvers }, item.araStatus);
-          return;
+        } else {
+          // CREATE A NEW WF RUN
+
+          // 1) set flag for proper message
+          didRestartWorkflow = true;
+
+          // 2) Save edits
+          const agreement = await RiskAgreementService.edit({ ...item, ...approvers }, "Mod Review");
+
+          // 3) Incement run number & create new run
+          const newRunNumber = (oldRun.runNumber ?? 0) + 1;
+          const newRun = await WorkflowRunService.createRestartRun(
+            item.Id,
+            agreement,
+            newRunNumber,
+            approvers.OGPresidentId,
+            approvers.cooId,
+            approvers.CEOId,
+            approvers.SVPContractsId,
+            "Mod",
+            "test restart comment"
+          );
+
+          // 4) Flip agreement pointer (UPDATE) asap
+          await RiskAgreementService.updateRunId(item.Id, newRun.Id);
+
+          // 5) Supercede old run
+          await WorkflowRunService.supercedeOldRun(oldRun.Id, "Mod", modMeta?.comment);
+
+          // 6) Action 1 - stop old run
+          await WorkflowActionService.createAction({
+            agreement: agreement,
+            run: oldRun,
+            stepKey: oldRun.currentStepKey,
+            actionType: "Restarted",
+            comment: modMeta?.comment ? `Restarted due to modification. ${modMeta.comment}` : "Restarted due to modification."
+          });
+
+          // 7) Action 2 - CREATE INITIAL ACTION ROW FOR NEW RUN
+          await WorkflowActionService.createAction({
+            agreement: agreement,
+            run: newRun,
+            stepKey: "submit",
+            actionType: "Modified",
+            comment: modMeta?.comment ?? "",
+            changeSummary: modMeta?.changeSummary,
+            changePayloadJson: modMeta?.changePayloadJson
+          });
+
         }
-
-        // 2) Save edits
-        await RiskAgreementService.edit({ ...item, ...approvers }, "Mod Review");
-
-        // 3) Incement run number & create new run
-        const newRunNumber = (oldRun.runNumber ?? 0) + 1;
-        const newRun = await WorkflowRunService.createRestartRun(
-          item.Id,
-          item,
-          newRunNumber,
-          approvers.OGPresidentId,
-          approvers.cooId,
-          approvers.CEOId,
-          approvers.SVPContractsId,
-          "Mod",
-          "test restart comment"
-        );
-
-        // 4) Flip agreement pointer (UPDATE) asap
-        await RiskAgreementService.updateRunId(item.Id, newRun.Id);
-
-        // 5) Supercede old run
-        await WorkflowRunService.supercedeOldRun(oldRun.Id, "Mod", modMeta?.comment);
-
-        // 6) Action 1 - stop old run
-        await WorkflowActionService.createAction({
-          agreement: item,
-          run: oldRun,
-          stepKey: oldRun.currentStepKey,
-          actionType: "Restarted",
-          comment: modMeta?.comment ? `Restarted due to modification. ${modMeta.comment}` : "Restarted due to modification."
-        });
-
-        // 7) Action 2 - CREATE INITIAL ACTION ROW FOR NEW RUN
-        await WorkflowActionService.createAction({
-          agreement: item,
-          run: newRun,
-          stepKey: "submit",
-          actionType: "Modified",
-          comment: modMeta?.comment ?? "",
-          changeSummary: modMeta?.changeSummary,
-          changePayloadJson: modMeta?.changePayloadJson
-        });
-
       }
 
       // use existing refresh so all maps are rebuilt consistently
       await refresh(true, "refresh");
 
-      setSuccessMessage(submitMode === "new"
-        ? "Successfully created a new At-Risk Agreement!"
-        : "Successfully updated the At-Risk Agreement!"
+      setSuccessMessage(
+        submitMode === "new"
+          ? "Successfully created a new At-Risk Agreement!"
+          : didRestartWorkflow
+            ? "Successfully updated the agreement and restarted approvals!"
+            : "Successfully updated the At-Risk Agreement!"
       );
 
       setShowProgress(false);
@@ -266,17 +351,19 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
   const agreementsCtxValue = React.useMemo(() => ({
     agreements,
     runByAgreementId,
-    actionsByRunId,
-    isRefreshing,
-    lastRefreshed,
-    refresh,
-
+    runsByAgreementId,
+    actionsByAgreementId,
+    isAgreementDetailLoading,
+    loadAgreementDetail, //nothing loads unless a page calls it
     myActions,
     isMyActionsLoading,
-    loadMyActions //nothing loads unless a page calls it
+    loadMyActions, //nothing loads unless a page calls it
+    isRefreshing,
+    lastRefreshed,
+    refresh
   }), [
-    agreements, runByAgreementId, actionsByRunId, isRefreshing, lastRefreshed, refresh,
-    myActions, isMyActionsLoading, loadMyActions
+    agreements, runByAgreementId, runsByAgreementId, actionsByAgreementId, isAgreementDetailLoading, loadAgreementDetail,
+    myActions, isMyActionsLoading, loadMyActions, isRefreshing, lastRefreshed, refresh
   ]);
 
 
@@ -469,7 +556,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
             open={showBackdrop || isRefreshing}
             onClick={() => showSuccess && hideSuccess()}
           >
-            {showProgress || isRefreshing && (
+            {(showProgress || isRefreshing) && (
               <Stack spacing={2} alignItems="center">
                 <CircularProgress size={64} sx={{ color: "warning.main" }} />
                 {(backdropMessage !== "" || isRefreshing) && (

@@ -4,9 +4,15 @@ import { RefreshMode } from "../data/agreementsDataCall";
 
 export interface IAgreementsContext {
   agreements: IRiskAgreementItem[];
-  runByAgreementId: Map<number, IWorkflowRunItem>;
-  actionsByRunId: Map<number, IWorkflowActionItem[]>;
+  runByAgreementId: Map<number, IWorkflowRunItem>; //current run for agreement
 
+  // for the item VIEW
+  runsByAgreementId: Map<number, IWorkflowRunItem[]>; //all runs for agreement
+  actionsByAgreementId: Map<number, IWorkflowActionItem[]>; //all actions for agreement
+  isAgreementDetailLoading: (agreementId: number) => boolean;
+  loadAgreementDetail: (agreementId: number, force?: boolean) => Promise<void>;
+
+  // for MY WORK
   myActions: IWorkflowActionItem[];
   isMyActionsLoading: boolean;
   loadMyActions: (userId: number, force?: boolean) => Promise<void>;

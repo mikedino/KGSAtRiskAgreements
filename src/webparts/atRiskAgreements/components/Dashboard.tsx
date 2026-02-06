@@ -22,23 +22,23 @@ const Dashboard: React.FC = () => {
   const theme = useTheme();
 
   // use AgreementsProvider Context
-  const { agreements, runByAgreementId, actionsByRunId } = useAgreements();
+  const { agreements, runByAgreementId, actionsByAgreementId } = useAgreements();
 
   // top cards
   const kpis = React.useMemo(
-    () => buildDashboardKpis(agreements, runByAgreementId, actionsByRunId),
-    [agreements, runByAgreementId, actionsByRunId]
+    () => buildDashboardKpis(agreements, runByAgreementId, actionsByAgreementId),
+    [agreements, runByAgreementId, actionsByAgreementId]
   );
 
   // Chart datasets
   const monthlyTrends = React.useMemo(
-    () => buildMonthlyTrends(agreements, runByAgreementId, actionsByRunId, 6),
-    [agreements, runByAgreementId, actionsByRunId]
+    () => buildMonthlyTrends(agreements, runByAgreementId, actionsByAgreementId, 6),
+    [agreements, runByAgreementId, actionsByAgreementId]
   );
   const statusDistribution = React.useMemo(() => buildStatusDistribution(agreements), [agreements]);
   const avgStageTimes = React.useMemo(
-    () => buildAvgStageTimes(agreements, runByAgreementId, actionsByRunId),
-    [agreements, runByAgreementId, actionsByRunId]
+    () => buildAvgStageTimes(agreements, runByAgreementId, actionsByAgreementId),
+    [agreements, runByAgreementId, actionsByAgreementId]
   );
   const riskDistribution = React.useMemo(() => buildRiskDistribution(agreements), [agreements]);
 

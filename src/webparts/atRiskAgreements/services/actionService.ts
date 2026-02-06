@@ -16,7 +16,7 @@ type CreateActionArgs = {
 
 export class WorkflowActionService {
 
-    static createSubmitted(run: IWorkflowRunItem, agreement: IRiskAgreementItem): Promise<void> {
+    static createSubmitted(agreement: IRiskAgreementItem, runId: number): Promise<void> {
 
         const today = new Date().toISOString();
 
@@ -27,22 +27,12 @@ export class WorkflowActionService {
                 .Items()
                 .add({
                     __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.WorkflowActions)}ListItem` },
-
-                    // Title - figure out later
-                    Title: `${agreement.Title}-Run${run.runNumber}-submit`,
-
-                    // Lookups
+                    Title: `${agreement.Title}-Run1-submit`, //initial is always run1
                     agreementId: agreement.Id,
-                    runId: run.Id,
-
-                    // Event
+                    runId,
                     stepKey: "submit",
                     actionType: "Submitted",
-
-                    // Actor
                     actorId: ContextInfo.userId,
-
-                    // Timing
                     actionCompletedDate: today
                 })
                 .execute(

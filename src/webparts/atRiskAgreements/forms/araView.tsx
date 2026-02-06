@@ -29,13 +29,32 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
     const [attachments, setAttachments] = useState<IAttachmentInfo[]>([]);
     const [attachmentsLoading, setAttachmentsLoading] = useState(false);
     const [editConfirmOpen, setEditConfirmOpen] = useState(false);
-
-    const { runByAgreementId, actionsByRunId } = useAgreements();
-    const run = runByAgreementId.get(item.Id);
-    const actions = run ? (actionsByRunId.get(run.Id) ?? []) : [];
-    const workflowSteps = run ? buildWorkflowState(item, run, actions) : [];
-
     const history = useHistory();
+
+    const {
+        runByAgreementId,
+        //runsByAgreementId, // WILL USE AT SOME POINT
+        actionsByAgreementId,
+        loadAgreementDetail,
+        isAgreementDetailLoading
+    } = useAgreements();
+
+    React.useEffect(() => {
+        loadAgreementDetail(item.Id).catch(e => console.error("loadAgreementDetail error", e));
+    }, [item.Id, loadAgreementDetail]);
+
+    const run = runByAgreementId.get(item.Id); // current run pointer (boot)
+    //const allRuns = runsByAgreementId.get(item.Id) ?? [];
+    const allActions = actionsByAgreementId.get(item.Id) ?? [];
+    const detailLoading = isAgreementDetailLoading(item.Id);
+
+    // actions for CURRENT run (timeline needs this)
+    const currentRunActions = React.useMemo(() => {
+        if (!run) return [];
+        return allActions.filter(a => (a.run?.Id ?? a.run.Id) === run.Id);
+    }, [allActions, run]);
+
+    const workflowSteps = run ? buildWorkflowState(item, run, currentRunActions) : [];
 
     // attachments
     useEffect(() => {
@@ -105,24 +124,33 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
     const handleModalSubmit = async (): Promise<void> => {
         if (!actionType) return;
 
+        // close the dialog immediately so the App Backdrop is the top layer
+        const type = actionType;
+        const text = comment;
+
+        setCommentModalOpen(false);
+        setActionType(null);
+        setComment("");
         setLoading(true);
 
         try {
-            if (actionType === "approve") {
-                await onApprove(comment);
+            if (type === "approve") {
+                await onApprove(text);
             } else {
-                await onReject(comment);
+                await onReject(text);
             }
-
-            setCommentModalOpen(false);
-            setActionType(null);
-            setComment("");
         } catch (error) {
             console.error("Failed to submit action:", error);
+
+            // Optional: re-open with the previous text so user doesn’t lose it
+            setActionType(type);
+            setComment(text);
+            setCommentModalOpen(true);
         } finally {
             setLoading(false);
         }
     };
+
 
     // ✅ Chip color based on araStatus (includes Resolved, Mod Review)
     const chipColor: "success" | "warning" | "error" | "default" =
@@ -181,12 +209,18 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
 
                 <Grid size={{ xs: 12, lg: 6 }}>
                     {run ? (
-                        <WorkflowTimeline
-                            steps={workflowSteps}
-                            canApprove={!!canApprove}
-                            onApprove={handleApprove}
-                            onReject={handleReject}
-                        />
+                        detailLoading ? (
+                            <Typography variant="body2" color="text.secondary">
+                                Loading workflow history…
+                            </Typography>
+                        ) : (
+                            <WorkflowTimeline
+                                steps={workflowSteps}
+                                canApprove={!!canApprove}
+                                onApprove={handleApprove}
+                                onReject={handleReject}
+                            />
+                        )
                     ) : (
                         <Typography variant="body2" color="text.secondary">
                             This agreement has not been submitted yet.
@@ -196,7 +230,7 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
 
             </Grid>
 
-            <Dialog open={commentModalOpen} onClose={handleModalCancel} fullWidth maxWidth="md">
+            <Dialog open={commentModalOpen} onClose={handleModalCancel} fullWidth maxWidth="md" disableEscapeKeyDown={loading}>
                 <DialogTitle>{actionType === "approve" ? "Approve Agreement" : "Reject Agreement"}</DialogTitle>
 
                 <DialogContent sx={{ pt: 2 }}>
