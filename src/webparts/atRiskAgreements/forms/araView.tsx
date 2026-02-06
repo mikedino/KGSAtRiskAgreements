@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { IRiskAgreementItem, IAttachmentInfo } from "../data/props";
 import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, TextField, Typography } from "@mui/material";
 import Edit from "@mui/icons-material/Edit";
-import AgreementInfoCard from "./viewInfo";
+import AgreementInfoCard from "./viewInfoCard";
 import WorkflowTimeline from "./viewTimeline";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useHistory } from "react-router-dom";

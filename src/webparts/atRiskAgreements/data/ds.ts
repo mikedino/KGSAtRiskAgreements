@@ -78,7 +78,7 @@ export class DataSource {
                     Select: [
                         "Id", "Title", "projectName", "contractId", "invoice", "contractType", "riskStart", "riskEnd", "popEnd",
                         "entity", "riskReason", "riskFundingRequested", "riskJustification", "contractName", "programName",
-                        "araStatus", "Created", "Modified",
+                        "araStatus", "Created", "Modified", "og", "hasSubcontract",
                         "Author/Id", "Author/Title", "Author/EMail",
                         "Editor/Id", "Editor/Title", "Editor/EMail",
                         "projectMgr/Id", "projectMgr/Title", "projectMgr/EMail",

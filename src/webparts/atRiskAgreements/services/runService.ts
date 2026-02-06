@@ -274,7 +274,7 @@ export class WorkflowRunService {
                     runStatus: "Completed",
                     outcome: "Rejected",
                     completed: nowIso,
-                    hasDecision: "1", //true 
+                    hasDecision: true,
 
                     pendingRole: null,
                     pendingApproverId: null,

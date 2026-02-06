@@ -67,7 +67,10 @@ export interface IRiskAgreementItem {
   projectName: string;
   contractId?: string;
   invoice: string;
+  contractName: string;
+  programName: string;
   contractType: ContractType;
+  hasSubcontract: boolean;
   riskStart: string;
   riskEnd: string;
   popEnd: string;
@@ -76,10 +79,8 @@ export interface IRiskAgreementItem {
   projectMgr?: IPeoplePicker;
   contractMgr?: IPeoplePicker;
   riskReason: "Lack of Funding" | "PoP End";
-  riskFundingRequested: number;
+  riskFundingRequested?: number;
   riskJustification: string;
-  contractName: string;
-  programName: string;
   araStatus: AraStatus;
   entityGM: IPeoplePicker;
 

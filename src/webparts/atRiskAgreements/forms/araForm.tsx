@@ -2,7 +2,11 @@ import * as React from "react";
 import { useState, useMemo, useEffect } from "react";
 import {
   Box, Grid, Typography, TextField, MenuItem, Button, Divider, Autocomplete,
-  Skeleton, List, ListItem, ListItemText, CircularProgress
+  Skeleton, List, ListItem, ListItemText, CircularProgress,
+  FormLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio
 } from "@mui/material";
 import AttachFileOutlined from "@mui/icons-material/AttachFileOutlined";
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -51,8 +55,8 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
   const [attachments, setAttachments] = useState<IAttachmentInfo[]>([]);
   const [cmTouched, setCmTouched] = useState(false);
   const [form, setForm] = useState<IRiskAgreementItem>({
-    riskFundingRequested: 0,
-    ...(item ?? {})
+    ...item,
+    riskFundingRequested: item?.riskFundingRequested
   } as IRiskAgreementItem);
 
   const setDialogProps = (title: string, message: string): void => {
@@ -361,7 +365,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                   renderInput={(params) => (
                     <TextField
                       {...params}
-                      label="Invoice"
+                      label="JAMIS Invoice No."
                       required
                       disabled={!form.contractId || invoiceLoading}
                       InputProps={{
@@ -388,20 +392,40 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
             )}
 
             {submissionType === "newOpp" && (
-              <Grid size={{ xs: 12, md: 6 }}>
-                <TextField
-                  label="Contract Name"
-                  fullWidth
-                  required
-                  disabled
-                  value="New Award"
-                />
-              </Grid>
+              <>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    label="Contract Name"
+                    fullWidth
+                    required
+                    disabled
+                    value="New Award"
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField label="Program Name" fullWidth required value={form.programName ?? ""} onChange={(e) => updateField("programName", e.target.value)} />
+                </Grid>
+              </>
             )}
 
-            {submissionType === "newOpp" && (
+            {submissionType === "existing" && (
               <Grid size={{ xs: 12, md: 6 }}>
-                <TextField label="Program Name" fullWidth required value={form.programName ?? ""} onChange={(e) => updateField("programName", e.target.value)} />
+                <FormLabel id="hasSubcontract-label" sx={{ fontSize: "0.75rem", paddingLeft: 2 }}>Has Subcontract?</FormLabel>
+
+                <RadioGroup
+                  row
+                  aria-labelledby="hasSubcontract-label"
+                  name="hasSubcontract"
+                  value={form.hasSubcontract ? "true" : "false"}
+                  sx={{ paddingLeft: 3 }}
+                  onChange={(e) =>
+                    updateField("hasSubcontract", e.target.value === "true")
+                  }
+                >
+                  <FormControlLabel value="false" sx={{ height: "35px" }} control={<Radio size="small" />} label="No" />
+                  <FormControlLabel value="true"  sx={{ height: "35px", marginLeft: 2 }} control={<Radio size="small" />} label="Yes" />
+                </RadioGroup>
               </Grid>
             )}
 
@@ -452,11 +476,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                select
-                label="Operating Group"
-                required
-                fullWidth
+              <TextField select label="Operating Group" required fullWidth
                 value={form.og ?? ""}
                 onChange={(e) => {
                   // on change, default CM only if not touched (or CM empty)
@@ -563,6 +583,12 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                 required
                 value={form.riskFundingRequested}
                 onChange={(val) => updateField("riskFundingRequested", val)}
+                error={form.riskFundingRequested === undefined}
+                helperText={
+                  form.riskFundingRequested === undefined
+                    ? "Enter an amount (0 is allowed)"
+                    : undefined
+                }
               />
             </Grid>
 

@@ -30,7 +30,7 @@ export const Configuration = Helper.SPConfig({
                 },
                 {
                     name: "invoice",
-                    title: "Invoice",
+                    title: "JAMIS Invoice",
                     type: Helper.SPCfgFieldType.Text
                 },
                 {
@@ -38,6 +38,12 @@ export const Configuration = Helper.SPConfig({
                     title: "Conract Type",
                     type: Helper.SPCfgFieldType.Choice,
                     choices: ["Cost Plus/Reimbursable", "FFP/LOE", "Hybrid", "T&amp;M", "LH"]
+                } as Helper.IFieldInfoChoice,
+                {
+                    name: "hasSubcontract",
+                    title: "Has Subcontract?",
+                    type: Helper.SPCfgFieldType.Boolean,
+                    defaultValue: "0",
                 } as Helper.IFieldInfoChoice,
                 {
                     name: "riskStart",
@@ -214,7 +220,7 @@ export const Configuration = Helper.SPConfig({
                     type: Helper.SPCfgFieldType.Boolean,
                     description: "Does this run have any decision made yet?",
                     defaultValue: "0"
-                } as Helper.IFieldInfoDate,
+                },
                 {
                     name: "outcome",
                     title: "Outcome",

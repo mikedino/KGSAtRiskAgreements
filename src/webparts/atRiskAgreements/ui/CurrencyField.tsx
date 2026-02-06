@@ -2,36 +2,44 @@ import React, { useState, useEffect, ChangeEvent, FC } from "react";
 import { TextField, InputAdornment, TextFieldProps } from "@mui/material";
 
 interface CurrencyFieldProps extends Omit<TextFieldProps, "value" | "onChange"> {
-    value: number;
-    onChange: (value: number) => void;
+    value?: number; // allow undefined = not entered yet
+    onChange: (value: number | undefined) => void; 
     decimals?: number; // Optional, default to 2
 }
 
-const CurrencyField: FC<CurrencyFieldProps> = ({ value, onChange, decimals = 2, ...rest }): JSX.Element => {
+const CurrencyField: FC<CurrencyFieldProps> = ({
+    value,
+    onChange,
+    decimals = 2,
+    ...rest
+}): JSX.Element => {
     // Format number as currency string with fixed decimals and without a $ sign
     const formatUSD = (val: number): string => {
-        if (typeof val !== "number" || isNaN(val)) {
-            return "0.00"; //
-        }
         return new Intl.NumberFormat("en-US", {
             style: "decimal",
             minimumFractionDigits: decimals,
-            maximumFractionDigits: decimals,
+            maximumFractionDigits: decimals
         }).format(val);
     };
 
     // Parse string input into number (strip $, commas, etc)
-    const parseUSD = (val: string): number => {
-        const cleaned: string = val.replace(/[^0-9.]/g, "");
-        const parsed: number = parseFloat(cleaned);
-        return isNaN(parsed) ? 0 : parsed;
+    // returns undefined when empty
+    const parseUSD = (val: string): number | undefined => {
+        const cleaned = val.replace(/[^0-9.]/g, "");
+        if (cleaned.trim() === "") return undefined;
+
+        const parsed = parseFloat(cleaned);
+        return isNaN(parsed) ? undefined : parsed;
     };
 
-    const [display, setDisplay] = useState<string>(() => formatUSD(value ?? 0));
+    // display is blank when value is undefined
+    const [display, setDisplay] = useState<string>(() =>
+        value === undefined ? "" : formatUSD(value)
+    );
 
     // Sync display when value prop changes (external updates)
     useEffect((): void => {
-        setDisplay(formatUSD(value));
+        setDisplay(value === undefined ? "" : formatUSD(value));
     }, [value, decimals]);
 
     // Update display string on typing
@@ -41,9 +49,13 @@ const CurrencyField: FC<CurrencyFieldProps> = ({ value, onChange, decimals = 2, 
 
     // On blur, parse & propagate numeric value, update formatted display
     const handleBlur = (): void => {
-        const parsed: number = parseUSD(display);
+        const parsed = parseUSD(display);
+
+        // propagate undefined if empty/invalid
         onChange(parsed);
-        setDisplay(formatUSD(parsed));
+
+        // keep blank if undefined, otherwise format
+        setDisplay(parsed === undefined ? "" : formatUSD(parsed));
     };
 
     return (
@@ -55,8 +67,8 @@ const CurrencyField: FC<CurrencyFieldProps> = ({ value, onChange, decimals = 2, 
             inputMode="decimal"
             slotProps={{
                 input: {
-                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                },
+                    startAdornment: <InputAdornment position="start">$</InputAdornment>
+                }
             }}
         />
     );

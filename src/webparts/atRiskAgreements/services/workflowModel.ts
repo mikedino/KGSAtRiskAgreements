@@ -59,14 +59,14 @@ export const RiskAgreementWorkflow: IWorkflowStep[] = [
   {
     key: "coo",
     label: "COO Approval",
-    isRequired: (agreement) => agreement.riskFundingRequested > 50000,
+    isRequired: (agreement) => agreement.riskFundingRequested! > 50000, //never undefined (could be zero)
     getApprover: (run) => getApproverFromRun("coo", run),
     next: "ceo"
   },
   {
     key: "ceo",
     label: "CEO Approval",
-    isRequired: (agreement) => agreement.riskFundingRequested > 100000,
+    isRequired: (agreement) => agreement.riskFundingRequested! > 100000, //never undefined
     getApprover: (run) => getApproverFromRun("ceo", run),
     next: "svpContracts"
   },
