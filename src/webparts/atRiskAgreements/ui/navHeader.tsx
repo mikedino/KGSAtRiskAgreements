@@ -26,7 +26,7 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
     const theme = useTheme();
 
     // App-wide data refresh trigger
-    const { refresh, isRefreshing } = useAgreements();
+    const { refresh, isRefreshing, clearAgreementDetailCache } = useAgreements();
 
     // small screens (md = ~900px), large screens (lg = ~1200px)
     const isSmall = useMediaQuery(theme.breakpoints.down("md"));
@@ -54,7 +54,10 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
                 {/* ROUTER LINKS */}
                 <Stack direction="row" spacing={2}>
                     <IconButton
-                        onClick={() => refresh(true)}
+                        onClick={async () => { 
+                            await refresh(true);
+                            clearAgreementDetailCache();
+                        }}
                         disabled={isRefreshing}
                         size="medium"
                         aria-label="Refresh Data"

@@ -50,11 +50,16 @@ const getLatestCommentAction = (
 
 const getSubmittedActionDate = (agreement: IRiskAgreementItem, actions: IWorkflowActionItem[]): string => {
   const submitted = actions
-    .filter(a => a.actionType === "Submitted" || a.actionType === "Restarted")
+    .filter(a =>
+      a.actionType === "Submitted" ||
+      a.actionType === "Modified" ||   // restart/resubmission marker for new run
+      a.actionType === "Restarted"     // keep for old run end marker if needed
+    )
     .sort((a, b) => new Date(b.actionCompletedDate).getTime() - new Date(a.actionCompletedDate).getTime())[0];
 
   return submitted?.actionCompletedDate ?? agreement.Created;
 };
+
 
 /**
  * Build workflow state from:
@@ -92,6 +97,7 @@ export function buildWorkflowState(
     if (step.isInitial) {
       return {
         ...step,
+        label: run.runNumber > 1 ? "Resubmitted" : step.label,
         status: "Submitted",
         approverName: agreement.Author?.Title,
         completeDate: submittedDate

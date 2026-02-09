@@ -205,6 +205,29 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
     }
   }, [runsByAgreementId, actionsByAgreementId, agreementDetailLoading]);
 
+  const clearAgreementDetailCache = React.useCallback((agreementId?: number) => {
+  setRunsByAgreementId(prev => {
+    if (!agreementId) return new Map();           // clear all
+    const next = new Map(prev);
+    next.delete(agreementId);
+    return next;
+  });
+
+  setActionsByAgreementId(prev => {
+    if (!agreementId) return new Map();
+    const next = new Map(prev);
+    next.delete(agreementId);
+    return next;
+  });
+
+  setAgreementDetailLoading(prev => {
+    if (!agreementId) return new Map();
+    const next = new Map(prev);
+    next.delete(agreementId);
+    return next;
+  });
+}, []);
+
   ///////////// SET DATA STATE ////////////
   const {
     agreements,
@@ -355,6 +378,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
     actionsByAgreementId,
     isAgreementDetailLoading,
     loadAgreementDetail, //nothing loads unless a page calls it
+    clearAgreementDetailCache,
     myActions,
     isMyActionsLoading,
     loadMyActions, //nothing loads unless a page calls it
@@ -363,7 +387,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
     refresh
   }), [
     agreements, runByAgreementId, runsByAgreementId, actionsByAgreementId, isAgreementDetailLoading, loadAgreementDetail,
-    myActions, isMyActionsLoading, loadMyActions, isRefreshing, lastRefreshed, refresh
+    clearAgreementDetailCache, myActions, isMyActionsLoading, loadMyActions, isRefreshing, lastRefreshed, refresh
   ]);
 
 

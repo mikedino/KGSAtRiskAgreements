@@ -227,6 +227,7 @@ export class WorkflowRunService {
                     runStatus: "Completed",
                     outcome: "Approved",
                     completed: nowIso,
+                    hasDecision: true,
 
                     pendingRole: null,
                     pendingApproverId: null,
@@ -250,6 +251,7 @@ export class WorkflowRunService {
 
                 runStatus: "Active",
                 currentStepKey: nextKey,
+                hasDecision: true,
 
                 pendingRole: nextStep?.label ?? null,
                 pendingApproverId: approver?.Id ?? null,

@@ -2,72 +2,115 @@
 
 ## Summary
 
-Short summary on functionality and used technologies.
+**KGS At-Risk Agreements** is a SharePoint Framework (SPFx) application that manages the full lifecycle of *At-Risk Agreements*, including submission, multi-step approval workflows, modification handling, and complete historical audit visibility.
 
-[picture of the solution in action, if possible]
+The solution supports:
+- Guided, role-based approval workflows
+- Agreement modifications that automatically restart approvals when required
+- Full workflow history with multiple runs, actions, comments, and change summaries
+- Personalized dashboards for approvers and submitters
+- A detailed agreement view with expandable workflow timelines and change history
+
+This solution is designed for environments where governance, traceability, and auditability of approvals are critical.
+
+---
 
 ## Used SharePoint Framework Version
 
 ![version](https://img.shields.io/badge/version-1.21.1-green.svg)
 
+---
+
 ## Applies to
 
-- [SharePoint Framework](https://aka.ms/spfx)
-- [Microsoft 365 tenant](https://docs.microsoft.com/en-us/sharepoint/dev/spfx/set-up-your-developer-tenant)
+- SharePoint Framework (SPFx)
+- SharePoint Online
+- Microsoft 365 tenant
 
-> Get your own free development tenant by subscribing to [Microsoft 365 developer program](http://aka.ms/o365devprogram)
+> Get your own free development tenant by subscribing to the  
+> [Microsoft 365 Developer Program](https://aka.ms/o365devprogram)
+
+---
 
 ## Prerequisites
 
-> Any special pre-requisites?
+- SharePoint Online
+- SPFx development environment configured
+- Node.js version compatible with SPFx 1.21.1
+- Permissions to create and manage SharePoint Lists and Libraries
+- Site Owner or Administrator access for initial setup
+
+---
 
 ## Solution
 
-| Solution    | Author(s)                                               |
-| ----------- | ------------------------------------------------------- |
-| folder name | Author details (name, company, twitter alias with link) |
+| Solution | Author |
+|--------|--------|
+| KGS At-Risk Agreements | Mike Landino (Koniag Government Solutions) |
 
-## Version history
+---
 
-| Version | Date             | Comments        |
-| ------- | ---------------- | --------------- |
-| 1.1     | March 10, 2021   | Update comment  |
-| 1.0     | January 29, 2021 | Initial release |
+## Version History
+
+| Version | Date | Comments |
+|-------|------|----------|
+| 1.2.0.4 | February 9, 2026 | Initial production release |
+
+---
 
 ## Disclaimer
 
-**THIS CODE IS PROVIDED _AS IS_ WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING ANY IMPLIED WARRANTIES OF FITNESS FOR A PARTICULAR PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.**
+**THIS CODE IS PROVIDED _AS IS_ WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT.**
 
 ---
 
 ## Minimal Path to Awesome
 
-- Clone this repository
-- Ensure that you are at the solution folder
-- in the command-line run:
-  - **npm install**
-  - **gulp serve**
+- git clone <https://github.com/mikedino/KGSAtRiskAgreements.git>
+- cd kgs-at-risk-agreements
+- npm install
+- gulp serve
 
-> Include any additional steps as needed.
 
-## Features
+## Key Features
 
-Description of the extension that expands upon high-level summary above.
+### Agreement Lifecycle Management
 
-This extension illustrates the following concepts:
+- Create and submit At-Risk Agreements
+- Edit agreements prior to approval
+- Automatically detect when a modification requires workflow restart
 
-- topic 1
-- topic 2
-- topic 3
+### Approval Workflow Engine
 
-> Notice that better pictures and documentation will increase the sample usage and the value you are providing for others. Thanks for your submissions advance.
+- Multi-step approval workflow
+- Role-based approvers resolved at runtime
+- Support for skipped or conditional steps
+- Clear “Current”, “Approved”, “Rejected”, and “Queued” states
 
-> Share your web part with others through Microsoft 365 Patterns and Practices program to get visibility and exposure. More details on the community, open-source projects and other activities from http://aka.ms/m365pnp.
+### Workflow Runs & History
 
-## References
+- Each workflow restart creates a new Run
+- Runs are preserved for historical reference
+- Expandable accordion view of all runs
+- Current run is emphasized; previous runs are read-only
 
-- [Getting started with SharePoint Framework](https://docs.microsoft.com/en-us/sharepoint/dev/spfx/set-up-your-developer-tenant)
-- [Building for Microsoft teams](https://docs.microsoft.com/en-us/sharepoint/dev/spfx/build-for-teams-overview)
-- [Use Microsoft Graph in your solution](https://docs.microsoft.com/en-us/sharepoint/dev/spfx/web-parts/get-started/using-microsoft-graph-apis)
-- [Publish SharePoint Framework applications to the Marketplace](https://docs.microsoft.com/en-us/sharepoint/dev/spfx/publish-to-marketplace-overview)
-- [Microsoft 365 Patterns and Practices](https://aka.ms/m365pnp) - Guidance, tooling, samples and open-source controls for your Microsoft 365 development
+### Change History & Audit Trail
+
+- Change summaries captured on modification
+- Who changed what, when, and in which run
+- Global Change History drawer showing all modifications
+- Per-run change details available directly from the workflow timeline
+
+### My Work Dashboard
+
+- "My Action" — items waiting on the current user
+- "My Reviewed" — agreements the user approved or rejected
+- "Pending", "Approved", "Resolved", and "All" views
+- Fully derived from workflow state and actions
+
+### Performance-Conscious Data Loading
+
+- Lightweight boot load for dashboards
+- On-demand loading of full workflow history when viewing an agreement
+- Explicit cache invalidation on refresh to prevent stale data
+- Context-based state management to avoid prop-drilling

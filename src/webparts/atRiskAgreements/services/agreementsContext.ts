@@ -11,6 +11,7 @@ export interface IAgreementsContext {
   actionsByAgreementId: Map<number, IWorkflowActionItem[]>; //all actions for agreement
   isAgreementDetailLoading: (agreementId: number) => boolean;
   loadAgreementDetail: (agreementId: number, force?: boolean) => Promise<void>;
+  clearAgreementDetailCache: (agreementId?: number) => void;
 
   // for MY WORK
   myActions: IWorkflowActionItem[];
