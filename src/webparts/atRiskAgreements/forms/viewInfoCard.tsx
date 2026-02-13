@@ -47,9 +47,18 @@ const AgreementInfoCard = ({
                 <ReadOnly label="Risk Start" value={item.riskStart ? new Date(item.riskStart).toLocaleDateString() : "-"} />
                 <ReadOnly label="Risk End" value={item.riskEnd ? new Date(item.riskEnd)?.toLocaleDateString() : "-"} />
                 {item.contractId && (<ReadOnly label="Contractual PoP End" value={item.popEnd ? new Date(item.popEnd).toLocaleDateString() : "-"} />)}
-                <ReadOnly 
+                <ReadOnly
                     label="Risk Funding Requested"
-                    value={item.riskFundingRequested !== undefined ? `$${item.riskFundingRequested.toLocaleString()}` : "-"}
+                    value={
+                        item.riskFundingRequested !== undefined
+                            ? item.riskFundingRequested.toLocaleString("en-US", {
+                                style: "currency",
+                                currency: "USD",
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            })
+                            : "-"
+                    }
                 />
                 <ReadOnly label="Operating Group" value={item.og} />
                 <ReadOnly label="Project Manager" value={item.projectMgr?.Title} />
@@ -57,7 +66,7 @@ const AgreementInfoCard = ({
             </Grid>
 
             <Grid container sx={{ mt: 2 }}>
-                <ReadOnly label="Justification" value={item.riskJustification} xs={12} md={12}/>
+                <ReadOnly label="Justification" value={item.riskJustification} xs={12} md={12} />
             </Grid>
 
             <Box sx={{ mt: 3 }}>

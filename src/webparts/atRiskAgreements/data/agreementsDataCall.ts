@@ -1,6 +1,6 @@
 import * as React from "react";
 import { DataSource } from "./ds";
-import { IRiskAgreementItem, IWorkflowActionItem, IWorkflowRunItem } from "./props";
+import { IAppUserItem, IRiskAgreementItem, IWorkflowActionItem, IWorkflowRunItem } from "./props";
 import { formatError } from "../services/utils";
 
 export type RefreshMode = "boot" | "refresh";
@@ -14,6 +14,7 @@ export interface IAgreementsDataState {
   lastRefreshed: string | undefined;
   refresh: (override?: boolean, mode?: RefreshMode) => Promise<void>;
   fatalError?: string;
+  appUser?: IAppUserItem;
 }
 
 /**
@@ -34,6 +35,11 @@ export const useAgreementsData = (
   const [isRefreshing, setIsRefreshing] = React.useState<boolean>(false);
   const [lastRefreshed, setLastRefreshed] = React.useState<string | undefined>(undefined);
   const [fatalError, setFatalError] = React.useState<string | undefined>(undefined);
+  const [appUser, setAppUser] = React.useState<IAppUserItem | undefined>(undefined);
+
+  const appUserRef = React.useRef<IAppUserItem | undefined>(undefined);
+
+  React.useEffect(() => { appUserRef.current = appUser; }, [appUser]);
 
   const refresh = React.useCallback(async (override = false, mode: RefreshMode = "refresh"): Promise<void> => {
 
@@ -56,19 +62,16 @@ export const useAgreementsData = (
         setIsRefreshing(true);
       }
 
+      // load/apply user preferences early in boot (only once)
+      if (showBoot || !appUserRef.current) {
+        const appUser = await DataSource.getOrCreateCurrentUser();
+        setAppUser(appUser);
+      }
+
       await DataSource.init(override);
 
       const nextAgreements = [...(DataSource.Agreements ?? [])];
       setAgreements(nextAgreements);
-
-      // collect current run ids (ignore blanks)
-      // const runIds = Array.from(
-      //   new Set(
-      //     nextAgreements
-      //       .map(a => a.currentRun?.Id)
-      //       .filter((id): id is number => typeof id === "number" && id > 0)
-      //   )
-      // );
 
       // Get WF Runs and WF Actions
       const runs = await DataSource.getCurrentWorkflowRuns();
@@ -158,6 +161,7 @@ export const useAgreementsData = (
     isRefreshing,
     lastRefreshed,
     refresh,
-    fatalError
+    fatalError,
+    appUser
   };
 };

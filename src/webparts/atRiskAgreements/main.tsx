@@ -40,7 +40,12 @@ type InstallState = "checking" | "ready" | "blocked" | "error";
 export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
 
   const [installState, setInstallState] = React.useState<InstallState>("checking");
-  const [useDarkTheme, setUseDarkTheme] = useState(false);
+  const [useDarkTheme, setUseDarkTheme] = useState<boolean>(() => {
+    const cached = sessionStorage.getItem("ara_theme");
+    if (cached === "dark") return true;
+    if (cached === "light") return false;
+    return false; // default if nothing cached
+  });
   const [showDialog, setShowDialog] = useState(false);
   const [dialogTitle, setDialogTitle] = useState<string>("");
   const [dialogMessage, setDialogMessage] = useState<string>("");
@@ -57,9 +62,9 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
   //runs and actions by agreement - only loaded for VIEW item
   const [runsByAgreementId, setRunsByAgreementId] = React.useState<Map<number, IWorkflowRunItem[]>>(new Map());
   const [actionsByAgreementId, setActionsByAgreementId] = React.useState<Map<number, IWorkflowActionItem[]>>(new Map());
+
   // track per-agreement load state
   const [agreementDetailLoading, setAgreementDetailLoading] = React.useState<Map<number, boolean>>(new Map());
-
 
   const history = useHistory();
 
@@ -90,7 +95,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
 
         Configuration.setWebUrl(ContextInfo.webServerRelativeUrl);
 
-        // ✅ use await so try/catch catches failures
+        // use await so try/catch catches failures
         const needsInstall = await InstallationRequired.requiresInstall({ cfg: Configuration });
 
         if (needsInstall) {
@@ -154,7 +159,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
     });
 
     try {
-      // ✅ do BOTH calls in parallel
+      // do BOTH calls in parallel
       const [runs, actions] = await Promise.all([
         DataSource.getWorkflowRunsByAgreement(agreementId),
         DataSource.getWorkflowActionsByAgreement(agreementId)
@@ -206,27 +211,27 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
   }, [runsByAgreementId, actionsByAgreementId, agreementDetailLoading]);
 
   const clearAgreementDetailCache = React.useCallback((agreementId?: number) => {
-  setRunsByAgreementId(prev => {
-    if (!agreementId) return new Map();           // clear all
-    const next = new Map(prev);
-    next.delete(agreementId);
-    return next;
-  });
+    setRunsByAgreementId(prev => {
+      if (!agreementId) return new Map();           // clear all
+      const next = new Map(prev);
+      next.delete(agreementId);
+      return next;
+    });
 
-  setActionsByAgreementId(prev => {
-    if (!agreementId) return new Map();
-    const next = new Map(prev);
-    next.delete(agreementId);
-    return next;
-  });
+    setActionsByAgreementId(prev => {
+      if (!agreementId) return new Map();
+      const next = new Map(prev);
+      next.delete(agreementId);
+      return next;
+    });
 
-  setAgreementDetailLoading(prev => {
-    if (!agreementId) return new Map();
-    const next = new Map(prev);
-    next.delete(agreementId);
-    return next;
-  });
-}, []);
+    setAgreementDetailLoading(prev => {
+      if (!agreementId) return new Map();
+      const next = new Map(prev);
+      next.delete(agreementId);
+      return next;
+    });
+  }, []);
 
   ///////////// SET DATA STATE ////////////
   const {
@@ -236,8 +241,17 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
     isRefreshing,
     lastRefreshed,
     refresh,
-    fatalError
+    fatalError,
+    appUser
   } = useAgreementsData(setDialogProps, enabled);
+
+  //set theme and session storage based on user preference
+  useEffect(() => {
+    if (!appUser) return;
+    const isDark = appUser.modePreference === "dark";
+    setUseDarkTheme(isDark);
+    sessionStorage.setItem("ara_theme", isDark ? "dark" : "light");
+  }, [appUser]);
 
   // ensure valid run exists
   const getCurrentRunOrThrow = (agreementId: number): IWorkflowRunItem => {

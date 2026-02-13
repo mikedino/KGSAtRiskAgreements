@@ -2,31 +2,34 @@ import * as React from "react";
 import dayjs from "dayjs";
 import { useState, useEffect } from "react";
 import { IRiskAgreementItem, IAttachmentInfo, IWorkflowActionItem, IWorkflowRunItem } from "../data/props";
-import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Drawer, Grid, Stack, TextField, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Drawer, Grid, Stack, TextField, Typography } from "@mui/material";
 import Edit from "@mui/icons-material/Edit";
 import AgreementInfoCard from "./viewInfoCard";
 import WorkflowTimeline from "./viewTimeline";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { ArrowBack, ExpandMore, Cancel, AssignmentTurnedInOutlined } from "@mui/icons-material";
 import { useHistory } from "react-router-dom";
 import { buildWorkflowState } from "../services/workflowState";
-import { Web } from "gd-sprest";
+import { ContextInfo, Web } from "gd-sprest";
 import Strings from "../../../strings";
 import { useAgreements } from "../services/agreementsContext";
-import { ContextInfo } from "gd-sprest";
+import { DataSource } from "../data/ds";
 
 interface RiskAgreementViewProps {
     item: IRiskAgreementItem;
     currentUserEmail: string;
     onApprove: (comment?: string) => Promise<void>;
     onReject: (comment?: string) => Promise<void>;
+    onCancel: (comment?: string) => Promise<void>;
+    onResolve: (comment?: string) => Promise<void>;
 }
 
-const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUserEmail, onApprove, onReject }) => {
+type ActionModalType = "approve" | "reject" | "cancel" | "resolve";
+
+const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUserEmail, onApprove, onReject, onCancel }) => {
 
     const [commentModalOpen, setCommentModalOpen] = useState(false);
     const [comment, setComment] = useState("");
-    const [actionType, setActionType] = useState<"approve" | "reject" | null>(null);
+    const [actionType, setActionType] = React.useState<ActionModalType | null>(null);
     const [loading, setLoading] = useState(false);
     const [attachments, setAttachments] = useState<IAttachmentInfo[]>([]);
     const [attachmentsLoading, setAttachmentsLoading] = useState(false);
@@ -213,9 +216,15 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
         history.push(`/edit/${item.Id}`);
     };
 
-    const canApprove = !!run && run.runStatus === "Active" && run.pendingApproverId === ContextInfo.userId;
+    const isElevated = DataSource.isAdmin || DataSource.isCM;
+    const isSubmitter = item.Author.Id === ContextInfo.userId;
+    const isActive = !!run && run.runStatus === "Active";
+    const canApprove = isActive && (run.pendingApproverId === ContextInfo.userId || isElevated);
+    const canCancel = isActive && (isSubmitter || isElevated);
+    const canEdit = isActive && (isSubmitter || isElevated);
+    const canResolve = isActive && item.araStatus === "Approved" && isElevated;
 
-    const openCommentModal = (type: "approve" | "reject"): void => {
+    const openCommentModal = (type: ActionModalType): void => {
         setActionType(type);
         setComment("");
         setCommentModalOpen(true);
@@ -229,6 +238,8 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
 
     const handleApprove = async (): Promise<void> => openCommentModal("approve");
     const handleReject = async (): Promise<void> => openCommentModal("reject");
+    const handleCancel = async (): Promise<void> => openCommentModal("cancel");
+    const handleResolve = async (): Promise<void> => openCommentModal("resolve");
 
     const handleModalSubmit = async (): Promise<void> => {
         if (!actionType) return;
@@ -245,8 +256,10 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
         try {
             if (type === "approve") {
                 await onApprove(text);
-            } else {
+            } else if (type === "reject") {
                 await onReject(text);
+            } else {
+                await onCancel(text);
             }
         } catch (error) {
             console.error("Failed to submit action:", error);
@@ -261,7 +274,7 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
     };
 
 
-    // ✅ Chip color based on araStatus (includes Resolved, Mod Review)
+    // Chip color based on araStatus (includes Resolved, Mod Review)
     const chipColor: "success" | "warning" | "error" | "default" =
         item.araStatus === "Rejected" ? "error" :
             (item.araStatus === "Approved" || item.araStatus === "Resolved") ? "success" :
@@ -312,7 +325,7 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
         <Box sx={{ p: 2 }}>
             <Box sx={{ mb: 3 }}>
                 <Button
-                    startIcon={<ArrowBackIcon />}
+                    startIcon={<ArrowBack />}
                     color="primary"
                     variant="text"
                     onClick={() => history.goBack()}
@@ -344,15 +357,39 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                     </Stack>
 
                     <Stack direction="row" spacing={2}>
-                        <Button
-                            title="Edit this Agreement"
-                            startIcon={<Edit />}
-                            variant="contained"
-                            color="primary"
-                            onClick={handleEditClick}
-                        >
-                            Edit
-                        </Button>
+                        {canCancel && (
+                            <Button
+                                title="Permanently Cancel this Agreement"
+                                variant="outlined"
+                                startIcon={<Cancel />}
+                                color="error"
+                                onClick={handleCancel}
+                            >
+                                Cancel Agreement
+                            </Button>
+                        )}
+                        {canResolve && (
+                            <Button
+                                title="Permanently Resolve this Agreement"
+                                variant="contained"
+                                startIcon={<AssignmentTurnedInOutlined />}
+                                color="success"
+                                onClick={handleResolve}
+                            >
+                                Resolve Agreement
+                            </Button>
+                        )}
+                        {canEdit && (
+                            <Button
+                                title="Edit this Agreement"
+                                startIcon={<Edit />}
+                                variant="contained"
+                                color="primary"
+                                onClick={handleEditClick}
+                            >
+                                Edit
+                            </Button>
+                        )}
                     </Stack>
                 </Stack>
             </Box>
@@ -372,86 +409,105 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                             Loading workflow history…
                         </Typography>
                     ) : (
-                        <Stack spacing={0.5}>
-                            {allRuns
-                                .slice()
-                                .sort((a, b) => (a.runNumber ?? 0) - (b.runNumber ?? 0))
-                                .map(r => {
-                                    const steps = stepsByRunId.get(r.Id) ?? [];
-                                    const isCurrent = r.Id === run.Id;
+                        <Stack spacing={1}>
+                            {/* Action Required banner */}
+                            {(run.currentStepKey === "submitter" && run.runStatus === "Active") && (
+                                <Alert
+                                    severity="warning"
+                                    variant="outlined"
+                                    sx={{ borderRadius: 2 }}
+                                >
+                                    <Typography fontWeight={700} component="span">
+                                        Action required:
+                                    </Typography>{" "}
+                                    This agreement was rejected and is waiting on the submitter to{" "}
+                                    <b>Modify &amp; Resubmit</b> or <b>Cancel</b>.
+                                </Alert>
+                            )}
+                            <Stack spacing={0.5}>
+                                {allRuns
+                                    .slice()
+                                    .sort((a, b) => (a.runNumber ?? 0) - (b.runNumber ?? 0))
+                                    .map(r => {
+                                        const steps = stepsByRunId.get(r.Id) ?? [];
+                                        const isCurrent = r.Id === run.Id;
 
-                                    const hasChanges = !!modifiedActionForRun(r.Id)?.changeSummary;
 
-                                    return (
-                                        <Accordion
-                                            key={r.Id}
-                                            expanded={expandedRunId === r.Id}
-                                            onChange={(_, expanded) => setExpandedRunId(expanded ? r.Id : false)}
-                                            disableGutters
-                                            elevation={0}
-                                            square
-                                            sx={{
-                                                border: "1px solid",
-                                                borderColor: "divider",
-                                                "&:before": { display: "none" }, // removes default divider line
-                                                borderRadius: 1,
-                                                overflow: "hidden"
-                                            }}
-                                        >
-                                            <AccordionSummary
-                                                expandIcon={<ExpandMoreIcon />}
-                                                sx={{ minHeight: 40, "& .MuiAccordionSummary-content": { my: 0.5 }, px: 1.25 }}
+                                        const hasChanges = !!modifiedActionForRun(r.Id)?.changeSummary;
+
+                                        return (
+                                            <Accordion
+                                                key={r.Id}
+                                                expanded={expandedRunId === r.Id}
+                                                onChange={(_, expanded) => setExpandedRunId(expanded ? r.Id : false)}
+                                                disableGutters
+                                                elevation={0}
+                                                square
+                                                sx={{
+                                                    border: "1px solid",
+                                                    borderColor: "divider",
+                                                    "&:before": { display: "none" }, // removes default divider line
+                                                    borderRadius: 1,
+                                                    overflow: "hidden"
+                                                }}
                                             >
-                                                <Stack direction="row" alignItems="center" spacing={1} sx={{ width: "100%" }}>
-                                                    <Typography fontWeight={600}>{`Run ${r.runNumber}`}</Typography>
+                                                <AccordionSummary
+                                                    expandIcon={<ExpandMore />}
+                                                    sx={{ minHeight: 40, "& .MuiAccordionSummary-content": { my: 0.5 }, px: 1.25 }}
+                                                >
+                                                    <Stack direction="row" alignItems="center" spacing={1} sx={{ width: "100%" }}>
+                                                        <Typography fontWeight={600}>{`Run ${r.runNumber}`}</Typography>
 
-                                                    <Chip
-                                                        size="small"
-                                                        label={r.runStatus}
-                                                        variant="outlined"
-                                                        color={r.runStatus === "Active" ? "warning" : "default"}
-                                                    />
-
-                                                    <Box sx={{ flexGrow: 1 }} />
-
-                                                    {/* ✅ Status date */}
-                                                    {(() => {
-                                                        const statusLabel = getRunStatusLabel(r, actionsByRunId.get(r.Id) ?? []);
-                                                        return statusLabel ? (
-                                                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap" }} >
-                                                                {statusLabel}
-                                                            </Typography>
-                                                        ) : null;
-                                                    })()}
-
-                                                    {hasChanges && (
                                                         <Chip
                                                             size="small"
-                                                            label="Changes"
-                                                            color="info"
-                                                            variant="filled"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                openRunChanges(r.Id);
-                                                            }}
-                                                            sx={{ cursor: "pointer" }}
+                                                            label={r.runStatus}
+                                                            variant="outlined"
+                                                            color={r.runStatus === "Active" ? "warning" : "default"}
                                                         />
-                                                    )}
-                                                </Stack>
-                                            </AccordionSummary>
+
+                                                        <Box sx={{ flexGrow: 1 }} />
+
+                                                        {/* ✅ Status date */}
+                                                        {(() => {
+                                                            const statusLabel = getRunStatusLabel(r, actionsByRunId.get(r.Id) ?? []);
+                                                            return statusLabel ? (
+                                                                <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap" }} >
+                                                                    {statusLabel}
+                                                                </Typography>
+                                                            ) : null;
+                                                        })()}
+
+                                                        {hasChanges && (
+                                                            <Chip
+                                                                size="small"
+                                                                label="Changes"
+                                                                color="info"
+                                                                variant="filled"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    openRunChanges(r.Id);
+                                                                }}
+                                                                sx={{ cursor: "pointer" }}
+                                                            />
+                                                        )}
+                                                    </Stack>
+                                                </AccordionSummary>
 
 
-                                            <AccordionDetails sx={{ pt: 0, px: 1.5, pb: 1.5 }}>
-                                                <WorkflowTimeline
-                                                    steps={steps}
-                                                    canApprove={isCurrent && canApprove}
-                                                    onApprove={handleApprove}
-                                                    onReject={handleReject}
-                                                />
-                                            </AccordionDetails>
-                                        </Accordion>
-                                    );
-                                })}
+                                                <AccordionDetails sx={{ pt: 0, px: 1.5, pb: 1.5 }}>
+                                                    <WorkflowTimeline
+                                                        steps={steps}
+                                                        canApprove={isCurrent && canApprove}
+                                                        onApprove={handleApprove}
+                                                        onReject={handleReject}
+                                                        canCancel={canCancel}
+                                                        onCancel={handleCancel}
+                                                    />
+                                                </AccordionDetails>
+                                            </Accordion>
+                                        );
+                                    })}
+                            </Stack>
                         </Stack>
                     )}
                 </Grid>
@@ -550,11 +606,36 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
 
 
             <Dialog open={commentModalOpen} onClose={handleModalCancel} fullWidth maxWidth="md" disableEscapeKeyDown={loading}>
-                <DialogTitle>{actionType === "approve" ? "Approve Agreement" : "Reject Agreement"}</DialogTitle>
+                <DialogTitle>
+                    {actionType === "approve"
+                        ? "Approve Agreement"
+                        : actionType === "reject"
+                            ? "Reject Agreement"
+                            : actionType === "resolve"
+                                ? "Resovle Agreement"
+                                : "Cancel Agreement"}
+                </DialogTitle>
 
                 <DialogContent sx={{ pt: 2 }}>
+                    {actionType === "cancel" && (
+                        <Alert severity="warning" variant="outlined" sx={{ mb: 2, borderRadius: 2 }}>
+                            <Typography fontWeight={700} component="span">
+                                Permanent action:
+                            </Typography>{" "}
+                            Canceling this agreement cannot be undone. The agreement cannot be re-opened or re-used once canceled.
+                        </Alert>
+                    )}
+                    {actionType === "resolve" && (
+                        <Alert severity="warning" variant="outlined" sx={{ mb: 2, borderRadius: 2 }}>
+                            <Typography fontWeight={700} component="span">
+                                Permanent action:
+                            </Typography>{" "}
+                            You are about to mark this At-Risk Agreement as resolved.
+                            After marking resolved, this agreement will not be editable and will serve as the final record.
+                        </Alert>
+                    )}
                     <TextField
-                        label="Comment (optional)"
+                        label={actionType === "cancel" ? "Cancellation reason (optional)" : "Comment (optional)"}
                         multiline
                         rows={4}
                         fullWidth
@@ -575,9 +656,15 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                         variant="contained"
                         onClick={handleModalSubmit}
                         disabled={loading}
-                        color={actionType === "approve" ? "primary" : "error"}
+                        color={actionType === "approve" || actionType === "resolve" ? "primary" : "error"} // cancel and reject both error
                     >
-                        {actionType === "approve" ? "Approve" : "Reject"}
+                        {actionType === "approve"
+                            ? "Approve"
+                            : actionType === "reject"
+                                ? "Reject"
+                                : actionType === "resolve"
+                                    ? "Resolve"
+                                    : "Yes, cancel"}
                     </Button>
                 </DialogActions>
             </Dialog>

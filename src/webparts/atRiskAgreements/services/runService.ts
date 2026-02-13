@@ -128,7 +128,7 @@ export class WorkflowRunService {
         ceoId?: number,
         svpContractsId?: number,
         restartReason?: RunRestartReason,
-        restartComment?: string   
+        restartComment?: string
     ): Promise<IWorkflowRunItem> {
         return WorkflowRunService.createRun(
             agreementId,
@@ -198,15 +198,16 @@ export class WorkflowRunService {
                 .update({
                     __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.WorkflowRuns)}ListItem` },
 
-                    runStatus: "Completed",
+                    // now keep run active and send back to submitter for action
+                    runStatus: "Active",
                     outcome: "Rejected",
-                    completed: nowIso,
                     hasDecision: true,
 
-                    pendingRole: null,
-                    pendingApproverId: null,
-                    pendingApproverEmail: null,
-                    stepAssignedDate: null
+                    currentStepKey: "submitter",
+                    pendingRole: "Submitter Action",
+                    pendingApproverId: agreement.Author.id,
+                    pendingApproverEmail: agreement.Author.EMail,
+                    stepAssignedDate: nowIso
                 })
                 .executeAndWait();
 

@@ -24,6 +24,7 @@ import AlertDialog from "../ui/Alert";
 import { MuiPeoplePicker } from "../ui/CustomPeoplePicker";
 import { RiskAgreementService } from "../services/agreementService";
 import { buildAgreementDelta, formatDeltaSummary } from "../services/agreementDiff";
+//import { useTheme } from "@mui/material/styles";
 
 export type CancelReason = { type: "draft"; draftId: number } | { type: "normal" };
 
@@ -224,7 +225,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
           </ListItem>
         ))}
       </List>
-      <Button variant="outlined" component="label">
+      <Button variant="outlined" color="primary" component="label">
         Upload Documents
         <input hidden type="file" multiple
           onChange={(e) => {
@@ -256,6 +257,12 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
   // -----------------------------
   // MAIN RENDER
   // -----------------------------
+
+  // const theme = useTheme();
+  // console.log("mode", theme.palette.mode);
+  // console.log("info.main", theme.palette.info.main);
+  // console.log("primary.main", theme.palette.primary.main);
+
   return (
 
     <form onSubmit={handleSubmit}>
@@ -424,7 +431,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                   }
                 >
                   <FormControlLabel value="false" sx={{ height: "35px" }} control={<Radio size="small" />} label="No" />
-                  <FormControlLabel value="true"  sx={{ height: "35px", marginLeft: 2 }} control={<Radio size="small" />} label="Yes" />
+                  <FormControlLabel value="true" sx={{ height: "35px", marginLeft: 2 }} control={<Radio size="small" />} label="Yes" />
                 </RadioGroup>
               </Grid>
             )}
@@ -583,7 +590,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                 required
                 value={form.riskFundingRequested}
                 onChange={(val) => updateField("riskFundingRequested", val)}
-                error={form.riskFundingRequested === undefined}
+                error={form.riskFundingRequested !== undefined && form.riskFundingRequested < 0}
                 helperText={
                   form.riskFundingRequested === undefined
                     ? "Enter an amount (0 is allowed)"

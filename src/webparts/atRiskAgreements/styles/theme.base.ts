@@ -74,7 +74,7 @@ export const baseTheme = createTheme({
                     fontSize: "10pt",
                 },
                 inputRoot: ({ theme }) => ({
-                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    "&&.Mui-focused .MuiOutlinedInput-notchedOutline": {
                         borderColor: theme.palette.info.main,
                         borderWidth: 2,
                     },
@@ -93,7 +93,7 @@ export const baseTheme = createTheme({
                         borderColor: theme.palette.action.hover,
                     },
 
-                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    "&&.Mui-focused .MuiOutlinedInput-notchedOutline": {
                         borderColor: theme.palette.info.main,
                         borderWidth: 2,
                     },
@@ -105,7 +105,7 @@ export const baseTheme = createTheme({
             styleOverrides: {
                 root: ({ theme }) => ({
                     "&.Mui-focused": {
-                        color: theme.palette.info.main,
+                        color: theme.palette.info.main
                     },
                 }),
             },
@@ -115,7 +115,7 @@ export const baseTheme = createTheme({
             styleOverrides: {
                 underline: ({ theme }) => ({
                     "&:after": {
-                        borderBottomColor: theme.palette.info.main,
+                        borderBottomColor: theme.palette.info.main
                     },
                 }),
             },
@@ -127,7 +127,7 @@ export const baseTheme = createTheme({
                         backgroundColor: "transparent",
                     },
                     "&:after": {
-                        borderBottomColor: theme.palette.info.main,
+                        borderBottomColor: theme.palette.info.main
                     },
                 }),
             },

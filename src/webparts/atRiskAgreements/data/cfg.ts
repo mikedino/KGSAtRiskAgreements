@@ -160,6 +160,88 @@ export const Configuration = Helper.SPConfig({
         },
 
         /********************************************************************
+         * USER TABLE 
+         ********************************************************************/
+        {
+            ListInformation: {
+                Title: Strings.Sites.main.lists.Users,
+                Description: "At-Risk Agreements User Collection/Data Table",
+                OnQuickLaunch: false,
+                BaseTemplate: SPTypes.ListTemplateType.GenericList
+                //Hidden: true
+            },
+            TitleFieldRequired: false,
+            TitleFieldDefaultValue: "ARA App User",
+            CustomFields: [
+                {
+                    name: "user",
+                    title: "User",
+                    type: Helper.SPCfgFieldType.User
+                } as Helper.IFieldInfoUser,
+                {
+                    name: "modePreference",
+                    title: "App Color Mode Preference",
+                    type: Helper.SPCfgFieldType.Choice,
+                    choices: ["dark", "light"],
+                    defaultValue: "dark"
+                } as Helper.IFieldInfoChoice,
+                {
+                    name: "role",
+                    title: "App Role",
+                    type: Helper.SPCfgFieldType.Choice,
+                    choices: ["user", "cm", "admin"],
+                    defaultValue: "user"
+                } as Helper.IFieldInfoChoice,
+                {
+                    name: "lastVisit",
+                    title: "Last Visit",
+                    type: Helper.SPCfgFieldType.Date,
+                    format: SPTypes.DateFormat.DateTime,
+                    defaultToday: true
+                } as Helper.IFieldInfoDate,
+                {
+                    name: "visitCount",
+                    title: "Visit Count",
+                    type: Helper.SPCfgFieldType.Number,
+                    defaultValue: "1",
+                    decimals: 0
+                } as Helper.IFieldInfoNumber,
+            ],
+            ViewInformation: [
+                {
+                    ViewName: "All Users",
+                    Default: true,
+                    ViewQuery:
+                        "<Where><Eq><FieldRef Name=\"runStatus\" /><Value Type=\"Choice\">Active</Value></Eq></Where>" +
+                        "<OrderBy><FieldRef Name=\"lastVisit\" Ascending=\"FALSE\" /></OrderBy>",
+                    ViewFields: [
+                        "user",
+                        "role",
+                        "Created",
+                        "lastVisit",
+                        "visitCount",
+                        "modePreference"
+                    ]
+                },
+                {
+                    ViewName: "Admins and CMs",
+                    Default: true,
+                    ViewQuery:
+                        "<Where><Neq><FieldRef Name=\"role\" /><Value Type=\"Choice\">user</Value></Neq></Where>" +
+                        "<OrderBy><FieldRef Name=\"lastVisit\" Ascending=\"FALSE\" /></OrderBy>",
+                    ViewFields: [
+                        "user",
+                        "role",
+                        "firstVisit",
+                        "lastVisit",
+                        "visitCount",
+                        "modePreference"
+                    ]
+                }
+            ]
+        },
+
+        /********************************************************************
          * Workflow Runs (state machine instance per run)
          ********************************************************************/
         {

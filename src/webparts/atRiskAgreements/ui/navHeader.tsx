@@ -14,6 +14,8 @@ import { Link } from "react-router-dom";
 import ThemeSwitcher from "./ThemeSwitcher";
 import { WebPartContext } from "@microsoft/sp-webpart-base";
 import { stringAvatar } from "../services/utils";
+import { DataSource } from "../data/ds";
+import { AppUserService } from "../services/userService";
 
 interface NavHeaderProps {
     context: WebPartContext;
@@ -31,6 +33,8 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
     // small screens (md = ~900px), large screens (lg = ~1200px)
     const isSmall = useMediaQuery(theme.breakpoints.down("md"));
     const isLarge = useMediaQuery(theme.breakpoints.down("lg"));
+
+    const showAdmin = DataSource.isAdmin
 
     return (
         <AppBar
@@ -54,7 +58,7 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
                 {/* ROUTER LINKS */}
                 <Stack direction="row" spacing={2}>
                     <IconButton
-                        onClick={async () => { 
+                        onClick={async () => {
                             await refresh(true);
                             clearAgreementDetailCache();
                         }}
@@ -68,7 +72,12 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
                     <Button title="My Work" startIcon={<WorkIcon />} color="inherit" component={Link} to="/my-work" >{!isSmall && "My Work"}</Button>
                     <Button title="All Agreeements" startIcon={<ListAltIcon />} color="inherit" component={Link} to="/all-agreements">{!isSmall && "All Agreements"}</Button>
                     <Button title="Dashboard" startIcon={<DashboardIcon />} color="inherit" component={Link} to="/dashboard">{!isSmall && "Dashboard"}</Button>
-                    <Button title="Admin" startIcon={<AdminPanelSettingsIcon />} color="inherit" component={Link} to="/admin">{!isSmall && "Admin"}</Button>
+                    {showAdmin && (
+                        <Button title="Admin" startIcon={<AdminPanelSettingsIcon />} color="inherit" component={Link} to="/admin">
+                            {!isSmall && "Admin"}
+                        </Button>
+                    )}
+
                 </Stack>
 
                 {/* NEW AGREEMENT BUTTON */}
@@ -86,7 +95,7 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
                                 {context.pageContext.user.displayName}
                             </Typography>
                             <Typography sx={{ fontWeight: 400, fontSize: 12 }}>
-                                Administrator
+                                {DataSource.isAdmin ? "Administrator" : DataSource.isCM ? "Contract Manager" : "User"}
                             </Typography>
                         </>
                     )}
@@ -94,7 +103,19 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
 
                 {/* THEME SWITCHER ICON */}
                 <Box sx={{ ml: 1 }}>
-                    <ThemeSwitcher useDarkTheme={useDarkTheme} onToggle={() => setUseDarkTheme(!useDarkTheme)} />
+                    <ThemeSwitcher 
+                    useDarkTheme={useDarkTheme} 
+                    onToggle={async () => {
+                        const next = !useDarkTheme;
+                        setUseDarkTheme(next);
+
+                        try {
+                            await AppUserService.updateMyModePreference(next ? "dark" : "light");
+                        } catch (e) {
+                            console.error("failed to save theme preference", e);
+                        }
+                    }}
+                    />
                 </Box>
 
             </Toolbar>

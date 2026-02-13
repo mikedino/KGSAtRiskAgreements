@@ -34,12 +34,35 @@ const ViewAgreementRoute: React.FC<ViewAgreementRouteProps> = ({ match }) => {
   const onReject = async (comment?: string): Promise<void> => {
     if (!item || !run) return;
 
+    // enter rejection action
     await WorkflowDecisionService.submitDecision(item, run, "Rejected", comment);
 
     await refresh(true);
     await loadAgreementDetail(item.Id, true); // updates full timeline/actions for this agreement
-    
+
     setSnackbar({ message: "Agreement rejected successfully", severity: "error" });
+  };
+
+  const onCancel = async (comment?: string): Promise<void> => {
+    if (!item || !run) return;
+
+    await WorkflowDecisionService.cancelAgreement(item, run, comment, currentUserEmail);
+
+    await refresh(true);
+    await loadAgreementDetail(item.Id, true);
+
+    setSnackbar({ message: "Agreement canceled sucessfully", severity: "error" });
+  };
+
+  const onResolve = async (comment?: string): Promise<void> => {
+    if (!item || !run) return;
+
+    await WorkflowDecisionService.resolveAgreement(item, run, comment);
+
+    await refresh(true);
+    await loadAgreementDetail(item.Id, true);
+
+    setSnackbar({ message: "Agreement resolved sucessfully", severity: "success" });
   };
 
   if (!item) return <div>Agreement not found</div>;
@@ -52,6 +75,8 @@ const ViewAgreementRoute: React.FC<ViewAgreementRouteProps> = ({ match }) => {
         currentUserEmail={currentUserEmail}
         onApprove={onApprove}
         onReject={onReject}
+        onCancel={onCancel}
+        onResolve={onResolve}
       />
 
       {snackbar && (

@@ -7,7 +7,7 @@ export const darkTheme = createTheme({
   palette: {
     mode: "dark",
 
-    primary: { main: "#003057" },     // KGS Navy
+    primary: { light: "#A6E5F3", dark: "#003057", main: "#2499C2" },     // KGS Navy
     secondary: { main: "#005C6C" },   // KGS Teal 
     error: { main: "#fd3030", contrastText: "#000000de" },
     warning: { main: "#F4B740" },
@@ -19,7 +19,7 @@ export const darkTheme = createTheme({
       paper: "#003057"
     },
 
-    //divider: "#ccd6dd",
+    //divider: "#ccd6dd", 
 
     text: {
       primary: "#ffffff",

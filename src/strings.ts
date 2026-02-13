@@ -25,7 +25,7 @@ const Strings = {
                 Agreements: "AtRiskAgreements",
                 WorkflowRuns: "ARAWorkflowRuns",
                 WorkflowActions: "ARAWorkflowActions",
-                Roles: "ARARoles"
+                Users: "ARAUsers"
             }
         },
         jamis: {
@@ -39,7 +39,8 @@ const Strings = {
             url: "/sites/Dev-Sandbox",
             lists: {
                 Entities: "Entities",
-                OGPresidents: "OGPresidents",
+                OGs: "OGPresidents",
+                LOBs: "lob",
                 Config: "Config"
             }
         }

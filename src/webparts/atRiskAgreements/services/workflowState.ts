@@ -2,12 +2,17 @@
 import { IRiskAgreementItem, IWorkflowActionItem, IWorkflowRunItem, WorkflowStepKey } from "../data/props";
 import { IWorkflowStep, RiskAgreementWorkflow } from "./workflowModel";
 
+// create a synthentic step definition for timeline display
+export type TimelineStepKey = WorkflowStepKey | "resolved";
+
 export type WorkflowStepStatus =
   | "Submitted"
   | "Approved"
   | "Rejected"
+  | "Canceled"
   | "Current"  // waiting on THIS approver
   | "Queued"   // future approvers
+  | "Resolved"
   | "Skipped";
 
 export interface WorkflowStepWithStatus extends IWorkflowStep {
@@ -16,16 +21,15 @@ export interface WorkflowStepWithStatus extends IWorkflowStep {
   completeDate?: string;  // when THIS step was completed
   sentDate?: string;  // when THIS step became current (best effort)
   comment?: string;
+  hidden?: boolean;
+  isSynthetic?: boolean; // allow synthetic (not part of state machine - RESOLVED)
 }
 
 /**
  * Finds the most relevant action for a step. For approvals/rejections,
  * we usually care about the last one (in case of reassign/return patterns later).
  */
-const getLatestDecisionAction = (
-  actions: IWorkflowActionItem[],
-  stepKey: WorkflowStepKey
-): IWorkflowActionItem | undefined => {
+const getLatestDecisionAction = (actions: IWorkflowActionItem[], stepKey: TimelineStepKey): IWorkflowActionItem | undefined => {
   const matches = actions
     .filter(a => a.stepKey === stepKey && (a.actionType === "Approved" || a.actionType === "Rejected"))
     .sort((a, b) => {
@@ -37,10 +41,7 @@ const getLatestDecisionAction = (
   return matches[0];
 };
 
-const getLatestCommentAction = (
-  actions: IWorkflowActionItem[],
-  stepKey: WorkflowStepKey
-): IWorkflowActionItem | undefined => {
+const getLatestCommentAction = (actions: IWorkflowActionItem[], stepKey: TimelineStepKey): IWorkflowActionItem | undefined => {
   const matches = actions
     .filter(a => a.stepKey === stepKey && a.comment && a.comment.trim().length > 0)
     .sort((a, b) => new Date(b.actionCompletedDate).getTime() - new Date(a.actionCompletedDate).getTime());
@@ -60,6 +61,14 @@ const getSubmittedActionDate = (agreement: IRiskAgreementItem, actions: IWorkflo
   return submitted?.actionCompletedDate ?? agreement.Created;
 };
 
+// find rejection step to know where to place the new submitter action
+const getLatestRejectedStepKey = (actions: IWorkflowActionItem[]): TimelineStepKey | undefined => {
+  const lastReject = actions
+    .filter(a => a.actionType === "Rejected")
+    .sort((a, b) => new Date(b.actionCompletedDate).getTime() - new Date(a.actionCompletedDate).getTime())[0];
+
+  return lastReject?.stepKey;
+};
 
 /**
  * Build workflow state from:
@@ -80,6 +89,27 @@ export function buildWorkflowState(
   const submittedDate = getSubmittedActionDate(agreement, actions);
   lastCompletedDate = submittedDate;
 
+  // is run completed (including canceled)
+  const runIsCompleted = run.runStatus === "Completed";
+
+  // CANCEL DETECTION action for this run (if any)
+  const cancelAction = actions
+    .filter(a => a.actionType === "Canceled")
+    .sort((a, b) => new Date(b.actionCompletedDate).getTime() - new Date(a.actionCompletedDate).getTime())[0];
+  const isCanceled = agreement.araStatus === "Canceled" || !!cancelAction;
+  const cancelDate = cancelAction?.actionCompletedDate ?? run.completed;
+  const cancelComment = cancelAction?.comment ?? "";
+
+  // RESOLVE DETECTION action for this run (if any)
+  const resolveAction = actions
+    .filter(a => a.actionType === "Resolved")
+    .sort((a, b) => new Date(b.actionCompletedDate).getTime() - new Date(a.actionCompletedDate).getTime())[0];
+
+  const isResolved = agreement.araStatus === "Resolved" || !!resolveAction;
+  const resolveDate = resolveAction?.actionCompletedDate;
+  const resolveComment = resolveAction?.comment ?? "";
+  const resolveActorName = resolveAction?.actor?.Title ?? run.contractMgr?.Title ?? "Contract Manager";
+
   // Determine current step (and guard against non-required current step)
   const currentKey = run.currentStepKey;
 
@@ -87,12 +117,36 @@ export function buildWorkflowState(
   // (ex: risk amount reduced and COO step no longer required).
   const requiredSteps = RiskAgreementWorkflow.filter(s => !s.isInitial && s.isRequired(agreement));
   const currentIndex = requiredSteps.findIndex(s => s.key === currentKey);
-  const effectiveCurrentKey =
-    currentIndex >= 0 ? currentKey : (requiredSteps[0]?.key ?? "contractMgr");
+  const effectiveCurrentKey = currentIndex >= 0 ? currentKey : (requiredSteps[0]?.key ?? "contractMgr");
 
   let currentFound = false;
 
-  return RiskAgreementWorkflow.map(step => {
+  // build dynamic display flow for when a rejection happens
+  const awaitingSubmitter = run.currentStepKey === "submitter";
+  const rejectedKey = awaitingSubmitter ? getLatestRejectedStepKey(actions) : undefined;
+
+  const submitterDef = RiskAgreementWorkflow.find(s => s.key === "submitter");
+  const baseWorkflow = RiskAgreementWorkflow.filter(s => s.key !== "submitter");
+
+  let displayWorkflow = baseWorkflow;
+
+  if (awaitingSubmitter && submitterDef) {
+    const insertAfterKey = rejectedKey ?? run.currentStepKey; // fallback
+    const idx = baseWorkflow.findIndex(s => s.key === insertAfterKey);
+
+    if (idx >= 0) {
+      displayWorkflow = [
+        ...baseWorkflow.slice(0, idx + 1),
+        submitterDef,
+        ...baseWorkflow.slice(idx + 1),
+      ];
+    } else {
+      // fallback: put it right after Submitted
+      displayWorkflow = [baseWorkflow[0], submitterDef, ...baseWorkflow.slice(1)];
+    }
+  }
+
+  return displayWorkflow.map(step => {
     // Initial step
     if (step.isInitial) {
       return {
@@ -100,7 +154,41 @@ export function buildWorkflowState(
         label: run.runNumber > 1 ? "Resubmitted" : step.label,
         status: "Submitted",
         approverName: agreement.Author?.Title,
-        completeDate: submittedDate
+        completeDate: submittedDate,
+        hidden: false
+      };
+    }
+
+    // Determine decision from actions
+    const decisionAction = getLatestDecisionAction(actions, step.key);
+
+    // Special handling for submitter step
+    if (step.key === "submitter") {
+      if (!awaitingSubmitter) {
+        return { ...step, status: "Skipped", hidden: true };
+      }
+
+      // If canceled, show canceled
+      if (isCanceled) {
+        return {
+          ...step,
+          status: "Canceled",
+          approverName: decisionAction?.actor.Title,
+          completeDate: cancelDate,
+          comment: cancelComment,
+          hidden: false
+        };
+      }
+
+      const bestComment = getLatestCommentAction(actions, "submitter")?.comment ?? "";
+
+      return {
+        ...step,
+        status: "Current",
+        approverName: agreement.Author?.Title,
+        sentDate: run.stepAssignedDate ?? lastCompletedDate,
+        comment: bestComment,
+        hidden: false
       };
     }
 
@@ -112,16 +200,15 @@ export function buildWorkflowState(
     // Determine approver name from run snapshot
     const approver = step.getApprover ? step.getApprover(run) : undefined;
 
-    // Determine decision from actions
-    const decisionAction = getLatestDecisionAction(actions, step.key);
-
     if (decisionAction?.actionType === "Approved") {
       lastCompletedDate = decisionAction.actionCompletedDate;
 
       return {
         ...step,
         status: "Approved",
-        approverName: approver?.Title ?? decisionAction.actor?.Title,
+        approverName: approver && approver.Id === decisionAction.actor.Id
+          ? approver.Title
+          : `${decisionAction.actor?.Title} on behalf of ${approver?.Title}`,
         completeDate: decisionAction.actionCompletedDate,
         comment: decisionAction.comment ?? ""
       };
@@ -133,14 +220,27 @@ export function buildWorkflowState(
       return {
         ...step,
         status: "Rejected",
-        approverName: approver?.Title ?? decisionAction.actor?.Title,
+        approverName: approver && approver.Id === decisionAction.actor.Id
+          ? approver.Title
+          : `${decisionAction.actor?.Title} on behalf of ${approver?.Title}`,
         completeDate: decisionAction.actionCompletedDate,
         comment: decisionAction.comment ?? ""
       };
     }
 
-    // Current step is based on run state
-    if (!currentFound && step.key === effectiveCurrentKey) {
+    // If canceled, mark the effective current step as Canceled (terminal) instead of Pending
+    if (isCanceled && step.key === effectiveCurrentKey) {
+      return {
+        ...step,
+        status: "Canceled",
+        approverName: `Canceled at this step by ${agreement.Author?.Title}`,
+        completeDate: cancelDate,
+        comment: cancelComment
+      };
+    }
+
+    // Current step is based on run state (not canceled , not completed)
+    if (!isCanceled && !runIsCompleted && !currentFound && step.key === effectiveCurrentKey) {
       currentFound = true;
 
       const bestComment = getLatestCommentAction(actions, step.key)?.comment ?? "";
@@ -154,6 +254,20 @@ export function buildWorkflowState(
       };
     }
 
+    // Append "Resolved" only if it happened
+    if (isResolved && resolveDate) {
+      return {
+        key: "contractMgr", // use a real key to avoid widening types
+        label: "Resolved",
+        isRequired: () => true,   // not used by UI at this point
+        status: "Resolved",
+        approverName: resolveActorName,
+        completeDate: resolveDate,
+        comment: resolveComment,
+        hidden: false
+      };
+    }
+
     // Steps before current but without a decision (should be rare) -> treat as queued
     // Steps after current -> queued
     return {
@@ -161,5 +275,6 @@ export function buildWorkflowState(
       status: "Queued",
       approverName: approver?.Title
     };
+
   });
 }

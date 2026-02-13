@@ -3,7 +3,7 @@ import {
     Card, CardContent, Stepper, StepLabel, Step, Typography, Chip,
     Box, Divider, Stack, Button, ChipProps, IconButton, Popper, Paper, ClickAwayListener
 } from "@mui/material";
-import { CheckCircle, Cancel, Check, Schedule, RadioButtonUnchecked, RemoveCircleOutline } from "@mui/icons-material";
+import { CheckCircle, Cancel, Check, Schedule, RadioButtonUnchecked, RemoveCircleOutline, LockResetOutlined } from "@mui/icons-material";
 import MessageOutlinedIcon from "@mui/icons-material/MessageOutlined";
 import { WorkflowStepWithStatus, WorkflowStepStatus } from "../services/workflowState";
 import dayjs from "dayjs";
@@ -12,26 +12,41 @@ const WorkflowTimeline = ({
     steps,
     canApprove,
     onApprove,
-    onReject
+    onReject,
+    canCancel,
+    onCancel
 }: {
     steps: WorkflowStepWithStatus[];
     canApprove: boolean;
     onApprove: () => Promise<void>;
     onReject: () => Promise<void>;
+    canCancel: boolean;
+    onCancel: () => Promise<void>;
 }): JSX.Element => {
 
     // comment popper
     const [commentAnchorEl, setCommentAnchorEl] = React.useState<HTMLElement | null>(null);
     const [openCommentKey, setOpenCommentKey] = React.useState<string | null>(null);
 
-    const activeStep = steps.findIndex(s => s.status === "Current");
-    const activeStepObj = activeStep >= 0 ? steps[activeStep] : undefined;
+    // remove hidden steps (submitter step when not rejected)
+    const visibleSteps = steps.filter(s => !s.hidden);
 
-    const showActions =
+    const activeStep = visibleSteps.findIndex(s => s.status === "Current");
+    const activeStepObj = activeStep >= 0 ? visibleSteps[activeStep] : undefined;
+    const activeKey = activeStepObj?.key;
+
+    const showApproverActions =
         canApprove &&
         activeStepObj &&
         !activeStepObj.isInitial &&
-        activeStepObj.status === "Current";
+        activeStepObj.status === "Current" &&
+        activeKey !== "submitter";
+
+    const showSubmitterActions =
+        canCancel &&
+        activeStepObj &&
+        activeStepObj.status === "Current" &&
+        activeKey === "submitter";
 
     const handleCommentToggle = (stepKey: string, el: HTMLElement): void => {
         setOpenCommentKey(prevKey => {
@@ -55,7 +70,7 @@ const WorkflowTimeline = ({
     };
 
     const open = Boolean(openCommentKey) && Boolean(commentAnchorEl);
-    const activeComment = steps.find(s => String(s.key) === openCommentKey)?.comment?.trim();
+    const activeComment = visibleSteps.find(s => String(s.key) === openCommentKey)?.comment?.trim();
 
     // escape closes popper
     React.useEffect((): (() => void) => {
@@ -76,10 +91,14 @@ const WorkflowTimeline = ({
                 return <Cancel color="error" />;
             case "Current":
                 return <Schedule color="warning" />;
+            case "Canceled":
+                return <Cancel color="error" />;
             case "Queued":
                 return <RadioButtonUnchecked color="disabled" />;
             case "Skipped":
                 return <RemoveCircleOutline color="disabled" />;
+            case "Resolved":
+                return <LockResetOutlined color="success" />;
             default:
                 return null;
         }
@@ -97,8 +116,12 @@ const WorkflowTimeline = ({
                 return { label: "Pending", color: "warning", variant: "filled" };
             case "Queued":
                 return { label: "Queued", color: "default", variant: "outlined" };
+            case "Canceled":
+                return { label: "Canceled", color: "error", variant: "filled" };
             case "Skipped":
                 return { label: "Skipped", color: "default", variant: "outlined" };
+            case "Resolved":
+                return { label: "Resolved", color: "success", variant: "filled" }
         }
     };
 
@@ -113,8 +136,8 @@ const WorkflowTimeline = ({
                 </Typography>
 
                 <Stepper orientation="vertical" activeStep={activeStep}>
-                    {steps.map(step => {
-                        // ✅ new fields
+                    {visibleSteps.map(step => {
+                        // new fields
                         const complete = formatDateTime(step.completeDate);
                         const sent = formatDateTime(step.sentDate);
 
@@ -160,7 +183,7 @@ const WorkflowTimeline = ({
                                             </Typography>
                                         )}
 
-                                        {/* ✅ Date line */}
+                                        {/* Date line */}
                                         {dateLine && (
                                             <Typography variant="caption" color="text.secondary">
                                                 {dateLine}
@@ -209,31 +232,37 @@ const WorkflowTimeline = ({
                     </ClickAwayListener>
                 </Popper>
 
-                {showActions && (
+                {(showApproverActions || showSubmitterActions) && (
                     <Box sx={{ mt: 3 }}>
                         <Divider sx={{ mb: 2 }} />
-                        <Stack direction="row" spacing={2}>
-                            <Button
-                                variant="contained"
-                                color="success"
-                                fullWidth
-                                startIcon={<Check />}
-                                onClick={onApprove}
-                            >
-                                Approve
-                            </Button>
-                            <Button
-                                variant="outlined"
-                                color="error"
-                                fullWidth
-                                startIcon={<Cancel />}
-                                onClick={onReject}
-                            >
-                                Reject
-                            </Button>
-                        </Stack>
+
+                        {showApproverActions ? (
+                            <Stack direction="row" spacing={2}>
+                                <Button variant="contained" color="success" fullWidth startIcon={<Check />} onClick={onApprove}>
+                                    Approve
+                                </Button>
+                                <Button variant="outlined" color="error" fullWidth startIcon={<Cancel />} onClick={onReject}>
+                                    Reject
+                                </Button>
+                            </Stack>
+                        ) : (
+                            <Stack direction="row" spacing={2}>
+
+                                <Button
+                                    variant="outlined"
+                                    color="error"
+                                    fullWidth
+                                    startIcon={<Cancel />}
+                                    onClick={onCancel}
+                                    disabled={!canCancel}
+                                >
+                                    Cancel Agreement
+                                </Button>
+                            </Stack>
+                        )}
                     </Box>
                 )}
+
             </CardContent>
         </Card>
     );

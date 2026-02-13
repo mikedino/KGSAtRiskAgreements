@@ -1,18 +1,21 @@
-import { Web } from "gd-sprest";
+import { ContextInfo, Web } from "gd-sprest";
 import { WebPartContext } from "@microsoft/sp-webpart-base";
 import Strings, { setContext } from "../../../strings";
 import {
     IConfigItem,
     IContractItem,
-    IEntitiesItem,
+    IEntityItem,
     IInvoiceItem,
-    IOGPresidentsItem,
+    ILobItem,
+    IOgItem,
     IPeoplePicker,
     IRiskAgreementItem,
     IWorkflowActionItem,
-    IWorkflowRunItem
+    IWorkflowRunItem,
+    IAppUserItem
 } from "./props";
 import { formatError } from "../services/utils";
+import { AppUserService } from "../services/userService";
 
 export class DataSource {
     // prevent this from being initialized twice
@@ -33,6 +36,7 @@ export class DataSource {
                     this.getAgreeements(),
                     this.getConfig(),
                     this.getEntities(),
+                    this.getLOBs(),
                     this.getOGs(),
                     this.getContracts()
                 ])
@@ -47,6 +51,69 @@ export class DataSource {
             } else {
                 resolve();
             }
+        });
+    }
+
+    static isAdmin: boolean = false;
+    static isCM: boolean = false;
+    private static _currentUser: IAppUserItem | undefined;
+    static get CurrentUser(): IAppUserItem | undefined { return this._currentUser; }
+
+    static setCurrentUser(user: IAppUserItem): void {
+        this._currentUser = user;
+
+        const role = (user.role ?? "user").toLowerCase() as IAppUserItem["role"];
+        this.isAdmin = role === "admin";
+        this.isCM = role === "cm" || role === "admin"; // optional: admins imply CM privileges
+    }
+    static async getOrCreateCurrentUser(): Promise<IAppUserItem> {
+        const userId = ContextInfo.userId;
+        if (!userId) throw new Error("Current user is not available");
+
+        // find user by ID
+        const existing = await new Promise<IAppUserItem | undefined>((resolve, reject) => {
+            Web().Lists(Strings.Sites.main.lists.Users).Items().query({
+                Select: ["Id", "user/Id", "user/Title", "user/EMail", "role", "lastVisit", "visitCount", "modePreference"],
+                Expand: ["user"],
+                Filter: `user/Id eq ${userId}`,
+                Top: 1
+            }).execute(
+                (items) => resolve((items?.results?.[0] as unknown as IAppUserItem) ?? undefined),
+                (error) => reject(new Error(`Error fetching current user: ${formatError(error)}`))
+            )
+        })
+
+        if (existing?.Id) {
+            //existing user > increment visit and date
+            await AppUserService.touchCurrentUser(existing.Id);
+            this.setCurrentUser(existing);
+            return existing;
+        }
+
+        const created = await AppUserService.createNewUser();
+        this.setCurrentUser(created);
+        return created;
+    }
+
+    private static _users: IAppUserItem[] = [];
+    static get AppUsers(): IAppUserItem[] { return this._users; }
+    static getAppUsers(): Promise<IAppUserItem[]> {
+        return new Promise<IAppUserItem[]>((resolve, reject) => {
+            this._users = [];
+
+            Web().Lists(Strings.Sites.main.lists.Users).Items().query({
+                GetAllItems: true,
+                OrderBy: ["user"],
+                Select: ["Id", "user/Id", "user/Title", "user/EMail", "role", "lastVisit", "visitCount", "modePreference"],
+                Expand: ["user"],
+                Top: 5000
+            }).execute(
+                (items) => {
+                    this._users = (items?.results ?? []) as unknown as IAppUserItem[];
+                    resolve(this._users);
+                },
+                (error) => reject(new Error(`Error fetching Users: ${formatError(error)}`))
+            );
         });
     }
 
@@ -160,51 +227,6 @@ export class DataSource {
 
         })
     }
-
-    // get all of the WF actions by run ID's
-    // static getWorkflowActionsByRunIds(runIds: number[]): Promise<IWorkflowActionItem[]> {
-    //     return new Promise<IWorkflowActionItem[]>((resolve, reject) => {
-
-    //         if (!runIds.length) {
-    //             resolve([] as IWorkflowActionItem[]);
-    //             return;
-    //         }
-
-    //         // create dynamic filter for all ID's
-    //         const filter = runIds.map(id => `run/Id eq ${id}`).join(' or ');
-
-    //         // load the data
-    //         Web().Lists(Strings.Sites.main.lists.WorkflowActions).Items().query({
-    //             Select: [
-    //                 "Id", "stepKey", "actionType", "actionCompletedDate", "comment", "changeSummary",
-    //                 "changePayloadJson", "sequence",
-    //                 "actor/Id", "actor/Title", "actor/EMail",
-    //                 "agreement/Id", "run/Id"
-    //             ],
-    //             Filter: filter,
-    //             Expand: ["actor", "agreement", "run"],
-    //             OrderBy: ["Id asc"],
-    //             Top: 5000
-    //         }).execute(
-    //             // Success
-    //             (items) => {
-    //                 if (items?.results?.length) {
-    //                     const actions = items.results as unknown as IWorkflowActionItem[];
-
-    //                     // resolve with retrieved items
-    //                     resolve(actions);
-    //                 } else {
-    //                     //none found - resolve with empty array
-    //                     resolve([]);
-    //                 }
-    //             },
-    //             // Error
-    //             (error) => {
-    //                 reject(new Error(`Error fetching Actions by Run ID: ${formatError(error)}`));
-    //             }
-    //         )
-    //     })
-    // }
 
     // set a re-usable $select query for Actions
     private static actionsSelectQuery: string[] = [
@@ -323,10 +345,10 @@ export class DataSource {
     }
 
     // Load all the Entities
-    private static _entities: IEntitiesItem[] = [];
-    static get Entities(): IEntitiesItem[] { return this._entities; }
-    static getEntities(): Promise<IEntitiesItem[]> {
-        return new Promise<IEntitiesItem[]>((resolve, reject) => {
+    private static _entities: IEntityItem[] = [];
+    static get Entities(): IEntityItem[] { return this._entities; }
+    static getEntities(): Promise<IEntityItem[]> {
+        return new Promise<IEntityItem[]>((resolve, reject) => {
             // clear the items
             this._entities = [];
 
@@ -345,7 +367,7 @@ export class DataSource {
                     // Success
                     (items) => {
                         if (items?.results?.length) {
-                            this._entities = items.results as unknown as IEntitiesItem[];
+                            this._entities = items.results as unknown as IEntityItem[];
 
                             // resolve with retrieved items
                             resolve(this._entities);
@@ -363,34 +385,75 @@ export class DataSource {
     }
 
     // Load all the OG's
-    private static _ogs: IOGPresidentsItem[] = [];
-    static get OGs(): IOGPresidentsItem[] { return this._ogs; }
-    static getOGs(): Promise<IOGPresidentsItem[]> {
-        return new Promise<IOGPresidentsItem[]>((resolve, reject) => {
+    private static _lobs: ILobItem[] = [];
+    static get LOBs(): ILobItem[] { return this._lobs; }
+    static getLOBs(): Promise<ILobItem[]> {
+        return new Promise<ILobItem[]>((resolve, reject) => {
             // clear the items
-            this._ogs = [];
+            this._lobs = [];
 
             // load the data
             Web(Strings.Sites.lookups.url)
-                .Lists(Strings.Sites.lookups.lists.OGPresidents)
+                .Lists(Strings.Sites.lookups.lists.LOBs)
                 .Items()
                 .query({
                     GetAllItems: true,
                     OrderBy: ["Title"],
                     Select: [
-                        "Id", "Title", "LOB",
+                        "Id", "Title", "coo/EMail", "coo/Title", "coo/Id"
+                    ],
+                    Expand: ["coo"]
+                })
+                .execute(
+                    // Success
+                    (items) => {
+                        if (items?.results?.length) {
+                            this._lobs = items.results as unknown as ILobItem[];
+
+                            // resolve with retrieved items
+                            resolve(this._lobs);
+                        } else {
+                            //none found - resolve with empty array
+                            resolve([]);
+                        }
+                    },
+                    // Error
+                    (error) => {
+                        reject(new Error(`Error fetching LOBs: ${formatError(error)}`));
+                    }
+                );
+        });
+    }
+
+    // Load all the OG's
+    private static _ogs: IOgItem[] = [];
+    static get OGs(): IOgItem[] { return this._ogs; }
+    static getOGs(): Promise<IOgItem[]> {
+        return new Promise<IOgItem[]>((resolve, reject) => {
+            // clear the items
+            this._ogs = [];
+
+            // load the data
+            Web(Strings.Sites.lookups.url)
+                .Lists(Strings.Sites.lookups.lists.OGs)
+                .Items()
+                .query({
+                    GetAllItems: true,
+                    OrderBy: ["Title"],
+                    Select: [
+                        "Id", "Title", "lob/Id", "lob/Title",
                         "president/EMail", "president/Title", "president/Id",
-                        "coo/EMail", "coo/Title", "coo/Id",
+                        "SCM/EMail", "SCM/Title", "SCM/Id",
                         "CM/EMail", "CM/Title", "CM/Id"
                     ],
-                    Expand: ["president", "coo", "CM"],
+                    Expand: ["president", "lob", "CM", "SCM"],
                     Top: 5000
                 })
                 .execute(
                     // Success
                     (items) => {
                         if (items?.results?.length) {
-                            this._ogs = items.results as unknown as IOGPresidentsItem[];
+                            this._ogs = items.results as unknown as IOgItem[];
 
                             // resolve with retrieved items
                             resolve(this._ogs);
@@ -401,7 +464,7 @@ export class DataSource {
                     },
                     // Error
                     (error) => {
-                        reject(new Error(`Error fetching OG Presidents: ${formatError(error)}`));
+                        reject(new Error(`Error fetching OG's: ${formatError(error)}`));
                     }
                 );
         });

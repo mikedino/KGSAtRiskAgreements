@@ -43,6 +43,13 @@ export const RiskAgreementWorkflow: IWorkflowStep[] = [
     next: "contractMgr"
   },
   {
+    // AFTER REJECT
+    key: "submitter",
+    label: "Submitter Action",
+    isRequired: () => true,
+    next: "contractMgr" // resubmission goes back to CM
+  },
+  {
     key: "contractMgr",
     label: "Contract Manager Review",
     isRequired: () => true,

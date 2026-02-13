@@ -35,7 +35,8 @@ export type WorkflowStepKey =
   | "ogPresident"
   | "coo"
   | "ceo"
-  | "svpContracts";
+  | "svpContracts"
+  | "submitter";
 
 export type WorkflowRunStatus = "Active" | "Completed" | "Superseded";
 
@@ -45,11 +46,12 @@ export type WorkflowActionType =
   | "Submitted"
   | "Approved"
   | "Rejected"
-  | "Comment"
   | "Returned"
   | "Reassigned"
   | "Modified"
-  | "Restarted";
+  | "Restarted"
+  | "Canceled"
+  | "Resolved";
 
 export type RunRestartReason = "Mod" | "Correction" | "Reopen" | "Other";
 
@@ -150,17 +152,22 @@ export interface IWorkflowActionItem {
   sequence?: number; 
 }
 
-
-export interface IOGPresidentsItem {
+export interface IOgItem {
   readonly Id: number;
   Title: string;
   president: IPeoplePicker;
-  LOB: string;
-  coo: IPeoplePicker;
+  lob: ILookupItem;
   CM: IPeoplePicker;
+  SCM: IPeoplePicker;
 }
 
-export interface IEntitiesItem {
+export interface ILobItem {
+  readonly Id: number;
+  Title: string;
+  coo: IPeoplePicker;
+}
+
+export interface IEntityItem {
   readonly Id: number;
   Title: string; 
   abbr: string;
@@ -195,4 +202,13 @@ export interface IConfigItem {
   Title: string;
   IsFor: string;
   User: IPeoplePicker;
+}
+
+export interface IAppUserItem {
+  readonly Id: number;
+  user: IPeoplePicker;
+  modePreference: "dark" | "light",
+  role: "user" | "cm" | "admin",
+  lastVisit?: string;
+  visitCount?: number;
 }

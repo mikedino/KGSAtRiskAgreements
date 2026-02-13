@@ -86,13 +86,23 @@ export const MuiPeoplePicker: React.FC<MuiPeoplePickerProps> = ({
                                 border: "none",
                                 minHeight: "unset"
                             },
-                            ".ms-PickerPersona-container" :{
+                            ".ms-PickerPersona-container": {
                                 background: theme.palette.background.paper,
                                 color: theme.palette.text.primary
                             },
                             ".ms-Persona-primaryText": {
                                 color: theme.palette.text.primary
-                            }
+                            },
+                            // typed text color
+                            ".ms-BasePicker-input": {
+                                color: theme.palette.text.primary
+                            },
+
+                            // placeholder color
+                            "input::placeholder": {
+                                color: theme.palette.text.secondary,
+                                opacity: 1
+                            },
                         },
                         '&:hover': {
                             borderColor: theme.palette.text.primary
