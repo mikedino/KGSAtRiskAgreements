@@ -541,7 +541,12 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
 
               const handleCancel = async (reason: CancelReason): Promise<void> => {
                 if (reason.type === "draft") {
+                  setBackdropMessage("Deleting draft agreement…");
+                  setShowBackdrop(true);
+                  setShowProgress(true);
                   await RiskAgreementService.delete(reason.draftId);
+                  setShowBackdrop(false);
+                  setShowProgress(false);
                 }
 
                 history.push("/my-work");

@@ -3,6 +3,7 @@ import { Typography, Card, CardContent, Grid, Box } from "@mui/material";
 import { IRiskAgreementItem, IAttachmentInfo } from "../data/props";
 import AttachmentsList from "./viewAttachmentsList";
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import { formatCurrency } from "../services/utils";
 
 type ReadOnlyProps = {
     label: string;
@@ -47,19 +48,7 @@ const AgreementInfoCard = ({
                 <ReadOnly label="Risk Start" value={item.riskStart ? new Date(item.riskStart).toLocaleDateString() : "-"} />
                 <ReadOnly label="Risk End" value={item.riskEnd ? new Date(item.riskEnd)?.toLocaleDateString() : "-"} />
                 {item.contractId && (<ReadOnly label="Contractual PoP End" value={item.popEnd ? new Date(item.popEnd).toLocaleDateString() : "-"} />)}
-                <ReadOnly
-                    label="Risk Funding Requested"
-                    value={
-                        item.riskFundingRequested !== undefined
-                            ? item.riskFundingRequested.toLocaleString("en-US", {
-                                style: "currency",
-                                currency: "USD",
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2
-                            })
-                            : "-"
-                    }
-                />
+                <ReadOnly label="Risk Funding Requested" value={formatCurrency(item.riskFundingRequested)} />
                 <ReadOnly label="Operating Group" value={item.og} />
                 <ReadOnly label="Project Manager" value={item.projectMgr?.Title} />
                 <ReadOnly label="Contract Manager" value={item.contractMgr?.Title} />

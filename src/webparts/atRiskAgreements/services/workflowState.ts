@@ -15,7 +15,8 @@ export type WorkflowStepStatus =
   | "Resolved"
   | "Skipped";
 
-export interface WorkflowStepWithStatus extends IWorkflowStep {
+export interface WorkflowStepWithStatus extends Omit<IWorkflowStep, "key"> {
+  key: TimelineStepKey; // to allow for resolved
   status: WorkflowStepStatus;
   approverName?: string;
   completeDate?: string;  // when THIS step was completed
@@ -76,11 +77,7 @@ const getLatestRejectedStepKey = (actions: IWorkflowActionItem[]): TimelineStepK
  * - run (who is assigned + what step is current)
  * - actions (what happened)
  */
-export function buildWorkflowState(
-  agreement: IRiskAgreementItem,
-  run: IWorkflowRunItem,
-  actions: IWorkflowActionItem[]
-): WorkflowStepWithStatus[] {
+export function buildWorkflowState(agreement: IRiskAgreementItem, run: IWorkflowRunItem, actions: IWorkflowActionItem[]): WorkflowStepWithStatus[] {
 
   // Best-effort "sent date" for the current step:
   // prefer run.stepAssignedDate; otherwise use the last completed step date or agreement created.
@@ -146,7 +143,8 @@ export function buildWorkflowState(
     }
   }
 
-  return displayWorkflow.map(step => {
+  const steps = displayWorkflow.map((step): WorkflowStepWithStatus => {
+
     // Initial step
     if (step.isInitial) {
       return {
@@ -254,20 +252,6 @@ export function buildWorkflowState(
       };
     }
 
-    // Append "Resolved" only if it happened
-    if (isResolved && resolveDate) {
-      return {
-        key: "contractMgr", // use a real key to avoid widening types
-        label: "Resolved",
-        isRequired: () => true,   // not used by UI at this point
-        status: "Resolved",
-        approverName: resolveActorName,
-        completeDate: resolveDate,
-        comment: resolveComment,
-        hidden: false
-      };
-    }
-
     // Steps before current but without a decision (should be rare) -> treat as queued
     // Steps after current -> queued
     return {
@@ -277,4 +261,22 @@ export function buildWorkflowState(
     };
 
   });
+
+  //Append "Resolved" only if it happened
+  if (!isCanceled && isResolved && resolveDate) {
+    steps.push({
+      key: "contractMgr", // use a real key to avoid widening types
+      label: "Resolved",
+      isRequired: () => true,
+      status: "Resolved",
+      approverName: resolveActorName,
+      completeDate: resolveDate,
+      comment: resolveComment,
+      hidden: false,
+      isSynthetic: true
+    });
+  }
+
+  return steps;
+
 }

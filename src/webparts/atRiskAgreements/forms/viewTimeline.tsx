@@ -136,7 +136,7 @@ const WorkflowTimeline = ({
                 </Typography>
 
                 <Stepper orientation="vertical" activeStep={activeStep}>
-                    {visibleSteps.map(step => {
+                    {visibleSteps.map((step, idx) => {
                         // new fields
                         const complete = formatDateTime(step.completeDate);
                         const sent = formatDateTime(step.sentDate);
@@ -149,7 +149,7 @@ const WorkflowTimeline = ({
 
                         return (
                             <Step
-                                key={String(step.key)}
+                                key={`${String(step.key)}-${idx}`}
                                 completed={step.status === "Approved" || step.status === "Submitted"}
                                 expanded
                             >

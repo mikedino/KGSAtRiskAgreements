@@ -604,6 +604,33 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
         </LocalizationProvider>
 
         {/* // -----------------------------
+          // BACKUP REQUESTOR SECTION
+          // ----------------------------- */}
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6">Backup</Typography>
+          <Divider sx={{ mt: 1, mb: 2 }} />
+
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12 }}>
+              <Typography variant="body2" sx={{ m: 0 }}>
+                Designated person who will receive notifications for this request, including the ability to take any necessary actions.
+              </Typography>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <MuiPeoplePicker
+                label="Backup Requestor (optional)"
+                context={peoplePickerContext}
+                value={form.backupRequestor?.EMail ? [form.backupRequestor.EMail] : []}
+                required={false}
+                onChange={(items) => handlePeoplePicker(items, "backupRequestor")}
+                selectionLimit={1}
+              />
+            </Grid>
+          </Grid>
+        </Box>
+
+        {/* // -----------------------------
           // JUSTIFICATION SECTION
           // ----------------------------- */}
         <Box sx={{ mt: 4 }}>

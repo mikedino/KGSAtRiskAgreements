@@ -13,6 +13,8 @@ import { ContextInfo, Web } from "gd-sprest";
 import Strings from "../../../strings";
 import { useAgreements } from "../services/agreementsContext";
 import { DataSource } from "../data/ds";
+import { AgreementDelta } from "../services/agreementDiff";
+import { useTheme } from "@mui/material/styles";
 
 interface RiskAgreementViewProps {
     item: IRiskAgreementItem;
@@ -25,8 +27,9 @@ interface RiskAgreementViewProps {
 
 type ActionModalType = "approve" | "reject" | "cancel" | "resolve";
 
-const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUserEmail, onApprove, onReject, onCancel }) => {
+const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUserEmail, onApprove, onReject, onCancel, onResolve }) => {
 
+    const theme = useTheme();
     const [commentModalOpen, setCommentModalOpen] = useState(false);
     const [comment, setComment] = useState("");
     const [actionType, setActionType] = React.useState<ActionModalType | null>(null);
@@ -42,6 +45,12 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
     // timeline accordion expanded
     const [expandedRunId, setExpandedRunId] = React.useState<number | false>(false);
     const history = useHistory();
+
+    // get the page content container to display the DRAWER
+    // const spChrome = React.useMemo(
+    //     () => document.getElementById("spPageChromeAppDiv"),
+    //     []
+    // );
 
     const {
         runByAgreementId,
@@ -149,7 +158,6 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
             );
     }, [allActions, allRuns]);
 
-
     const runChangesAction = React.useMemo(() => {
         if (!runChangesRunId) return undefined;
         return modifiedActionForRun(runChangesRunId);
@@ -165,8 +173,9 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
         ? dayjs(runChangesAction.actionCompletedDate).format("MMM D, YYYY h:mm A")
         : undefined;
 
-    const runChangesSummary = runChangesAction?.changeSummary?.trim();
-
+    const runChangesDelta = runChangesAction?.changePayloadJson
+        ? JSON.parse(runChangesAction.changePayloadJson) as AgreementDelta
+        : undefined;
 
     // attachments
     useEffect(() => {
@@ -217,12 +226,12 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
     };
 
     const isElevated = DataSource.isAdmin || DataSource.isCM;
-    const isSubmitter = item.Author.Id === ContextInfo.userId;
+    const isSubmitter = (item.Author.Id === ContextInfo.userId) || (item.backupRequestor.Id === ContextInfo.userId);
     const isActive = !!run && run.runStatus === "Active";
     const canApprove = isActive && (run.pendingApproverId === ContextInfo.userId || isElevated);
     const canCancel = isActive && (isSubmitter || isElevated);
     const canEdit = isActive && (isSubmitter || isElevated);
-    const canResolve = isActive && item.araStatus === "Approved" && isElevated;
+    const canResolve = !!run && run.runStatus === "Completed" && item.araStatus === "Approved" && isElevated;
 
     const openCommentModal = (type: ActionModalType): void => {
         setActionType(type);
@@ -258,6 +267,8 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                 await onApprove(text);
             } else if (type === "reject") {
                 await onReject(text);
+            } else if (type === "resolve") {
+                await onResolve(text);
             } else {
                 await onCancel(text);
             }
@@ -432,7 +443,6 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                                         const steps = stepsByRunId.get(r.Id) ?? [];
                                         const isCurrent = r.Id === run.Id;
 
-
                                         const hasChanges = !!modifiedActionForRun(r.Id)?.changeSummary;
 
                                         return (
@@ -462,12 +472,12 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                                                             size="small"
                                                             label={r.runStatus}
                                                             variant="outlined"
-                                                            color={r.runStatus === "Active" ? "warning" : "default"}
+                                                            color={r.runStatus === "Active" ? "info" : "default"}
                                                         />
 
                                                         <Box sx={{ flexGrow: 1 }} />
 
-                                                        {/* ✅ Status date */}
+                                                        {/* Status date */}
                                                         {(() => {
                                                             const statusLabel = getRunStatusLabel(r, actionsByRunId.get(r.Id) ?? []);
                                                             return statusLabel ? (
@@ -517,7 +527,17 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
 
             <Divider sx={{ my: 2 }} />
 
-            <Drawer anchor="right" open={changesSummaryOpen} onClose={() => setChangeSummaryOpen(false)}>
+            <Drawer
+                anchor="right"
+                open={changesSummaryOpen}
+                onClose={() => setChangeSummaryOpen(false)}
+                sx={{ 
+                    "& .MuiDrawer-paper": { 
+                        top: `48px`, 
+                        height: `calc(100% - 48px)` //fit under SP Suite Nav Header
+                    } 
+                }} 
+            >
                 <Box sx={{ width: 520, p: 3 }}>
                     <Typography variant="h6">Change History</Typography>
 
@@ -531,9 +551,12 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                         {changeHistory.map(({ action, runId, runNo }) => {
                             const when = formatWhen(action.actionCompletedDate);
                             const who = action.actor?.Title ?? "Unknown";
-                            const summary = action.changeSummary?.trim();
+                            //const summary = action.changeSummary?.trim();
+                            const summary = action.changePayloadJson
+                                ? JSON.parse(action.changePayloadJson) as AgreementDelta
+                                : undefined;
 
-                            // optional: show status for that run (nice context)
+                            // show status for that run
                             const runStatus = typeof runId === "number"
                                 ? allRuns.find(r => r.Id === runId)?.runStatus
                                 : undefined;
@@ -543,7 +566,8 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                                     key={action.Id}
                                     sx={{
                                         border: "1px solid",
-                                        borderColor: "divider",
+                                        borderColor: theme.custom?.cardBorder,
+                                        backgroundColor: theme.custom?.cardBg,
                                         borderRadius: 2,
                                         p: 1.75
                                     }}
@@ -588,9 +612,18 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                                     <Divider sx={{ my: 1.25 }} />
 
                                     {summary ? (
-                                        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                                            {summary}
-                                        </Typography>
+                                        <Stack spacing={1}>
+                                            {Object.values(summary).map((d, i) => (
+                                                <Box key={i}>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        {d.label}
+                                                    </Typography>
+                                                    <Typography variant="body2">
+                                                        {d.from || "—"} → {d.to || "—"}
+                                                    </Typography>
+                                                </Box>
+                                            ))}
+                                        </Stack>
                                     ) : (
                                         <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
                                             No change summary provided.
@@ -612,7 +645,7 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                         : actionType === "reject"
                             ? "Reject Agreement"
                             : actionType === "resolve"
-                                ? "Resovle Agreement"
+                                ? "Resolve Agreement"
                                 : "Cancel Agreement"}
                 </DialogTitle>
 
@@ -717,10 +750,23 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
 
                             <Divider sx={{ mb: 2 }} />
 
-                            {runChangesSummary ? (
-                                <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>{runChangesSummary}</Typography>
+                            {runChangesDelta ? (
+                                <Stack spacing={1}>
+                                    {Object.values(runChangesDelta).map((d, i) => (
+                                        <Box key={i}>
+                                            <Typography variant="subtitle2" fontWeight={600}>
+                                                {d.label}
+                                            </Typography>
+                                            <Typography variant="body2">
+                                                {d.from || "—"} → {d.to || "—"}
+                                            </Typography>
+                                        </Box>
+                                    ))}
+                                </Stack>
                             ) : (
-                                <Typography variant="body2" color="text.secondary">No summary recorded.</Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    No summary recorded.
+                                </Typography>
                             )}
                         </>
                     )}

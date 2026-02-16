@@ -124,6 +124,12 @@ export const Configuration = Helper.SPConfig({
                     title: "Entity GM",
                     type: Helper.SPCfgFieldType.User
                 } as Helper.IFieldInfoUser,
+                {
+                    name: "backupRequestor",
+                    title: "Backup Requestor",
+                    type: Helper.SPCfgFieldType.User,
+                    description: "Designated person who will receive notifications for this request"
+                } as Helper.IFieldInfoUser,
 
                 /******** Workflow Pointer (Lookup to WorkflowRuns) ********/
                 {
@@ -231,8 +237,7 @@ export const Configuration = Helper.SPConfig({
                         "<OrderBy><FieldRef Name=\"lastVisit\" Ascending=\"FALSE\" /></OrderBy>",
                     ViewFields: [
                         "user",
-                        "role",
-                        "firstVisit",
+                        "role",                        
                         "lastVisit",
                         "visitCount",
                         "modePreference"

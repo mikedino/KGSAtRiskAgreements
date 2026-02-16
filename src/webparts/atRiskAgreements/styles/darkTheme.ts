@@ -11,7 +11,7 @@ export const darkTheme = createTheme({
     secondary: { main: "#005C6C" },   // KGS Teal 
     error: { main: "#fd3030", contrastText: "#000000de" },
     warning: { main: "#F4B740" },
-    info: { main: "#4b82ff", contrastText: "#000000de" },
+    info: { main: "#2499C2", contrastText: "#000000de" },
     success: { main: "#3BA55C", contrastText: "#000000de" },
 
     background: {

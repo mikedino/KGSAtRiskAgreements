@@ -3,7 +3,7 @@ import { Card, CardContent, Typography, Chip, Stack, Grid, Divider, Box } from "
 import { IRiskAgreementItem } from "../data/props";
 import { AgreementWorkflowSummary } from "../components/MyWork";
 import { useTheme } from "@mui/material/styles";
-import { formatSinceDate } from "../services/utils";
+import { formatSinceDate, formatCurrency } from "../services/utils";
 
 interface AgreementCardProps {
     item: IRiskAgreementItem;
@@ -22,8 +22,6 @@ const AgreementCard: React.FC<AgreementCardProps> = ({ item, workflow, onClick }
         isResolved ? "success" : workflow.statusColor;
 
     const formatDate = (value?: string): string => value ? new Date(value).toLocaleDateString() : "—"
-    const formatCurrency = (value?: number): string => value === null || value === undefined ? "—" : `$${value.toLocaleString()}`;
-
 
     return (
         <Card onClick={onClick} sx={{
@@ -200,7 +198,7 @@ const AgreementCard: React.FC<AgreementCardProps> = ({ item, workflow, onClick }
                     <Grid container spacing={1}>
                         <Grid size={6}>
                             <Typography variant="caption" color="text.secondary">
-                                Created By
+                                Submitted By
                             </Typography>
                             <Typography variant="body2">
                                 {item.Author?.Title}
@@ -209,7 +207,7 @@ const AgreementCard: React.FC<AgreementCardProps> = ({ item, workflow, onClick }
 
                         <Grid size={6}>
                             <Typography variant="caption" color="text.secondary">
-                                Created On
+                                Submitted On
                             </Typography>
                             <Typography variant="body2">
                                 {formatDate(item.Created)}

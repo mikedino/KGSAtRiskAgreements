@@ -122,13 +122,13 @@ export class DataSource {
         "entity", "riskReason", "riskFundingRequested", "riskJustification", "contractName", "programName",
         "araStatus", "Created", "Modified", "og", "hasSubcontract",
         "Author/Id", "Author/Title", "Author/EMail",
-        "Editor/Id", "Editor/Title", "Editor/EMail",
+        "backupRequestor/Id", "backupRequestor/Title", "backupRequestor/EMail",
         "projectMgr/Id", "projectMgr/Title", "projectMgr/EMail",
         "entityGM/Id", "entityGM/Title", "entityGM/EMail",
         "contractMgr/Id", "contractMgr/Title", "contractMgr/EMail",
         "currentRun/Id", "currentRun/Title"
     ];
-    public static agreementExpandQuery: string[] = ["Author", "Editor", "projectMgr", "entityGM", "contractMgr", "currentRun"];
+    public static agreementExpandQuery: string[] = ["Author", "backupRequestor", "projectMgr", "entityGM", "contractMgr", "currentRun"];
     // Load all the Risk Agreeements
     private static _agreements: IRiskAgreementItem[] = [];
     private static _agreementsVersion = 0; // detect refreshes
