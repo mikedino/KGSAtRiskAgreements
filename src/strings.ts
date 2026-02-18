@@ -76,6 +76,6 @@ const Strings = {
             blueGray: "#ccd6dd"
         }
     },
-    Version: "1.2.0.6"
+    Version: "1.2.0.8"
 };
 export default Strings;

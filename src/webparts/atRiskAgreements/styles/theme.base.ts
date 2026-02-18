@@ -2,6 +2,8 @@ import { createTheme } from "@mui/material/styles";
 // This import is crucial for extending the Material UI theme with DataGrid-specific colors
 import type { } from '@mui/x-data-grid/themeAugmentation';
 
+export const fontSizeDefault = "14px";
+
 export const baseTheme = createTheme({
     typography: {
         fontSize: 14 // global baseline
@@ -44,34 +46,64 @@ export const baseTheme = createTheme({
         MuiInputBase: {
             styleOverrides: {
                 root: {
-                    fontSize: "10pt",
+                    fontSize: fontSizeDefault,
                 },
             },
         },
         MuiList: {
             styleOverrides: {
                 root: {
-                    fontSize: "10pt",
+                    fontSize: fontSizeDefault,
                 },
             },
+        },
+        MuiMenuItem: {
+            styleOverrides: {
+                root: {
+                    fontSize: fontSizeDefault,
+                    padding: "2px 16px"
+                },
+            },
+        },
+        MuiMenu: {
+            styleOverrides: {
+                root: {
+                    fontSize: fontSizeDefault,
+                },
+            }
         },
         MuiMenuList: {
             styleOverrides: {
                 root: {
-                    fontSize: "10pt",
+                    fontSize: fontSizeDefault,
                 },
             },
         },
+        MuiTextField: {
+            defaultProps: {
+                size: "small",
+                variant: "outlined",
+            },
+        },
+        MuiSelect: {
+            defaultProps: { size: "small" },
+        },
+        MuiFormControl: {
+            defaultProps: { size: "small" },
+        },
         MuiAutocomplete: {
+            defaultProps: {
+                size: "small",
+            },
             styleOverrides: {
                 option: {
-                    fontSize: "10pt",
+                    fontSize: fontSizeDefault,
                 },
                 input: {
-                    fontSize: "10pt",
+                    fontSize: fontSizeDefault,
                 },
                 paper: {
-                    fontSize: "10pt",
+                    fontSize: fontSizeDefault,
                 },
                 inputRoot: ({ theme }) => ({
                     "&&.Mui-focused .MuiOutlinedInput-notchedOutline": {
@@ -107,9 +139,20 @@ export const baseTheme = createTheme({
                     "&.Mui-focused": {
                         color: theme.palette.info.main
                     },
+                    // only the resting label (before input/focus)
+                    "&:not(.MuiInputLabel-shrink)": {
+                        transform: "translate(14px, 12px) scale(1)",
+                    }
                 }),
             },
         },
+        // MuiFormControlLabel: {
+        //     styleOverrides : {
+        //         labelPlacementStart: {
+
+        //         }
+        //     }
+        // },
         //standard filled inputs just in case
         MuiInput: {
             styleOverrides: {
@@ -119,6 +162,16 @@ export const baseTheme = createTheme({
                     },
                 }),
             },
+        },
+        MuiNativeSelect: {
+            styleOverrides: {
+                root: {
+                    fontSize: fontSizeDefault
+                },
+                nativeInput: {
+                    fontSize: fontSizeDefault
+                }
+            }
         },
         MuiFilledInput: {
             styleOverrides: {

@@ -15,7 +15,7 @@ type ReadOnlyProps = {
 const ReadOnly = ({ label, value, xs = 12, md = 6 }: ReadOnlyProps): JSX.Element => (
     <Grid size={{ xs, md }}>
         <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>{label}</Typography>
-        <Typography variant="body1">{value || "—"}</Typography>
+        <Typography variant="body1" fontSize="14px" >{value || "—"}</Typography>
     </Grid>
 );
 

@@ -215,9 +215,9 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
   // ATTACHMENTS SECTION
   // -----------------------------
   const renderAttachments = (): JSX.Element => (
-    <Box sx={{ mt: 4 }}>
+    <Box sx={{ mt: 3 }}>
       <Typography variant="h6"><AttachFileOutlined /> Attachments</Typography>
-      <Divider sx={{ mt: 1 }} />
+      <Divider />
       <List dense>
         {attachments.map(a => (
           <ListItem key={a.FileName} component="a" href={a.ServerRelativeUrl} target="_blank">
@@ -263,10 +263,26 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
   // console.log("info.main", theme.palette.info.main);
   // console.log("primary.main", theme.palette.primary.main);
 
+  const fontSizeDefault = 14;
+  const minHeight = "41px";
+  const lineHeight = "21px";
+  const paddingVertical = "10px";
+
   return (
 
     <form onSubmit={handleSubmit}>
-      <Box>
+      <Box
+        // Override font size for this form
+        sx={{
+          "& .MuiInputBase-root": { fontSize: fontSizeDefault, lineHeight: lineHeight },
+          "& .MuiInputLabel-root": { fontSize: fontSizeDefault },
+          "& .MuiTextField-root": { fontSize: fontSizeDefault, minHeight: minHeight },
+          "& .MuiFormHelperText-root": { fontSize: "0.75rem" },
+          "& .MuiPickersSectionList-root": { fontSize: fontSizeDefault, py: paddingVertical, minHeight: minHeight },
+          "& .MuiOutlinedInput-input": { py: paddingVertical, lineHeight: lineHeight },
+          "& .MuiAutocomplete-root .MuiOutlinedInput-root.MuiOutlinedInput-root": { padding: 0, minHeight: minHeight },
+          "& .MuiAutocomplete-root .MuiOutlinedInput-root.MuiInputBase-sizeSmall .MuiAutocomplete-input": { padding: "10px 14px" }
+        }}>
 
         <Typography variant="h5" sx={{ mb: 4 }}>
           {mode === "new" ? "New At-Risk Agreement" : `Edit At-Risk Agreement - ${form.Title}`}
@@ -290,19 +306,20 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
         {/* Sections */}
         <LocalizationProvider dateAdapter={AdapterDayjs}>
 
-          <Grid container spacing={3}>
+          <Grid container spacing={2}>
 
             {/* // -----------------------------
           // Project Information SECTION
           // ----------------------------- */}
-            <Grid size={12} sx={{ mt: 4 }}>
-              <Typography variant="h6" sx={{ mb: 1 }}>Project Information</Typography>
+            <Grid size={12} sx={{ mt: 1 }}>
+              <Typography variant="h6">Project Information</Typography>
               {/* <Typography variant="body2">Core details about the project and contract</Typography> */}
-              <Divider sx={{ mt: 1, mb: 2 }} />
+              <Divider sx={{ mb: 1 }} />
             </Grid>
 
             {submissionType === "existing" && (
-              <Grid size={{ xs: 12, md: 6 }}>
+              // <Grid size={{ xs: 12, md: 6 }}>
+              <Grid size={{ xs: 12, md: 6, xl: 4 }}>
                 <Autocomplete
                   options={DataSource.Contracts}
                   fullWidth
@@ -339,7 +356,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                   renderOption={(props, option) => (
                     <li {...props} key={option.field_19}>
                       <Stack>
-                        <Typography fontWeight={500}>{option.field_20}</Typography>
+                        <Typography fontSize={14} fontWeight={500}>{option.field_20}</Typography>
                         <Typography variant="body2" color="text.secondary">{option.field_35}</Typography>
                       </Stack>
                     </li>
@@ -349,7 +366,8 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
             )}
 
             {submissionType === "existing" && (
-              <Grid size={{ xs: 12, md: 6 }}>
+              // <Grid size={{ xs: 12, md: 6 }}>
+              <Grid size={{ xs: 12, md: 6, xl: 4 }}>
                 <Autocomplete
                   options={filteredInvoices}
                   fullWidth
@@ -389,7 +407,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                   renderOption={(props, option) => (
                     <li {...props} key={option.field_14}>
                       <Stack>
-                        <Typography fontWeight={500}>{option.InvoiceID1}</Typography>
+                        <Typography fontSize={14} fontWeight={500}>{option.InvoiceID1}</Typography>
                         <Typography variant="body2" color="text.secondary">{option.field_28}</Typography>
                       </Stack>
                     </li>
@@ -400,7 +418,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
 
             {submissionType === "newOpp" && (
               <>
-                <Grid size={{ xs: 12, md: 6 }}>
+                <Grid size={{ xs: 12, md: 6, xl: 4 }}>
                   <TextField
                     label="Contract Name"
                     fullWidth
@@ -410,33 +428,49 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                   />
                 </Grid>
 
-                <Grid size={{ xs: 12, md: 6 }}>
+                <Grid size={{ xs: 12, md: 6, xl: 4 }}>
                   <TextField label="Program Name" fullWidth required value={form.programName ?? ""} onChange={(e) => updateField("programName", e.target.value)} />
                 </Grid>
               </>
             )}
 
             {submissionType === "existing" && (
-              <Grid size={{ xs: 12, md: 6 }}>
-                <FormLabel id="hasSubcontract-label" sx={{ fontSize: "0.75rem", paddingLeft: 2 }}>Has Subcontract?</FormLabel>
+              <Grid size={{ xs: 12, md: 6, xl: 4 }} maxHeight="41px" >
+                <FormLabel
+                  id="hasSubcontract-label"
+                  sx={{
+                    fontSize: "0.75rem",
+                    paddingLeft: "15px",
+                    top: "-11px"
+                  }}>
+                  Has Subcontract?
+                </FormLabel>
 
                 <RadioGroup
                   row
                   aria-labelledby="hasSubcontract-label"
                   name="hasSubcontract"
                   value={form.hasSubcontract ? "true" : "false"}
-                  sx={{ paddingLeft: 3 }}
+                  sx={{
+                    paddingLeft: 3,
+                    position: "relative",
+                    top: "-12px",
+                    "& .MuiFormControlLabel-label": {
+                      fontSize: "14px",
+                      lineHeight: "20px"
+                    }
+                  }}
                   onChange={(e) =>
                     updateField("hasSubcontract", e.target.value === "true")
                   }
                 >
-                  <FormControlLabel value="false" sx={{ height: "35px" }} control={<Radio size="small" />} label="No" />
-                  <FormControlLabel value="true" sx={{ height: "35px", marginLeft: 2 }} control={<Radio size="small" />} label="Yes" />
+                  <FormControlLabel value="false" control={<Radio size="small" />} label="No" />
+                  <FormControlLabel value="true" control={<Radio size="small" />} label="Yes" />
                 </RadioGroup>
               </Grid>
             )}
 
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid size={{ xs: 12, md: 6, xl: 4 }}>
               <TextField
                 select
                 label="Contract Type"
@@ -455,7 +489,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
             </Grid>
 
             {submissionType === "existing" && (
-              <Grid size={{ xs: 12, md: 6 }}>
+              <Grid size={{ xs: 12, md: 6, xl: 4 }}>
                 <DatePicker
                   label="Contractual PoP End Date"
                   value={form.popEnd ? dayjs(form.popEnd) : null}
@@ -471,7 +505,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
               </Grid>
             )}
 
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid size={{ xs: 12, md: 6, xl: 4 }}>
               <TextField select label="Entity" required fullWidth value={form.entity ?? ""} onChange={(e) => updateField("entity", e.target.value)} >
                 <MenuItem value="">Select Entity</MenuItem>
                 {DataSource.Entities.map((e) => (
@@ -482,7 +516,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
               </TextField>
             </Grid>
 
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid size={{ xs: 12, md: 6, xl: 4 }}>
               <TextField select label="Operating Group" required fullWidth
                 value={form.og ?? ""}
                 onChange={(e) => {
@@ -505,7 +539,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
               </TextField>
             </Grid>
 
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid size={{ xs: 12, md: 6, xl: 4 }}>
               <MuiPeoplePicker
                 label="Project Manager"
                 context={peoplePickerContext}
@@ -516,7 +550,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
               />
             </Grid>
 
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid size={{ xs: 12, md: 6, xl: 4 }}>
               <MuiPeoplePicker
                 label="Contract Manager"
                 context={peoplePickerContext}
@@ -530,19 +564,15 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
               />
             </Grid>
 
-          </Grid>
-
-          <Grid container spacing={3}>
-
             {/* // -----------------------------
           // Risk Details SECTION
           // ----------------------------- */}
-            <Grid size={12} sx={{ mt: 4 }}>
-              <Typography variant="h6" sx={{ mb: 1 }}>Risk Details</Typography>
-              <Divider sx={{ mt: 1, mb: 2 }} />
+            <Grid size={12} sx={{ mt: 1 }}>
+              <Typography variant="h6">Risk Details</Typography>
+              <Divider sx={{ mb: 1 }} />
             </Grid>
 
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid size={{ xs: 12, md: 6, lg: 3 }}>
               <DatePicker
                 label="Risk Start Date"
                 value={form.riskStart ? dayjs(form.riskStart) : null}
@@ -558,7 +588,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
               />
             </Grid>
 
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid size={{ xs: 12, md: 6, lg: 3 }}>
               <DatePicker
                 label="Risk End Date"
                 value={form.riskEnd ? dayjs(form.riskEnd) : null}
@@ -575,7 +605,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
             </Grid>
 
             {submissionType === "existing" && (
-              <Grid size={{ xs: 12, md: 6 }}>
+              <Grid size={{ xs: 12, md: 6, lg: 3 }}>
                 <TextField select label="Reason for At-Risk Work" fullWidth required value={form.riskReason ?? ""} onChange={(e) => updateField("riskReason", e.target.value as IRiskAgreementItem["riskReason"])} >
                   <MenuItem value="Lack of funding">Lack of funding</MenuItem>
                   <MenuItem value="PoP End">PoP End</MenuItem>
@@ -583,7 +613,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
               </Grid>
             )}
 
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid size={{ xs: 12, md: 6, lg: 3 }}>
               <CurrencyField
                 label="New Risk Funding Requested"
                 fullWidth
@@ -599,25 +629,15 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
               />
             </Grid>
 
-          </Grid>
-
-        </LocalizationProvider>
-
-        {/* // -----------------------------
+            {/* // -----------------------------
           // BACKUP REQUESTOR SECTION
           // ----------------------------- */}
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="h6">Backup</Typography>
-          <Divider sx={{ mt: 1, mb: 2 }} />
-
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12 }}>
-              <Typography variant="body2" sx={{ m: 0 }}>
-                Designated person who will receive notifications for this request, including the ability to take any necessary actions.
-              </Typography>
+            <Grid size={12} sx={{ mt: 1 }}>
+              <Typography variant="h6">Backup</Typography>
+              <Divider sx={{ mb: 1 }} />
             </Grid>
 
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid size={{ xs: 12, md: 6, xl: 4 }}>
               <MuiPeoplePicker
                 label="Backup Requestor (optional)"
                 context={peoplePickerContext}
@@ -625,19 +645,39 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                 required={false}
                 onChange={(items) => handlePeoplePicker(items, "backupRequestor")}
                 selectionLimit={1}
+                showtooltip={true}
+                tooltipMessage="Designated person who will receive notifications for this request, including the ability to take any necessary actions."
               />
             </Grid>
-          </Grid>
-        </Box>
 
-        {/* // -----------------------------
+            {/* // -----------------------------
           // JUSTIFICATION SECTION
           // ----------------------------- */}
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="h6">Justification</Typography>
-          <Divider sx={{ mt: 1, mb: 2 }} />
-          <TextField multiline rows={5} fullWidth placeholder="Explain why this at-risk work is necessary..." value={form.riskJustification ?? ""} onChange={(e) => updateField("riskJustification", e.target.value)} />
-        </Box>
+            <Grid size={12} sx={{ mt: 1 }}>
+              <Typography variant="h6">Justification</Typography>
+              <Divider sx={{ mb: 1 }} />
+            </Grid>
+
+            <Grid size={12}>
+              <TextField
+                multiline
+                rows={5}
+                fullWidth
+                placeholder="Explain why this at-risk work is necessary..."
+                value={form.riskJustification ?? ""}
+                onChange={(e) => updateField("riskJustification", e.target.value)}
+                sx={{
+                  "& .MuiOutlinedInput-input": {
+                    padding: 0,
+                    lineHeight: "20px"
+                  }
+                }}
+              />
+            </Grid>
+
+          </Grid>
+
+        </LocalizationProvider>
 
         {renderAttachments()}
 

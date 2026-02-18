@@ -13,6 +13,8 @@ export interface MuiPeoplePickerProps {
     onChange: (items: IPersonaProps[]) => void;
     selectionLimit?: number;
     sx?: SxProps<Theme>;
+    showtooltip?: boolean;
+    tooltipMessage?: string;
 }
 
 export const MuiPeoplePicker: React.FC<MuiPeoplePickerProps> = ({
@@ -23,7 +25,9 @@ export const MuiPeoplePicker: React.FC<MuiPeoplePickerProps> = ({
     disabled = false,
     onChange,
     selectionLimit = 1,
-    sx
+    sx,
+    showtooltip = false,
+    tooltipMessage
 }) => {
     const theme = useTheme();
 
@@ -68,6 +72,8 @@ export const MuiPeoplePicker: React.FC<MuiPeoplePickerProps> = ({
                 personSelectionLimit={selectionLimit}
                 principalTypes={[PrincipalType.User]}
                 ensureUser
+                showtooltip={showtooltip}
+                tooltipMessage={tooltipMessage}
                 disabled={disabled}
                 defaultSelectedUsers={value}
                 resolveDelay={1000}
@@ -76,8 +82,8 @@ export const MuiPeoplePicker: React.FC<MuiPeoplePickerProps> = ({
                     root: {
                         border: `1px solid ${defaultBorderColor}`,
                         borderRadius: theme.shape.borderRadius,
-                        padding: "14.5px 14px",
-                        minHeight: 56,
+                        padding: "8px 14px 6px 10px",
+                        minHeight: 41,
                         // backgroundColor: disabled
                         //     ? theme.palette.action.disabledBackground
                         //     : theme.palette.background.paper,

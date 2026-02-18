@@ -3,7 +3,7 @@ import {
     Card, CardContent, Stepper, StepLabel, Step, Typography, Chip,
     Box, Divider, Stack, Button, ChipProps, IconButton, Popper, Paper, ClickAwayListener
 } from "@mui/material";
-import { CheckCircle, Cancel, Check, Schedule, RadioButtonUnchecked, RemoveCircleOutline, LockResetOutlined } from "@mui/icons-material";
+import { CheckCircle, CheckCircleOutline, HighlightOff, Cancel, Schedule, RadioButtonUnchecked, RemoveCircleOutline, LockResetOutlined } from "@mui/icons-material";
 import MessageOutlinedIcon from "@mui/icons-material/MessageOutlined";
 import { WorkflowStepWithStatus, WorkflowStepStatus } from "../services/workflowState";
 import dayjs from "dayjs";
@@ -154,7 +154,7 @@ const WorkflowTimeline = ({
                                 expanded
                             >
                                 <StepLabel icon={<WorkflowStepIcon status={step.status} />}>
-                                    <Stack spacing={0.25}>
+                                    <Stack>
                                         {/* Top row: label + comment + status */}
                                         <Stack direction="row" justifyContent="space-between" alignItems="center">
                                             <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0 }}>
@@ -238,10 +238,10 @@ const WorkflowTimeline = ({
 
                         {showApproverActions ? (
                             <Stack direction="row" spacing={2}>
-                                <Button variant="contained" color="success" fullWidth startIcon={<Check />} onClick={onApprove}>
+                                <Button variant="contained" color="success" fullWidth startIcon={<CheckCircleOutline />} onClick={onApprove}>
                                     Approve
                                 </Button>
-                                <Button variant="outlined" color="error" fullWidth startIcon={<Cancel />} onClick={onReject}>
+                                <Button variant="outlined" color="error" fullWidth startIcon={<HighlightOff />} onClick={onReject}>
                                     Reject
                                 </Button>
                             </Stack>

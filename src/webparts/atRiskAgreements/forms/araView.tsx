@@ -6,7 +6,7 @@ import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, Chip
 import Edit from "@mui/icons-material/Edit";
 import AgreementInfoCard from "./viewInfoCard";
 import WorkflowTimeline from "./viewTimeline";
-import { ArrowBack, ExpandMore, Cancel, AssignmentTurnedInOutlined } from "@mui/icons-material";
+import { ArrowBack, ExpandMore, Backspace, AssignmentTurnedInOutlined } from "@mui/icons-material";
 import { useHistory } from "react-router-dom";
 import { buildWorkflowState } from "../services/workflowState";
 import { ContextInfo, Web } from "gd-sprest";
@@ -372,7 +372,7 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                             <Button
                                 title="Permanently Cancel this Agreement"
                                 variant="outlined"
-                                startIcon={<Cancel />}
+                                startIcon={<Backspace />}
                                 color="error"
                                 onClick={handleCancel}
                             >
