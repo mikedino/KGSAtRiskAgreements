@@ -7,18 +7,18 @@ export const lightTheme = createTheme(baseTheme, {
     mode: "light",
 
     primary: { main: "#003057" },
-    secondary: { main: "#005C6C" },
+    secondary: { main: "#005C6C", light: "#0000003b"  },   // light = input borders!
     error: { main: "#B00020" },
-    warning: { main: "#F4B740" },
+    warning: { main: "#F4B740", contrastText: "#003057" },
     info: { main: "#0078D4" },
     success: { main: "#3BA55C" },
 
     background: {
       default: "#ffffff",
-      paper: "#F7F9FA"
+      paper: "#eff2f6"
     },
 
-    divider: "#ccd6dd",
+    divider: "#4b4b4b",
 
     text: {
       primary: "#333333",

@@ -265,7 +265,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
 
   const fontSizeDefault = 14;
   const minHeight = "41px";
-  const lineHeight = "21px";
+  //const lineHeight = "21px";
   const paddingVertical = "10px";
 
   return (
@@ -274,12 +274,12 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
       <Box
         // Override font size for this form
         sx={{
-          "& .MuiInputBase-root": { fontSize: fontSizeDefault, lineHeight: lineHeight },
-          "& .MuiInputLabel-root": { fontSize: fontSizeDefault },
-          "& .MuiTextField-root": { fontSize: fontSizeDefault, minHeight: minHeight },
-          "& .MuiFormHelperText-root": { fontSize: "0.75rem" },
+          //"& .MuiInputBase-root": { fontSize: fontSizeDefault, lineHeight: lineHeight },
+          //"& .MuiInputLabel-root": { fontSize: fontSizeDefault },
+          //"& .MuiTextField-root": { fontSize: fontSizeDefault, minHeight: minHeight },
+          //"& .MuiFormHelperText-root": { fontSize: "0.75rem" },
           "& .MuiPickersSectionList-root": { fontSize: fontSizeDefault, py: paddingVertical, minHeight: minHeight },
-          "& .MuiOutlinedInput-input": { py: paddingVertical, lineHeight: lineHeight },
+          //"& .MuiOutlinedInput-input": { py: paddingVertical, lineHeight: lineHeight },
           "& .MuiAutocomplete-root .MuiOutlinedInput-root.MuiOutlinedInput-root": { padding: 0, minHeight: minHeight },
           "& .MuiAutocomplete-root .MuiOutlinedInput-root.MuiInputBase-sizeSmall .MuiAutocomplete-input": { padding: "10px 14px" }
         }}>

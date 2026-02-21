@@ -31,10 +31,10 @@ export const MuiPeoplePicker: React.FC<MuiPeoplePickerProps> = ({
 }) => {
     const theme = useTheme();
 
-    const defaultBorderColor =
-        theme.palette.mode === "dark"
-            ? theme.palette.divider
-            : theme.palette.grey[400];
+    // const defaultBorderColor =
+    //     theme.palette.mode === "dark"
+    //         ? theme.palette.divider
+    //         : theme.palette.grey[400];
 
     return (
         <FormControl
@@ -80,7 +80,7 @@ export const MuiPeoplePicker: React.FC<MuiPeoplePickerProps> = ({
                 onChange={onChange} //pass thru unchanged
                 styles={{
                     root: {
-                        border: `1px solid ${defaultBorderColor}`,
+                        border: `1px solid ${theme.palette.secondary.light}`,
                         borderRadius: theme.shape.borderRadius,
                         padding: "8px 14px 6px 10px",
                         minHeight: 41,

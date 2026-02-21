@@ -3,8 +3,10 @@ import {
     Card, CardContent, Stepper, StepLabel, Step, Typography, Chip,
     Box, Divider, Stack, Button, ChipProps, IconButton, Popper, Paper, ClickAwayListener
 } from "@mui/material";
-import { CheckCircle, CheckCircleOutline, HighlightOff, Cancel, Schedule, RadioButtonUnchecked, RemoveCircleOutline, LockResetOutlined } from "@mui/icons-material";
-import MessageOutlinedIcon from "@mui/icons-material/MessageOutlined";
+import {
+    CheckCircle, CheckCircleOutline, HighlightOff, Cancel, Schedule, RadioButtonUnchecked, 
+    RemoveCircleOutline, Restore, MessageOutlined, AssignmentTurnedInOutlined
+} from "@mui/icons-material";
 import { WorkflowStepWithStatus, WorkflowStepStatus } from "../services/workflowState";
 import dayjs from "dayjs";
 
@@ -14,7 +16,9 @@ const WorkflowTimeline = ({
     onApprove,
     onReject,
     canCancel,
-    onCancel
+    onCancel,
+    canRevert,
+    onRevert
 }: {
     steps: WorkflowStepWithStatus[];
     canApprove: boolean;
@@ -22,6 +26,8 @@ const WorkflowTimeline = ({
     onReject: () => Promise<void>;
     canCancel: boolean;
     onCancel: () => Promise<void>;
+    canRevert: boolean;
+    onRevert: () => Promise<void>;
 }): JSX.Element => {
 
     // comment popper
@@ -47,6 +53,8 @@ const WorkflowTimeline = ({
         activeStepObj &&
         activeStepObj.status === "Current" &&
         activeKey === "submitter";
+
+    const showRevertAction = showApproverActions && canRevert;
 
     const handleCommentToggle = (stepKey: string, el: HTMLElement): void => {
         setOpenCommentKey(prevKey => {
@@ -98,7 +106,9 @@ const WorkflowTimeline = ({
             case "Skipped":
                 return <RemoveCircleOutline color="disabled" />;
             case "Resolved":
-                return <LockResetOutlined color="success" />;
+                return <AssignmentTurnedInOutlined color="success" />;
+            case "Reverted":
+                return <Restore color="warning" />;
             default:
                 return null;
         }
@@ -121,7 +131,9 @@ const WorkflowTimeline = ({
             case "Skipped":
                 return { label: "Skipped", color: "default", variant: "outlined" };
             case "Resolved":
-                return { label: "Resolved", color: "success", variant: "filled" }
+                return { label: "Resolved", color: "success", variant: "filled" };
+            case "Reverted":
+                return { label: "Reverted", color: "info", variant: "filled" }
         }
     };
 
@@ -168,7 +180,7 @@ const WorkflowTimeline = ({
                                                         aria-label="View comment"
                                                         onClick={(e) => handleCommentToggle(String(step.key), e.currentTarget)}
                                                     >
-                                                        <MessageOutlinedIcon fontSize="small" />
+                                                        <MessageOutlined fontSize="small" />
                                                     </IconButton>
                                                 )}
                                             </Stack>
@@ -238,12 +250,17 @@ const WorkflowTimeline = ({
 
                         {showApproverActions ? (
                             <Stack direction="row" spacing={2}>
-                                <Button variant="contained" color="success" fullWidth startIcon={<CheckCircleOutline />} onClick={onApprove}>
+                                <Button variant="contained" color="success" fullWidth startIcon={<CheckCircleOutline />} onClick={onApprove} title={`Approve for ${activeStepObj.approverName}`} >
                                     Approve
                                 </Button>
-                                <Button variant="outlined" color="error" fullWidth startIcon={<HighlightOff />} onClick={onReject}>
+                                <Button variant="outlined" color="error" fullWidth startIcon={<HighlightOff />} onClick={onReject} title={`Reject for ${activeStepObj.approverName}`} >
                                     Reject
                                 </Button>
+                                {showRevertAction &&
+                                    <Button variant="contained" color="warning" fullWidth startIcon={<Restore />} onClick={onRevert} title="Revert to previously approved agreement.">
+                                        Revert
+                                    </Button>
+                                }
                             </Stack>
                         ) : (
                             <Stack direction="row" spacing={2}>

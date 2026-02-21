@@ -137,7 +137,18 @@ export const Configuration = Helper.SPConfig({
                     title: "Current Workflow Run",
                     type: Helper.SPCfgFieldType.Lookup,
                     listName: Strings.Sites.main.lists.WorkflowRuns,
-                    description: "Lookup to the current Run info/id",
+                    description: "latest run instance / latest workflow attempt (but might be reverted)",
+                    showField: "ID",
+                    multi: false,
+                    indexed: true
+                } as Helper.IFieldInfoLookup,
+                                {
+                    name: "effectiveApprovedRun",
+                    title: "Effective Approved Run",
+                    type: Helper.SPCfgFieldType.Lookup,
+                    listName: Strings.Sites.main.lists.WorkflowRuns,
+                    description: "the approved baseline we're currently using for the agreement fields (might be different than 'currentRun')." +
+                    "This run will capture the approved metadata if/when needed later for comparison.",
                     showField: "ID",
                     multi: false,
                     indexed: true
@@ -309,10 +320,37 @@ export const Configuration = Helper.SPConfig({
                     defaultValue: "0"
                 },
                 {
+                    name: "revertedToRunId",
+                    title: "Reverted To Run Id",
+                    description: "Shows the reverted to run ID, if this run was reverted",
+                    type: Helper.SPCfgFieldType.Number
+                } as Helper.IFieldInfoNumber,
+                {
+                    name: "revertedToRunNumber",
+                    title: "Reverted To Run Number",
+                    type: Helper.SPCfgFieldType.Number,
+                    description: "Shows the reverted to run number, if this run was reverted",
+                    decimals: 0
+                } as Helper.IFieldInfoNumber,
+                {
+                    name: "approvedSnapshotJson",
+                    title: "Approved Snapshot JSON",
+                    type: Helper.SPCfgFieldType.Note,
+                    description: "Snapshot of final approved agreement metadata",
+                    noteType: SPTypes.FieldNoteType.TextOnly
+                } as Helper.IFieldInfoNote,
+                {
+                    name: "approvedSnapshotDate",
+                    title: "Approved Snapshot Date",
+                    type: Helper.SPCfgFieldType.Date,
+                    format: SPTypes.DateFormat.DateTime,
+                    indexed: true
+                } as Helper.IFieldInfoDate,
+                {
                     name: "outcome",
                     title: "Outcome",
                     type: Helper.SPCfgFieldType.Choice,
-                    choices: ["Approved", "Rejected"]
+                    choices: ["Approved", "Rejected", "Canceled", "Reverted"]
                 } as Helper.IFieldInfoChoice,
                 /******** Mod / Restart metadata ********/
                 {
@@ -456,7 +494,7 @@ export const Configuration = Helper.SPConfig({
                     name: "stepKey",
                     title: "Step Key",
                     type: Helper.SPCfgFieldType.Choice,
-                    choices: ["submit", "contractMgr", "ogPresident", "coo", "ceo", "svpContracts"],
+                    choices: ["submit", "contractMgr", "ogPresident", "coo", "ceo", "svpContracts", "submitter"],
                     indexed: true,
                     defaultValue: "submit"
                 } as Helper.IFieldInfoChoice,
@@ -464,7 +502,7 @@ export const Configuration = Helper.SPConfig({
                     name: "actionType",
                     title: "Action Type",
                     type: Helper.SPCfgFieldType.Choice,
-                    choices: ["Submitted", "Approved", "Rejected", "Comment", "Returned", "Reassigned", "Modified", "Restarted"],
+                    choices: ["Submitted", "Approved", "Rejected", "Returned", "Reassigned", "Modified", "Restarted", "Canceled", "Reverted", "Resolved"],
                     indexed: true,
                     defaultValue: "Submitted"
                 } as Helper.IFieldInfoChoice,

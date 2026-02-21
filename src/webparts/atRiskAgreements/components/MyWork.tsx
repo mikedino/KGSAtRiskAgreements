@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Box, Button, Grid, Stack, Tooltip } from "@mui/material";
+import { Box, Button, Grid, Stack, Tooltip, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import InfoCard from "../ui/InfoCard";
 import { useAgreements } from "../services/agreementsContext";
 import { ContextInfo } from "gd-sprest";
@@ -9,7 +9,7 @@ import ErrorOutline from "@mui/icons-material/ErrorOutline";
 import { IRiskAgreementItem, IWorkflowRunItem, ActionDecision } from "../data/props";
 import { buildWorkflowState, WorkflowStepWithStatus } from "../services/workflowState";
 import { RiskAgreementWorkflow } from "../services/workflowModel";
-import AgreementCard from "../ui/AgreementCard";
+import MyWorkCard from "../ui/MyWorkCard";
 import { useHistory } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
 import EmptyState, { EmptyStateProps } from "../ui/EmptyStateBox";
@@ -37,13 +37,10 @@ interface MyWorkItem {
 }
 
 // Pre-defined view key
-type MyWorkViewKey =
-  | "action"
-  | "pending"
-  | "approved"
-  | "resolved"
-  | "all"
-  | "reviewed";
+type MyWorkViewKey = "action" | "pending" | "approved" | "resolved" | "all" | "reviewed";
+
+// card display
+type MyWorkDisplayMode = "full" | "compact";
 
 interface MyWorkView {
   key: MyWorkViewKey;
@@ -75,25 +72,43 @@ const MyWork: React.FC = () => {
   const history = useHistory();
   const theme = useTheme();
   const [selectedView, setSelectedView] = React.useState<MyWorkViewKey>("action");
+  const [displayMode, setDisplayMode] = React.useState<MyWorkDisplayMode>("full");
 
   React.useEffect(() => {
     loadMyActions(userId).catch((err) => console.error("Error loading my actions", err));
   }, [userId, loadMyActions]);
 
-  // Summary Builder - this takes steps, not the item = no recompute.
-  const buildWorkflowSummaryFromSteps = (steps: WorkflowStepWithStatus[]): AgreementWorkflowSummary => {
+  // Summary Builder - item status takes priority over WF step action
+  const buildWorkflowSummary = (item: IRiskAgreementItem, steps: WorkflowStepWithStatus[]): AgreementWorkflowSummary => {
 
-    const rejected = steps.find(s => s.status === "Rejected");
-    if (rejected) {
+    // Agreement-level terminal statuses override workflow inference
+    if (item.araStatus === "Canceled") {
+      return { statusLabel: "Canceled", statusColor: "default" };
+    }
+
+    if (item.araStatus === "Resolved") {
+      return { statusLabel: "Resolved", statusColor: "success" };
+    }
+
+    if (item.araStatus === "Rejected") {
       return { statusLabel: "Rejected", statusColor: "error" };
     }
 
-    const completed = steps.find(
-      s => s.status === "Approved" && s.completesOnApprove
-    );
-    if (completed) {
+    if (item.araStatus === "Approved") {
       return { statusLabel: "Approved", statusColor: "success" };
     }
+
+    // Keep Mod Review visible even if workflow steps don't distinguish it
+    if (item.araStatus === "Mod Review") {
+      return { statusLabel: "Mod Review", statusColor: "warning" };
+    }
+
+    // Otherwise fall back to step-derived statuses
+    const rejected = steps.find(s => s.status === "Rejected");
+    if (rejected) return { statusLabel: "Rejected", statusColor: "error" };
+
+    const completed = steps.find(s => s.status === "Approved" && s.completesOnApprove);
+    if (completed) return { statusLabel: "Approved", statusColor: "success" };
 
     const current = steps.find(s => s.status === "Current");
     if (current) {
@@ -105,6 +120,7 @@ const MyWork: React.FC = () => {
       };
     }
 
+    // If it isn't terminal, and we can't find Current, this is the catch-all
     return { statusLabel: "In Progress", statusColor: "default" };
   };
 
@@ -122,7 +138,7 @@ const MyWork: React.FC = () => {
           item,
           run,
           workflow,
-          summary: buildWorkflowSummaryFromSteps(workflow)
+          summary: buildWorkflowSummary(item, workflow)
         };
       })
       .filter((x): x is MyWorkItem => !!x);
@@ -342,46 +358,64 @@ const MyWork: React.FC = () => {
           borderRadius: 3
         }}
       >
-        <Stack direction="row" alignItems="center" flexWrap="wrap">
+        <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap">
+          <Stack direction="row" alignItems="center" flexWrap="wrap">
 
-          {myAgreementViews.map(view => {
-            const isSelected = selectedView === view.key;
+            {myAgreementViews.map(view => {
+              const isSelected = selectedView === view.key;
 
-            return (
-              <Tooltip
-                key={view.key}
-                title={view.tooltip}
-                placement="top"
-                arrow
-              >
-                <Button
-                  size="small"
-                  variant={isSelected ? "contained" : "text"}
-                  color="primary"
-                  onClick={() => setSelectedView(view.key)}
-                  sx={{
-                    textTransform: "none",
-                    fontWeight: 400,
-                    borderRadius: 2,
-                    px: 1.5,
-                    py: "2px",
-                    fontFamily: "Roboto,Segoe UI,Arial,sans-serif !important",
-
-                    // Unselected styling
-                    ...(!isSelected && {
-                      color: "text.secondary",
-                      "&:hover": {
-                        backgroundColor: "action.hover",
-                        color: "text.primary"
-                      }
-                    })
-                  }}
+              return (
+                <Tooltip
+                  key={view.key}
+                  title={view.tooltip}
+                  placement="top"
+                  arrow
                 >
-                  {view.label} ({viewCounts[view.key]})
-                </Button>
-              </Tooltip>
-            );
-          })}
+                  <Button
+                    size="small"
+                    variant={isSelected ? "contained" : "text"}
+                    color="primary"
+                    onClick={() => setSelectedView(view.key)}
+                    sx={{
+                      textTransform: "none",
+                      fontWeight: 400,
+                      borderRadius: 2,
+                      px: 1.5,
+                      py: "2px",
+                      fontFamily: "Roboto,Segoe UI,Arial,sans-serif !important",
+
+                      // Unselected styling
+                      ...(!isSelected && {
+                        color: "text.secondary",
+                        "&:hover": {
+                          backgroundColor: "action.hover",
+                          color: "text.primary"
+                        }
+                      })
+                    }}
+                  >
+                    {view.label} ({viewCounts[view.key]})
+                  </Button>
+                </Tooltip>
+              );
+            })}
+          </Stack>
+
+          <ToggleButtonGroup
+            value={displayMode}
+            exclusive
+            size="small"
+            onChange={(_, val) => val && setDisplayMode(val)}
+            sx={{ ml: "auto" }}
+          >
+            <ToggleButton value="full" sx={{ textTransform: "none" }}>
+              Full
+            </ToggleButton>
+            <ToggleButton value="compact" sx={{ textTransform: "none" }}>
+              Compact
+            </ToggleButton>
+          </ToggleButtonGroup>
+
         </Stack>
 
       </Box>
@@ -392,10 +426,11 @@ const MyWork: React.FC = () => {
         ) : (
           <Grid container spacing={3}>
             {activeItems.map(w => (
-              <Grid key={w.item.Id} size={6}>
-                <AgreementCard
+              <Grid key={w.item.Id} size={displayMode === "compact" ? 12 : 6}>
+                <MyWorkCard
                   item={w.item}
                   workflow={getCardWorkflow(w)}
+                  variant={displayMode}
                   onClick={() => history.push(`/view/${w.item.Id}`)}
                 />
               </Grid>

@@ -13,6 +13,7 @@ export type WorkflowStepStatus =
   | "Current"  // waiting on THIS approver
   | "Queued"   // future approvers
   | "Resolved"
+  | "Reverted"
   | "Skipped";
 
 export interface WorkflowStepWithStatus extends Omit<IWorkflowStep, "key"> {
@@ -106,6 +107,16 @@ export function buildWorkflowState(agreement: IRiskAgreementItem, run: IWorkflow
   const resolveDate = resolveAction?.actionCompletedDate;
   const resolveComment = resolveAction?.comment ?? "";
   const resolveActorName = resolveAction?.actor?.Title ?? run.contractMgr?.Title ?? "Contract Manager";
+
+  // REVERT DETECTION action for this run (if any)
+  const revertAction = actions
+    .filter(a => a.actionType === "Reverted")
+    .sort((a, b) => new Date(b.actionCompletedDate).getTime() - new Date(a.actionCompletedDate).getTime())[0];
+
+  const isReverted = !!revertAction;
+  const revertDate = revertAction?.actionCompletedDate;
+  const revertComment = revertAction?.comment ?? "";
+  const revertActorName = revertAction?.actor?.Title ?? run.contractMgr?.Title ?? "Contract Manager";
 
   // Determine current step (and guard against non-required current step)
   const currentKey = run.currentStepKey;
@@ -275,6 +286,31 @@ export function buildWorkflowState(agreement: IRiskAgreementItem, run: IWorkflow
       hidden: false,
       isSynthetic: true
     });
+  }
+
+  // Append "Reverted" only if it happened
+  if (!isCanceled && isReverted && revertDate) {
+    steps.push({
+      key: "contractMgr",
+      label: "Reverted",
+      isRequired: () => true,
+      status: "Reverted",
+      approverName: revertActorName,
+      completeDate: revertDate,
+      comment: revertComment,
+      hidden: false,
+      isSynthetic: true
+    });
+  }
+
+  // If reverted, this run ended early -> hide remaining pending steps
+  if (isReverted) {
+    for (const s of steps) {
+      if (s.status === "Current" || s.status === "Queued") {
+        s.status = "Skipped";
+        s.hidden = true;
+      }
+    }
   }
 
   return steps;

@@ -126,9 +126,10 @@ export class DataSource {
         "projectMgr/Id", "projectMgr/Title", "projectMgr/EMail",
         "entityGM/Id", "entityGM/Title", "entityGM/EMail",
         "contractMgr/Id", "contractMgr/Title", "contractMgr/EMail",
-        "currentRun/Id", "currentRun/Title"
+        "currentRun/Id", "currentRun/Title",
+        "effectiveApprovedRun/Id", "effectiveApprovedRun/Title"
     ];
-    public static agreementExpandQuery: string[] = ["Author", "backupRequestor", "projectMgr", "entityGM", "contractMgr", "currentRun"];
+    public static agreementExpandQuery: string[] = ["Author", "backupRequestor", "projectMgr", "entityGM", "contractMgr", "currentRun", "effectiveApprovedRun"];
     // Load all the Risk Agreeements
     private static _agreements: IRiskAgreementItem[] = [];
     private static _agreementsVersion = 0; // detect refreshes
@@ -185,6 +186,7 @@ export class DataSource {
         "Id", "runNumber", "runStatus", "started", "completed", "outcome", "restartReason",
         "restartComment", "triggerAgreementVersion", "currentStepKey", "pendingRole", "hasDecision",
         "pendingApproverId", "pendingApproverEmail", "stepAssignedDate",
+        "approvedSnapshotJson", "approvedSnapshotDate", "revertedToRunId", "revertedToRunNumber",
         "contractMgr/Id", "contractMgr/Title", "contractMgr/EMail",
         "ogPresident/Id", "ogPresident/Title", "ogPresident/EMail",
         "coo/Id", "coo/Title", "coo/EMail",

@@ -282,6 +282,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
         const agreement = await RiskAgreementService.edit({ ...item, ...approvers }, "Under Review");
 
         // 2) CREATE RUN (LINKED TO AGREEMENT)
+        setBackdropMessage("Creating Approval Workflow…");
         const firstRun = await WorkflowRunService.createFirstRun(
           item.Id,
           agreement,
@@ -318,6 +319,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
           const agreement = await RiskAgreementService.edit({ ...item, ...approvers }, "Mod Review");
 
           // 3) Incement run number & create new run
+          setBackdropMessage("Creating New Approval Workflow Run…");
           const newRunNumber = (oldRun.runNumber ?? 0) + 1;
           const newRun = await WorkflowRunService.createRestartRun(
             item.Id,
@@ -338,6 +340,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
           await WorkflowRunService.supercedeOldRun(oldRun.Id, "Mod", modMeta?.comment);
 
           // 6) Action 1 - stop old run
+          setBackdropMessage("Stopping Prior Workflow Run…");
           await WorkflowActionService.createAction({
             agreement: agreement,
             run: oldRun,

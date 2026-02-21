@@ -2,20 +2,18 @@ import * as React from "react";
 import { Card, CardContent, Typography, Chip, Stack, Grid, Divider, Box } from "@mui/material";
 import { IRiskAgreementItem } from "../data/props";
 import { AgreementWorkflowSummary } from "../components/MyWork";
-import { useTheme } from "@mui/material/styles";
 import { formatSinceDate, formatCurrency } from "../services/utils";
 
-interface AgreementCardProps {
+interface MyWorkCardProps {
     item: IRiskAgreementItem;
     workflow: AgreementWorkflowSummary;
     onClick: () => void;
+    variant: "full" | "compact";
 }
 
-const AgreementCard: React.FC<AgreementCardProps> = ({ item, workflow, onClick }) => {
+const MyWorkCard: React.FC<MyWorkCardProps> = ({ item, workflow, onClick, variant }) => {
 
-    const theme = useTheme();
     const isResolved = item.araStatus === "Resolved";
-
     const chipLabel = isResolved ? "Resolved" : workflow.statusLabel;
 
     const chipColor: "success" | "warning" | "error" | "default" =
@@ -23,19 +21,58 @@ const AgreementCard: React.FC<AgreementCardProps> = ({ item, workflow, onClick }
 
     const formatDate = (value?: string): string => value ? new Date(value).toLocaleDateString() : "—"
 
+    if (variant === "compact") {
+        return (
+            <Card
+                onClick={onClick}
+                sx={{
+                    p: 1,
+                    borderRadius: 2,
+                    cursor: "pointer"
+                }}
+            >
+                <Stack direction="row" alignItems="center" spacing={2}>
+                    <Stack sx={{ minWidth: 0, flexGrow: 1 }}>
+                        <Typography variant="body2" fontWeight={600} noWrap>
+                            {item.projectName}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" noWrap>
+                            {item.Title}
+                        </Typography>
+                    </Stack>
+
+                    <Chip
+                        size="small"
+                        label={workflow.statusLabel}
+                        color={workflow.statusColor}
+                        sx={{ flexShrink: 0 }}
+                    />
+
+                    <Stack alignItems="flex-end" sx={{ flexShrink: 0 }}>
+                        <Typography variant="caption" color="text.secondary" noWrap>
+                            {item.entity}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" noWrap>
+                            Risk End: {formatDate(item.riskEnd)}
+                        </Typography>
+                    </Stack>
+                </Stack>
+            </Card>
+        );
+    }
+
     return (
-        <Card onClick={onClick} sx={{
-            p: 1.5,
-            height: "100%",
-            borderRadius: 3,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-            backgroundColor: theme.custom?.cardBg,
-            border: "1px solid",
-            borderColor: theme.custom?.cardBorder,
-            cursor: "pointer"
-        }}
+        <Card
+            onClick={onClick}
+            sx={{
+                p: 1.5,
+                height: "100%",
+                borderRadius: 3,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                cursor: "pointer"
+            }}
         >
             <CardContent>
                 <Stack spacing={1.5}>
@@ -221,4 +258,4 @@ const AgreementCard: React.FC<AgreementCardProps> = ({ item, workflow, onClick }
     );
 };
 
-export default AgreementCard;
+export default MyWorkCard;

@@ -23,11 +23,62 @@ interface RiskAgreementViewProps {
     onReject: (comment?: string) => Promise<void>;
     onCancel: (comment?: string) => Promise<void>;
     onResolve: (comment?: string) => Promise<void>;
+    onRevert: (comment?: string) => Promise<void>;
 }
 
-type ActionModalType = "approve" | "reject" | "cancel" | "resolve";
+type ActionModalType = "approve" | "reject" | "cancel" | "resolve" | "revert";
 
-const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUserEmail, onApprove, onReject, onCancel, onResolve }) => {
+// dynamic re-usable modal dialog settings
+const ACTION_UI: Record<ActionModalType, {
+    title: string;
+    cta: string;
+    ctaColor: "primary" | "error";
+    commentLabel: string;
+    warning?: string;
+    requiresComment?: boolean;
+}> = {
+    approve: {
+        title: "Approve Agreement",
+        cta: "Approve",
+        ctaColor: "primary",
+        commentLabel: "Comment (optional)",
+    },
+    reject: {
+        title: "Reject Agreement",
+        cta: "Reject",
+        ctaColor: "error",
+        commentLabel: "Comment (required)",
+        requiresComment: true
+    },
+    resolve: {
+        title: "Resolve Agreement",
+        cta: "Resolve",
+        ctaColor: "primary",
+        commentLabel: "Comment (optional)",
+        warning:
+            "You are about to mark this At-Risk Agreement as resolved. After marking resolved, this agreement will not be editable and will serve as the final record.",
+    },
+    revert: {
+        title: "Revert Agreement",
+        cta: "Revert",
+        ctaColor: "error",
+        commentLabel: "Comment (required)",
+        warning:
+            "You are about to revert this At-Risk Agreement. After reverting, the current run of approvals will be canceled and the status of this At-Risk Agreement will return to the 'Approved' status of the previous run.",
+        requiresComment: true
+    },
+    cancel: {
+        title: "Cancel Agreement",
+        cta: "Yes, cancel",
+        ctaColor: "error",
+        commentLabel: "Cancellation reason (required)",
+        warning:
+            "Canceling this agreement cannot be undone. The agreement cannot be re-opened or re-used once canceled.",
+        requiresComment: true
+    },
+};
+
+const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUserEmail, onApprove, onReject, onCancel, onResolve, onRevert }) => {
 
     const theme = useTheme();
     const [commentModalOpen, setCommentModalOpen] = useState(false);
@@ -45,6 +96,11 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
     // timeline accordion expanded
     const [expandedRunId, setExpandedRunId] = React.useState<number | false>(false);
     const history = useHistory();
+
+    // set the modal dialog action type, comment reqd, and UI render
+    const ui = actionType ? ACTION_UI[actionType] : null;
+    const isCommentRequired = ui?.requiresComment ?? false;
+    const isCommentValid = !isCommentRequired || comment.trim().length > 0;
 
     // get the page content container to display the DRAWER
     // const spChrome = React.useMemo(
@@ -228,10 +284,13 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
     const isElevated = DataSource.isAdmin || DataSource.isCM;
     const isSubmitter = (item.Author.Id === ContextInfo.userId) || (item.backupRequestor.Id === ContextInfo.userId);
     const isActive = !!run && run.runStatus === "Active";
+    const isFinalStatus = item.araStatus === "Resolved" || item.araStatus === "Canceled";
+
     const canApprove = isActive && (run.pendingApproverId === ContextInfo.userId || isElevated);
-    const canCancel = isActive && (isSubmitter || isElevated);
-    const canEdit = isActive && (isSubmitter || isElevated);
+    const canCancel = !isFinalStatus && (isSubmitter || isElevated);
+    const canEdit = !isFinalStatus && (isSubmitter || isElevated);
     const canResolve = !!run && run.runStatus === "Completed" && item.araStatus === "Approved" && isElevated;
+    const canRevert = isActive && run.runNumber > 1 && (isSubmitter || isElevated);
 
     const openCommentModal = (type: ActionModalType): void => {
         setActionType(type);
@@ -245,33 +304,40 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
         setComment("");
     };
 
+    // don't allow to close modal while loading (clicking on backdrop, etc.)
+    const handleDialogClose = (_: unknown, reason?: string): void => {
+        if (loading) return;
+        handleModalCancel();
+    };
+
     const handleApprove = async (): Promise<void> => openCommentModal("approve");
     const handleReject = async (): Promise<void> => openCommentModal("reject");
     const handleCancel = async (): Promise<void> => openCommentModal("cancel");
     const handleResolve = async (): Promise<void> => openCommentModal("resolve");
+    const handleRevert = async (): Promise<void> => openCommentModal("revert");
 
     const handleModalSubmit = async (): Promise<void> => {
         if (!actionType) return;
 
-        // close the dialog immediately so the App Backdrop is the top layer
         const type = actionType;
         const text = comment;
 
+        // close the dialog immediately so the App Backdrop is the top layer
         setCommentModalOpen(false);
         setActionType(null);
         setComment("");
         setLoading(true);
 
+        const actionHandlers: Record<ActionModalType, (text: string) => Promise<void>> = {
+            approve: onApprove,
+            reject: onReject,
+            resolve: onResolve,
+            revert: onRevert,
+            cancel: onCancel,
+        };
+
         try {
-            if (type === "approve") {
-                await onApprove(text);
-            } else if (type === "reject") {
-                await onReject(text);
-            } else if (type === "resolve") {
-                await onResolve(text);
-            } else {
-                await onCancel(text);
-            }
+            await actionHandlers[type](text);
         } catch (error) {
             console.error("Failed to submit action:", error);
 
@@ -287,9 +353,9 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
 
     // Chip color based on araStatus (includes Resolved, Mod Review)
     const chipColor: "success" | "warning" | "error" | "default" =
-        item.araStatus === "Rejected" ? "error" :
+        item.araStatus === "Rejected" || item.araStatus === "Canceled" ? "error" :
             (item.araStatus === "Approved" || item.araStatus === "Resolved") ? "success" :
-                (item.araStatus === "Canceled" || item.araStatus === "Draft") ? "default" :
+                item.araStatus === "Draft" ? "default" :
                     "warning"; // Submitted / Under Review / Mod Review
 
 
@@ -455,7 +521,7 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                                                 square
                                                 sx={{
                                                     border: "1px solid",
-                                                    borderColor: "divider",
+                                                    borderColor: "secondary.light",
                                                     "&:before": { display: "none" }, // removes default divider line
                                                     borderRadius: 1,
                                                     overflow: "hidden"
@@ -512,6 +578,8 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                                                         onReject={handleReject}
                                                         canCancel={canCancel}
                                                         onCancel={handleCancel}
+                                                        canRevert={canRevert}
+                                                        onRevert={handleRevert}
                                                     />
                                                 </AccordionDetails>
                                             </Accordion>
@@ -531,12 +599,12 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                 anchor="right"
                 open={changesSummaryOpen}
                 onClose={() => setChangeSummaryOpen(false)}
-                sx={{ 
-                    "& .MuiDrawer-paper": { 
-                        top: `48px`, 
+                sx={{
+                    "& .MuiDrawer-paper": {
+                        top: `48px`,
                         height: `calc(100% - 48px)` //fit under SP Suite Nav Header
-                    } 
-                }} 
+                    }
+                }}
             >
                 <Box sx={{ width: 520, p: 3 }}>
                     <Typography variant="h6">Change History</Typography>
@@ -639,65 +707,43 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
 
 
             <Dialog open={commentModalOpen} onClose={handleModalCancel} fullWidth maxWidth="md" disableEscapeKeyDown={loading}>
-                <DialogTitle>
-                    {actionType === "approve"
-                        ? "Approve Agreement"
-                        : actionType === "reject"
-                            ? "Reject Agreement"
-                            : actionType === "resolve"
-                                ? "Resolve Agreement"
-                                : "Cancel Agreement"}
-                </DialogTitle>
+                <DialogTitle>{ui?.title}</DialogTitle>
 
                 <DialogContent sx={{ pt: 2 }}>
-                    {actionType === "cancel" && (
+                    {ui?.warning && (
                         <Alert severity="warning" variant="outlined" sx={{ mb: 2, borderRadius: 2 }}>
                             <Typography fontWeight={700} component="span">
                                 Permanent action:
                             </Typography>{" "}
-                            Canceling this agreement cannot be undone. The agreement cannot be re-opened or re-used once canceled.
+                            {ui?.warning}
                         </Alert>
                     )}
-                    {actionType === "resolve" && (
-                        <Alert severity="warning" variant="outlined" sx={{ mb: 2, borderRadius: 2 }}>
-                            <Typography fontWeight={700} component="span">
-                                Permanent action:
-                            </Typography>{" "}
-                            You are about to mark this At-Risk Agreement as resolved.
-                            After marking resolved, this agreement will not be editable and will serve as the final record.
-                        </Alert>
-                    )}
+
                     <TextField
-                        label={actionType === "cancel" ? "Cancellation reason (optional)" : "Comment (optional)"}
+                        label={ui?.commentLabel ?? "Comment"}
                         multiline
                         rows={4}
                         fullWidth
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
                         autoFocus
+                        required={isCommentRequired}
+                        error={!isCommentValid}
                         disabled={loading}
+                        helperText={
+                            !isCommentValid ? "A comment is required for this action." : undefined
+                        }
                         sx={{ mt: 1 }}
                     />
                 </DialogContent>
 
                 <DialogActions sx={{ px: 3, pb: 2 }}>
-                    <Button onClick={handleModalCancel} disabled={loading}>
+                    <Button onClick={handleDialogClose} disabled={loading}>
                         Cancel
                     </Button>
 
-                    <Button
-                        variant="contained"
-                        onClick={handleModalSubmit}
-                        disabled={loading}
-                        color={actionType === "approve" || actionType === "resolve" ? "primary" : "error"} // cancel and reject both error
-                    >
-                        {actionType === "approve"
-                            ? "Approve"
-                            : actionType === "reject"
-                                ? "Reject"
-                                : actionType === "resolve"
-                                    ? "Resolve"
-                                    : "Yes, cancel"}
+                    <Button variant="contained" onClick={handleModalSubmit} disabled={loading || !isCommentValid} color={ui?.ctaColor ?? "primary"}>
+                        {ui?.cta ?? "Submit"}
                     </Button>
                 </DialogActions>
             </Dialog>

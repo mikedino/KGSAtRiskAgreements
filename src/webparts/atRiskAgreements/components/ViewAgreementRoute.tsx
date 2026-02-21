@@ -43,7 +43,7 @@ const ViewAgreementRoute: React.FC<ViewAgreementRouteProps> = ({ match }) => {
     setSnackbar({ message: "Agreement rejected successfully", severity: "error" });
   };
 
-  const onCancel = async (comment?: string): Promise<void> => {
+  const onCancel = async (comment: string): Promise<void> => {
     if (!item || !run) return;
 
     await WorkflowDecisionService.cancelAgreement(item, run, comment, currentUserEmail);
@@ -65,6 +65,17 @@ const ViewAgreementRoute: React.FC<ViewAgreementRouteProps> = ({ match }) => {
     setSnackbar({ message: "Agreement resolved sucessfully", severity: "success" });
   };
 
+  const onRevert = async (comment: string): Promise<void> => {
+    if (!item || !run) return;
+
+    await WorkflowDecisionService.revertAgreement(item, run, comment);
+
+    await refresh(true);
+    await loadAgreementDetail(item.Id, true);
+
+    setSnackbar({ message: "Agreement reverted successfully", severity: "success" });
+  };
+
   if (!item) return <div>Agreement not found</div>;
   if (!run) return <div>Workflow run not found</div>;
 
@@ -77,6 +88,7 @@ const ViewAgreementRoute: React.FC<ViewAgreementRouteProps> = ({ match }) => {
         onReject={onReject}
         onCancel={onCancel}
         onResolve={onResolve}
+        onRevert={onRevert}
       />
 
       {snackbar && (

@@ -18,7 +18,7 @@ export interface IPeoplePicker extends IPersonaProps {
   Title: string;
 }
 
-export interface IAttachmentInfo extends Types.SP.Attachment {}
+export interface IAttachmentInfo extends Types.SP.Attachment { }
 
 // interface IHyperlinkField {
 //   Url: string;
@@ -26,7 +26,7 @@ export interface IAttachmentInfo extends Types.SP.Attachment {}
 // }
 
 export type ApprovalChoice = "Approved" | "Rejected" | "Not Started";
-export type AraStatus =  "Draft"  | "Submitted"  | "Under Review" | "Mod Review" | "Approved"  | "Rejected"  | "Resolved"  | "Canceled";
+export type AraStatus = "Draft" | "Submitted" | "Under Review" | "Mod Review" | "Approved" | "Rejected" | "Resolved" | "Canceled";
 export type ContractType = "FFP/LOE" | "T&M" | "LH" | "Cost Plus/Reimbursable" | "Hybrid";
 
 export type WorkflowStepKey =
@@ -40,7 +40,7 @@ export type WorkflowStepKey =
 
 export type WorkflowRunStatus = "Active" | "Completed" | "Superseded";
 
-export type ActionDecision = "Approved" | "Rejected";
+export type ActionDecision = "Approved" | "Rejected" | "Canceled" | "Reverted";
 
 export type WorkflowActionType =
   | "Submitted"
@@ -51,6 +51,7 @@ export type WorkflowActionType =
   | "Modified"
   | "Restarted"
   | "Canceled"
+  | "Reverted"
   | "Resolved";
 
 export type RunRestartReason = "Mod" | "Correction" | "Reopen" | "Other";
@@ -89,6 +90,7 @@ export interface IRiskAgreementItem {
 
   // Workflow pointer (SharePoint Lookup column to Runs)
   currentRun?: ILookupItem;
+  effectiveApprovedRun?: ILookupItem
 }
 
 // "instance state machine" row. One row per run.
@@ -104,11 +106,19 @@ export interface IWorkflowRunItem {
 
   // Run lifecycle
   runNumber: number;
-  runStatus: WorkflowRunStatus; 
+  runStatus: WorkflowRunStatus;
   started: string; // date-time
   completed?: string; // date-time
   outcome?: ActionDecision;
   hasDecision: boolean; // does this run have any decision yet?
+
+  // Capture Approved JSON 
+  approvedSnapshotJson?: string; // only set when run outcome becomes Approved
+  approvedSnapshotDate?: string;
+
+  // REVERT capture, when applicable
+  revertedToRunId?: number;
+  revertedToRunNumber?: string;
 
   // Mod/restart metadata (optional but recommended)
   restartReason?: RunRestartReason;
@@ -145,12 +155,12 @@ export interface IWorkflowActionItem {
   stepKey: WorkflowStepKey; // role
   actionType: WorkflowActionType; //what happened
   actor: IPeoplePicker; // Who did it
-  actionCompletedDate: string; 
+  actionCompletedDate: string;
   comment?: string;
   changeSummary?: string; // Mod/change details (optional)
   changePayloadJson?: string; // old/new values JSON
   // Ordering convenience (optional)
-  sequence?: number; 
+  sequence?: number;
 }
 
 export interface IOgItem {
@@ -170,7 +180,7 @@ export interface ILobItem {
 
 export interface IEntityItem {
   readonly Id: number;
-  Title: string; 
+  Title: string;
   abbr: string;
   GM: IPeoplePicker;
   combinedTitle: string;

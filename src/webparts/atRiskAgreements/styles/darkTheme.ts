@@ -7,28 +7,30 @@ export const darkTheme = createTheme(baseTheme, {
   palette: {
     mode: "dark",
 
-    primary: { light: "#A6E5F3", dark: "#003057", main: "#2499C2" },     // KGS Navy
-    secondary: { main: "#005C6C" },   // KGS Teal 
+    primary: { light: "#a2e0ee", dark: "#003057", main: "#2499C2" },     // KGS Navy
+    secondary: { main: "#005C6C", light: "#ffffff3b"  },   // light = input borders!
     error: { main: "#fd3030", contrastText: "#000000de" },
-    warning: { main: "#F4B740" },
-    info: { main: "#2499C2", contrastText: "#000000de" },
+    warning: { main: "#F4B740", contrastText: "#003057" },
+    info: { main: "#2499C2", contrastText: "#000000de",  },
     success: { main: "#3BA55C", contrastText: "#000000de" },
 
     background: {
       default: "#001729", // Almost black, subtle blue hint
-      paper: "#003057"
+      paper: "#062038"
     },
 
-    //divider: "#ccd6dd", 
+    divider: "#ccd6dd", 
 
     text: {
-      primary: "#ffffff",
-      secondary: "#ccd6dd"
+      primary: "#f0f0f0",
+      secondary: "#7eb1e8",
+      disabled: "#ffffff85"
     },
 
     action: {
       active: "#F2C744", // Gold accent for icons
-      selected: "#4b82ff"
+      selected: "#4b82ff",
+      disabled: "#ffffff85"
     }
 
   },

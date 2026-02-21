@@ -2,7 +2,8 @@ import { createTheme } from "@mui/material/styles";
 // This import is crucial for extending the Material UI theme with DataGrid-specific colors
 import type { } from '@mui/x-data-grid/themeAugmentation';
 
-export const fontSizeDefault = "14px";
+export const fontSizeDefault = 14;
+export const lineHeight = "21px";
 
 export const baseTheme = createTheme({
     typography: {
@@ -34,19 +35,11 @@ export const baseTheme = createTheme({
                 },
             },
         },
-        MuiPaper: {
-            styleOverrides: {
-                root: {
-                    //borderRadius: 10,
-                    backgroundImage: "none",
-                    transition: "background-color 250ms ease",
-                },
-            },
-        },
         MuiInputBase: {
             styleOverrides: {
                 root: {
                     fontSize: fontSizeDefault,
+                    lineHeight: lineHeight,
                 },
             },
         },
@@ -84,6 +77,19 @@ export const baseTheme = createTheme({
                 size: "small",
                 variant: "outlined",
             },
+            styleOverrides: {
+                root: {
+                    fontSize: fontSizeDefault,
+                    minHeight: "41px"
+                }
+            }
+        },
+        MuiFormHelperText: {
+            styleOverrides: {
+                root: {
+                    fontSize: "0.75rem"
+                }
+            }
         },
         MuiSelect: {
             defaultProps: { size: "small" },
@@ -118,7 +124,7 @@ export const baseTheme = createTheme({
             styleOverrides: {
                 root: ({ theme }) => ({
                     "& .MuiOutlinedInput-notchedOutline": {
-                        borderColor: theme.palette.divider,
+                        borderColor: theme.palette.secondary.light,
                     },
 
                     "&:hover .MuiOutlinedInput-notchedOutline": {
@@ -129,8 +135,14 @@ export const baseTheme = createTheme({
                         borderColor: theme.palette.info.main,
                         borderWidth: 2,
                     },
+                    fontSize: fontSizeDefault
                 }),
-            },
+                input: {
+                    paddingTop: "10px",
+                    paddingBottom: "10px",
+                    lineHeight: lineHeight
+                }
+            }
         },
         //focused label color
         MuiInputLabel: {
@@ -182,6 +194,26 @@ export const baseTheme = createTheme({
                     "&:after": {
                         borderBottomColor: theme.palette.info.main
                     },
+                }),
+            },
+        },
+        MuiPaper: {
+            styleOverrides: {
+                root: ({ theme }) => ({
+                    backgroundImage: "none",
+                    transition: "background-color 250ms ease",
+                    backgroundColor: theme.custom?.cardBg,
+                    borderColor: theme.custom?.cardBorder
+                }),
+            },
+        },
+        MuiCard: {
+            styleOverrides: {
+                root: ({ theme }) => ({
+                    borderRadius: 3,
+                    //backgroundColor: theme.custom?.cardBg,
+                    border: "1px solid",
+                    borderColor: theme.custom?.cardBorder
                 }),
             },
         }
