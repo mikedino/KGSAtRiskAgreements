@@ -364,7 +364,8 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
       }
 
       // use existing refresh so all maps are rebuilt consistently
-      await refresh(true, "refresh");
+      clearAgreementDetailCache(item.Id) // invalidate detail cache for this agreement so it re-fetches
+      await refresh(true, "refresh"); // rebuild map intentionally
 
       setSuccessMessage(
         submitMode === "new"
@@ -377,7 +378,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
       setShowProgress(false);
       setBackdropMessage("");
       setShowSuccess(true);
-      history.push("/my-work");
+      history.push(`/view/${item.Id}`); // navigate to item view
 
     } catch (error) {
       setShowProgress(false);
@@ -539,7 +540,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
             <Route path="/my-work" component={MyWork} />
             <Route path="/all-agreements" component={Agreements} />
             <Route path="/dashboard" component={Dashboard} />
-            <Route path="/admin" component={Admin} />
+            <Route path="/admin" render={() => <Admin context={context} />} />
             <Route path="/new" render={() => {
 
               const handleCancel = async (reason: CancelReason): Promise<void> => {

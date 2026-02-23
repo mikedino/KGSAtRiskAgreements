@@ -10,7 +10,7 @@ import { IRiskAgreementItem, IWorkflowRunItem, ActionDecision } from "../data/pr
 import { buildWorkflowState, WorkflowStepWithStatus } from "../services/workflowState";
 import { RiskAgreementWorkflow } from "../services/workflowModel";
 import MyWorkCard from "../ui/MyWorkCard";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
 import EmptyState, { EmptyStateProps } from "../ui/EmptyStateBox";
 
@@ -63,6 +63,38 @@ const getStepLabel = (stepKey?: string): string | undefined => {
   return step?.label;
 };
 
+
+// ---------- Type Guards ----------
+// Type guards so URL values can't break the state
+const isMyWorkViewKey = (v: string | undefined): v is MyWorkViewKey =>
+  v === "action" ||
+  v === "pending" ||
+  v === "approved" ||
+  v === "resolved" ||
+  v === "all" ||
+  v === "reviewed";
+
+const isMyWorkDisplayMode = (v: string | undefined): v is MyWorkDisplayMode =>
+  v === "full" || v === "compact";
+
+// ---------- Query Reader  ----------
+const getMyWorkQueryState = (search: string): {
+  view: MyWorkViewKey;
+  mode: MyWorkDisplayMode;
+} => {
+  const qs = new URLSearchParams(search);
+
+  // Convert null -> undefined explicitly
+  const viewParam = qs.get("view") ?? undefined;
+  const modeParam = qs.get("mode") ?? undefined;
+
+  return {
+    view: isMyWorkViewKey(viewParam) ? viewParam : "action",
+    mode: isMyWorkDisplayMode(modeParam) ? modeParam : "full"
+  };
+};
+
+
 const MyWork: React.FC = () => {
 
   // Agreements context provider -- also get MY ACTIONS
@@ -70,9 +102,46 @@ const MyWork: React.FC = () => {
 
   const userId = ContextInfo.userId;
   const history = useHistory();
+  const location = useLocation();
   const theme = useTheme();
-  const [selectedView, setSelectedView] = React.useState<MyWorkViewKey>("action");
-  const [displayMode, setDisplayMode] = React.useState<MyWorkDisplayMode>("full");
+
+  // Initialize from URL once
+  const initial = React.useMemo(() => getMyWorkQueryState(location.search), [location.search]);
+
+  const [selectedView, setSelectedView] = React.useState<MyWorkViewKey>(initial.view);
+  const [displayMode, setDisplayMode] = React.useState<MyWorkDisplayMode>(initial.mode);
+
+  // Keep state in sync if user uses browser nav (back/forward) and URL changes
+  React.useEffect(() => {
+    const next = getMyWorkQueryState(location.search);
+
+    // Avoid extra renders
+    setSelectedView(prev => (prev === next.view ? prev : next.view));
+    setDisplayMode(prev => (prev === next.mode ? prev : next.mode));
+  }, [location.search]);
+
+  // Write to URL whenever user changes view/mode (so Back remembers it)
+  const updateUrlState = React.useCallback((nextView: MyWorkViewKey, nextMode: MyWorkDisplayMode) => {
+      const qs = new URLSearchParams();
+      qs.set("view", nextView);
+      qs.set("mode", nextMode);
+
+      history.replace({
+        pathname: location.pathname,
+        search: `?${qs.toString()}`
+      });
+    }, [history, location.pathname]
+  );
+
+  const handleSelectView = React.useCallback((key: MyWorkViewKey) => {
+    setSelectedView(key);
+    updateUrlState(key, displayMode);
+  }, [displayMode, updateUrlState]);
+
+  const handleDisplayModeChange = React.useCallback((mode: MyWorkDisplayMode) => {
+    setDisplayMode(mode);
+    updateUrlState(selectedView, mode);
+  }, [selectedView, updateUrlState]);
 
   React.useEffect(() => {
     loadMyActions(userId).catch((err) => console.error("Error loading my actions", err));
@@ -131,7 +200,7 @@ const MyWork: React.FC = () => {
         const run = runByAgreementId.get(item.Id);
         if (!run) return undefined;
 
-        // ✅ no actions on MyWork
+        // no actions on MyWork
         const workflow = buildWorkflowState(item, run, []);
 
         return {
@@ -375,7 +444,7 @@ const MyWork: React.FC = () => {
                     size="small"
                     variant={isSelected ? "contained" : "text"}
                     color="primary"
-                    onClick={() => setSelectedView(view.key)}
+                    onClick={() => handleSelectView(view.key)}
                     sx={{
                       textTransform: "none",
                       fontWeight: 400,
@@ -405,7 +474,7 @@ const MyWork: React.FC = () => {
             value={displayMode}
             exclusive
             size="small"
-            onChange={(_, val) => val && setDisplayMode(val)}
+            onChange={(_, val) => val && handleDisplayModeChange(val)}
             sx={{ ml: "auto" }}
           >
             <ToggleButton value="full" sx={{ textTransform: "none" }}>

@@ -60,13 +60,24 @@ export class AppUserService {
         if (!DataSource.CurrentUser?.Id) throw new Error("Current user is not available");
 
         await Web().Lists(Strings.Sites.main.lists.Users).Items().getById(DataSource.CurrentUser.Id).update({
-                __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.Users)}ListItem` },
-                modePreference: mode
-            }).executeAndWait();
+            __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.Users)}ListItem` },
+            modePreference: mode
+        }).executeAndWait();
 
         //keep local cache consistent
         await DataSource.getOrCreateCurrentUser();
-            
+    }
+
+    // Update the role for an existing App User list item
+    static async updateRole(appUserItemId: number, role: IAppUserItem["role"]): Promise<void> {
+        try {
+            await Web().Lists(Strings.Sites.main.lists.Users).Items().getById(appUserItemId).update({
+                __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.Users)}ListItem` },
+                role
+            }).executeAndWait();
+        } catch (err) {
+            throw new Error(`Error updating user role: ${formatError(err)}`);
+        }
     }
 
 }

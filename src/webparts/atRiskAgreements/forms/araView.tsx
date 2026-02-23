@@ -64,7 +64,7 @@ const ACTION_UI: Record<ActionModalType, {
         ctaColor: "error",
         commentLabel: "Comment (required)",
         warning:
-            "You are about to revert this At-Risk Agreement. After reverting, the current run of approvals will be canceled and the status of this At-Risk Agreement will return to the 'Approved' status of the previous run.",
+            "You are about to revert this At-Risk Agreement. After reverting, the current run of approvals will be canceled and the Approval status and data of this At-Risk Agreement will return to the previous run.",
         requiresComment: true
     },
     cancel: {
@@ -281,16 +281,31 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
         history.push(`/edit/${item.Id}`);
     };
 
+    // find previous run & ensure it was approved/completed (for REVERT)
+    const previousRunIsApproved = React.useMemo(() => {
+        if (!run) return false;
+
+        const previousRunNo = run.runNumber - 1;
+
+        const previousRun = allRuns.find(r => r.runNumber === previousRunNo);
+        if (!previousRun) return false;
+
+        const outcomeOk = previousRun.outcome === "Approved";
+
+        return outcomeOk;
+    }, [allRuns, run]);
+
     const isElevated = DataSource.isAdmin || DataSource.isCM;
     const isSubmitter = (item.Author.Id === ContextInfo.userId) || (item.backupRequestor.Id === ContextInfo.userId);
     const isActive = !!run && run.runStatus === "Active";
     const isFinalStatus = item.araStatus === "Resolved" || item.araStatus === "Canceled";
+    const isMod = item.araStatus === "Mod Review";
 
     const canApprove = isActive && (run.pendingApproverId === ContextInfo.userId || isElevated);
     const canCancel = !isFinalStatus && (isSubmitter || isElevated);
     const canEdit = !isFinalStatus && (isSubmitter || isElevated);
     const canResolve = !!run && run.runStatus === "Completed" && item.araStatus === "Approved" && isElevated;
-    const canRevert = isActive && run.runNumber > 1 && (isSubmitter || isElevated);
+    const canRevert = isActive && isMod && previousRunIsApproved && isElevated;
 
     const openCommentModal = (type: ActionModalType): void => {
         setActionType(type);

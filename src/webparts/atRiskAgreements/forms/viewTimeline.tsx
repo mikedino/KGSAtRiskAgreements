@@ -37,7 +37,7 @@ const WorkflowTimeline = ({
     // remove hidden steps (submitter step when not rejected)
     const visibleSteps = steps.filter(s => !s.hidden);
 
-    const activeStep = visibleSteps.findIndex(s => s.status === "Current");
+    const activeStep = visibleSteps.findIndex(s => s.status === "Current" || s.status === "Reverted" || s.status === "Canceled")
     const activeStepObj = activeStep >= 0 ? visibleSteps[activeStep] : undefined;
     const activeKey = activeStepObj?.key;
 
@@ -133,7 +133,7 @@ const WorkflowTimeline = ({
             case "Resolved":
                 return { label: "Resolved", color: "success", variant: "filled" };
             case "Reverted":
-                return { label: "Reverted", color: "info", variant: "filled" }
+                return { label: "Reverted", color: "warning", variant: "filled" }
         }
     };
 
@@ -185,7 +185,7 @@ const WorkflowTimeline = ({
                                                 )}
                                             </Stack>
 
-                                            <Chip size="small" {...getStatusChipProps(step.status)} />
+                                            <Chip size="small" sx={{ fontWeight: 400 }} {...getStatusChipProps(step.status)} />
                                         </Stack>
 
                                         {/* Approver */}

@@ -125,18 +125,6 @@ const MyWorkCard: React.FC<MyWorkCardProps> = ({ item, workflow, onClick, varian
                         </Stack>
                     </Stack>
 
-                    {/* FLAG MODIFICATIONS
-                    <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center">
-                        {workflow.isModReview && (
-                            <Chip
-                                size="small"
-                                variant="outlined"
-                                label={workflow.runNumber && workflow.runNumber > 1 ? `Mod #${workflow.runNumber - 1}` : "Mod Review"}
-                            />
-                        )}
-                        <Chip size="small" label={workflow.statusLabel} color={workflow.statusColor} />
-                    </Stack> */}
-
                     {/* My Decision Highlight */}
                     {workflow.myDecision && (
                         <Box

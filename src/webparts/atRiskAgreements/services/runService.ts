@@ -271,7 +271,7 @@ export class WorkflowRunService {
         };
     }
 
-    static supercedeOldRun(runId: number, restartReason?: RunRestartReason, restartComment?: string): Promise<void> {
+    static async supercedeOldRun(runId: number, restartReason?: RunRestartReason, restartComment?: string): Promise<void> {
 
         const today = new Date().toISOString();
 

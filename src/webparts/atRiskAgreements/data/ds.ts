@@ -16,6 +16,10 @@ import {
 } from "./props";
 import { formatError } from "../services/utils";
 import { AppUserService } from "../services/userService";
+import { EntityService } from "../services/entityService";
+import { LobService } from "../services/lobService";
+import { OgService } from "../services/ogService";
+import { ConfigService } from "../services/configService";
 
 export class DataSource {
     // prevent this from being initialized twice
@@ -115,6 +119,39 @@ export class DataSource {
                 (error) => reject(new Error(`Error fetching Users: ${formatError(error)}`))
             );
         });
+    }
+
+    //update app user role real time
+    static async updateAppUserRole(appUserItemId: number, role: IAppUserItem["role"]): Promise<void> {
+
+        // Best-effort "last admin" protection using cached list
+        const target = this._users.find(u => u.Id === appUserItemId);
+        const currentRole = (target?.role ?? "user").toLowerCase() as IAppUserItem["role"];
+        const nextRole = (role ?? "user").toLowerCase() as IAppUserItem["role"];
+
+        if (currentRole === "admin" && nextRole !== "admin") {
+            const adminCount = this._users.filter(u => ((u.role ?? "user").toLowerCase() === "admin")).length;
+            if (adminCount <= 1) {
+                throw new Error("You can’t demote the last Admin.");
+            }
+        }
+
+        await AppUserService.updateRole(appUserItemId, nextRole);
+
+        // Update local cache
+        const idx = this._users.findIndex(u => u.Id === appUserItemId);
+        if (idx >= 0) {
+            this._users = [
+                ...this._users.slice(0, idx),
+                { ...this._users[idx], role: nextRole },
+                ...this._users.slice(idx + 1)
+            ];
+        }
+
+        // If you changed yourself, refresh flags
+        if (this._currentUser?.Id === appUserItemId) {
+            this.setCurrentUser({ ...this._currentUser, role: nextRole });
+        }
     }
 
     public static agreementSelectQuery: string[] = [
@@ -311,6 +348,7 @@ export class DataSource {
         const svpc = this._config.find((c) => c.IsFor === "SVPContracts")?.User;
         return svpc;
     }
+    static get Config(): IConfigItem[] { return this._config; }
     static getConfig(): Promise<IConfigItem[]> {
         return new Promise<IConfigItem[]>((resolve, reject) => {
             // clear the items
@@ -345,6 +383,12 @@ export class DataSource {
                 );
         });
     }
+    // update config approvers real-time
+    static async updateConfigApprover(configItemId: number, user?: IPeoplePicker): Promise<void> {
+        await ConfigService.updateApprover(configItemId, user);
+        await this.getConfig();
+    }
+
 
     // Load all the Entities
     private static _entities: IEntityItem[] = [];
@@ -384,6 +428,11 @@ export class DataSource {
                     }
                 );
         });
+    }
+    // update Entity / Entity GM real-time
+    static async updateEntityGm(entityId: number, gm?: IPeoplePicker): Promise<void> {
+        await EntityService.updateGm(entityId, gm);
+        await this.getEntities();
     }
 
     // Load all the OG's
@@ -425,6 +474,11 @@ export class DataSource {
                     }
                 );
         });
+    }
+    // update LOB / COO real-time
+    static async updateLobCoo(lobId: number, coo?: IPeoplePicker): Promise<void> {
+        await LobService.updateCoo(lobId, coo);
+        await this.getLOBs();
     }
 
     // Load all the OG's
@@ -470,6 +524,11 @@ export class DataSource {
                     }
                 );
         });
+    }
+    // update OG, OGPres, CM, SCM real-time
+    static async updateOgApprovers(ogId: number, president?: IPeoplePicker, cm?: IPeoplePicker, scm?: IPeoplePicker): Promise<void> {
+        await OgService.updateApprovers(ogId, president, cm, scm);
+        await this.getOGs();
     }
 
     // Load all the Contracts from JAMIS

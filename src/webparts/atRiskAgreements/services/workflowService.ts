@@ -127,7 +127,7 @@ export class WorkflowDecisionService {
           : (agreement.araStatus === "Mod Review" ? "Mod Review" : "Under Review");
 
     // 4) if approved, set effectiveApprovedRun ID
-    const runId = decision === "Approved" ? run.Id : undefined;
+    const runId = (decision === "Approved" && result.completed) ? run.Id : undefined;
 
     await this.updateAgreementStatus(agreement.Id, nextStatus, runId);
   }

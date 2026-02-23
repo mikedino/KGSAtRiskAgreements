@@ -1,9 +1,8 @@
-// workflowState.ts
 import { IRiskAgreementItem, IWorkflowActionItem, IWorkflowRunItem, WorkflowStepKey } from "../data/props";
 import { IWorkflowStep, RiskAgreementWorkflow } from "./workflowModel";
 
 // create a synthentic step definition for timeline display
-export type TimelineStepKey = WorkflowStepKey | "resolved";
+export type TimelineStepKey = WorkflowStepKey | "resolved" | "reverted";
 
 export type WorkflowStepStatus =
   | "Submitted"
@@ -276,7 +275,7 @@ export function buildWorkflowState(agreement: IRiskAgreementItem, run: IWorkflow
   //Append "Resolved" only if it happened
   if (!isCanceled && isResolved && resolveDate) {
     steps.push({
-      key: "contractMgr", // use a real key to avoid widening types
+      key: "resolved", // use a real key to avoid widening types
       label: "Resolved",
       isRequired: () => true,
       status: "Resolved",
@@ -291,7 +290,7 @@ export function buildWorkflowState(agreement: IRiskAgreementItem, run: IWorkflow
   // Append "Reverted" only if it happened
   if (!isCanceled && isReverted && revertDate) {
     steps.push({
-      key: "contractMgr",
+      key: "reverted",
       label: "Reverted",
       isRequired: () => true,
       status: "Reverted",
@@ -304,11 +303,11 @@ export function buildWorkflowState(agreement: IRiskAgreementItem, run: IWorkflow
   }
 
   // If reverted, this run ended early -> hide remaining pending steps
-  if (isReverted) {
+  if (isReverted || isCanceled) {
     for (const s of steps) {
       if (s.status === "Current" || s.status === "Queued") {
         s.status = "Skipped";
-        s.hidden = true;
+        //s.hidden = true;
       }
     }
   }

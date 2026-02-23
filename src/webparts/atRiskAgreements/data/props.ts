@@ -163,6 +163,28 @@ export interface IWorkflowActionItem {
   sequence?: number;
 }
 
+export interface IContractItem {
+  readonly Id: number;
+  Title: string;
+  field_19: string; // Contract ID
+  field_20: string; // Contract Title
+  field_35: string; // Customer Contract Code
+  field_21: string; // Manager 1 Email (Project Manager)
+  field_23: string; // Manager 1 Name (Project Manager)
+  field_75: string; // OG
+  field_16: string; // Completion Date
+}
+
+export interface IInvoiceItem {
+  readonly Id: number;
+  Title: string;
+  field_49: string; // Contract ID
+  field_28: string; // Customer Contract Code
+  field_14: string; // Invoice ID
+  InvoiceID1: string; // "ContractID-InvoiceID"
+  field_42: string; // Invoice Title
+}
+
 export interface IOgItem {
   readonly Id: number;
   Title: string;
@@ -184,28 +206,6 @@ export interface IEntityItem {
   abbr: string;
   GM: IPeoplePicker;
   combinedTitle: string;
-}
-
-export interface IContractItem {
-  readonly Id: number;
-  Title: string;
-  field_19: string; // Contract ID
-  field_20: string; // Contract Title
-  field_35: string; // Customer Contract Code
-  field_21: string; // Manager 1 Email (Project Manager)
-  field_23: string; // Manager 1 Name (Project Manager)
-  field_75: string; // OG
-  field_16: string; // Completion Date
-}
-
-export interface IInvoiceItem {
-  readonly Id: number;
-  Title: string;
-  field_49: string; // Contract ID
-  field_28: string; // Customer Contract Code
-  field_14: string; // Invoice ID
-  InvoiceID1: string; // "ContractID-InvoiceID"
-  field_42: string; // Invoice Title
 }
 
 export interface IConfigItem {
