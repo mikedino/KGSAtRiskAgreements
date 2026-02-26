@@ -1,21 +1,24 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
-import { Alert, Box, Button, CircularProgress, Stack, Tab, Tabs, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, Snackbar, Stack, Tab, Tabs, Typography } from "@mui/material";
 import { DataSource } from "../data/ds";
 import { IAppUserItem, IConfigItem, ILobItem, IOgItem, IEntityItem } from "../data/props";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { formatError } from "../services/utils";
-import { UsersAdminPanel } from "./admin/userAdminPanel";
-import { ApproversAdminPanel } from "./admin/approversAdminPanel";
+import { UsersAdminPanel } from "./admin/UserPanel";
+import { ApproversAdminPanel } from "./admin/ApproversPanel";
 import { WebPartContext } from "@microsoft/sp-webpart-base";
+import { useTheme } from "@mui/material/styles";
 
 type AdminTabKey = "users" | "approvers";
 
 interface AdminModuleProps {
   context: WebPartContext;
+  showBusy: (message?: string) => void;
+  hideBusy: () => void;
 }
 
-const Admin: React.FC<AdminModuleProps> = ({ context }) => {
+const Admin: React.FC<AdminModuleProps> = ({ context, showBusy, hideBusy }) => {
 
   if (!DataSource.isAdmin) {
     return (
@@ -38,6 +41,27 @@ const Admin: React.FC<AdminModuleProps> = ({ context }) => {
   const [ogs, setOgs] = useState<IOgItem[]>([]);
   const [entities, setEntities] = useState<IEntityItem[]>([]);
   const [lookupsError, setLookupsError] = useState<string>("");
+  const [snackbar, setSnackbar] = React.useState<{ message: string; severity: "success" | "error"; } | undefined>(undefined);
+
+  const theme = useTheme();
+
+  // helper to show success
+  const showSuccess = (message: string): void => {
+    setSnackbar({ message, severity: "success" });
+  };
+
+  // busy helper - no re-renders
+  const withBusy = React.useCallback(async <T,>(message: string, fn: () => Promise<T>): Promise<T> => {
+    showBusy(message);
+    try {
+      return await fn();
+    } catch (e) {
+      console.error(e);
+      throw e;
+    } finally {
+      hideBusy();
+    }
+  }, [showBusy, hideBusy]);
 
   const loadUsers = async (): Promise<void> => {
     setUsersLoading(true);
@@ -72,15 +96,17 @@ const Admin: React.FC<AdminModuleProps> = ({ context }) => {
 
       syncLookupsFromCache();
     } catch (e) {
-      setLookupsError(`Failed to refresh approver lookups: ${formatError(e)}`);
+      const msg = `Failed to refresh approver lookups: ${formatError(e)}`;
+      setLookupsError(msg);
+      throw e;
     }
   };
 
   const handleRefreshClick = async (): Promise<void> => {
     if (tab === "users") {
-      await loadUsers();
+      await withBusy("Refreshing users…", loadUsers);
     } else {
-      await refreshLookups();
+      await withBusy("Refreshing approver lookups…", refreshLookups);
     }
   };
 
@@ -96,68 +122,106 @@ const Admin: React.FC<AdminModuleProps> = ({ context }) => {
   }, []);
 
   return (
-    <Box sx={{ p: 2, width: "100%" }}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-        <Box>
-          <Typography variant="h4" fontWeight={700}>Admin Panel</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Manage users and default approvers
-          </Typography>
-        </Box>
+    <>
+      <Box sx={{ p: 2, width: "100%" }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+          <Box>
+            <Typography variant="h4" fontWeight={700}>Admin Panel</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Manage users and default approvers
+            </Typography>
+          </Box>
 
-        <Button
-          variant="outlined"
-          startIcon={<RefreshIcon />}
-          onClick={handleRefreshClick}
-          disabled={tab === "users" ? usersLoading : false}
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={handleRefreshClick}
+            disabled={tab === "users" ? usersLoading : false}
+          >
+            Refresh
+          </Button>
+        </Stack>
+
+        <Tabs
+          value={tab}
+          onChange={(_, v) => setTab(v as AdminTabKey)}
+          sx={{
+            mb: 2,
+
+            // Indicator color
+            "& .MuiTabs-indicator": {
+              backgroundColor: theme.palette.action.active,
+            },
+
+            // Selected tab color
+            "& .MuiTab-root.Mui-selected": {
+              color: theme.palette.action.active
+            }
+          }}
         >
-          Refresh
-        </Button>
-      </Stack>
+          <Tab value="users" label="Users" />
+          <Tab value="approvers" label="Approvers" />
+        </Tabs>
 
-      <Tabs value={tab} onChange={(_, v) => setTab(v as AdminTabKey)} sx={{ mb: 2 }}>
-        <Tab value="users" label="Users" />
-        <Tab value="approvers" label="Approvers" />
-      </Tabs>
+        {tab === "users" && (
+          <>
+            {usersError && <Alert severity="error" sx={{ mb: 2 }}>{usersError}</Alert>}
 
-      {tab === "users" && (
-        <>
-          {usersError && <Alert severity="error" sx={{ mb: 2 }}>{usersError}</Alert>}
+            {usersLoading ? (
+              <Stack direction="row" spacing={1.5} alignItems="center" sx={{ py: 4 }}>
+                <CircularProgress size={20} />
+                <Typography variant="body2">Loading users...</Typography>
+              </Stack>
+            ) : (
+              <UsersAdminPanel
+                users={users}
+                onRoleChanged={async (appUserItemId, role) => {
+                  await withBusy("Saving user role…", async () => {
+                    await DataSource.updateAppUserRole(appUserItemId, role);
+                    await loadUsers();
+                  });
+                }}
+              />
+            )}
+          </>
+        )}
 
-          {usersLoading ? (
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ py: 4 }}>
-              <CircularProgress size={20} />
-              <Typography variant="body2">Loading users...</Typography>
-            </Stack>
-          ) : (
-            <UsersAdminPanel
-              users={users}
-              onRoleChanged={async (appUserItemId, role) => {
-                // DataSource has the "last admin" guard
-                await DataSource.updateAppUserRole(appUserItemId, role);
-                await loadUsers();
-              }}
+        {tab === "approvers" && (
+          <>
+            {lookupsError && <Alert severity="error" sx={{ mb: 2 }}>{lookupsError}</Alert>}
+
+            <ApproversAdminPanel
+              context={context}
+              config={config}
+              lobs={lobs}
+              ogs={ogs}
+              entities={entities}
+              runBusy={withBusy}
+              onSaved={refreshLookups}
+              onSuccess={showSuccess}
             />
-          )}
-        </>
-      )}
+          </>
+        )}
+      </Box>
 
-      {tab === "approvers" && (
-        <>
-          {lookupsError && <Alert severity="error" sx={{ mb: 2 }}>{lookupsError}</Alert>}
-
-          <ApproversAdminPanel
-            context={context}
-            config={config}
-            lobs={lobs}
-            ogs={ogs}
-            entities={entities}
-            //onRefresh={refreshLookups} // LATER
-            onSaved={refreshLookups}
-          />
-        </>
-      )}
-    </Box>
+      <Snackbar
+        open={!!snackbar}
+        autoHideDuration={3000}
+        transitionDuration={200}
+        onClose={() => setSnackbar(undefined)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        {snackbar && (
+          <Alert
+            onClose={() => setSnackbar(undefined)}
+            severity={snackbar.severity}
+            sx={{ width: "100%" }}
+          >
+            {snackbar.message}
+          </Alert>
+        )}
+      </Snackbar>
+    </>
   );
 };
 

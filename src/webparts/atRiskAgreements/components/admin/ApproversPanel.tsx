@@ -1,0 +1,460 @@
+import * as React from "react";
+import { useMemo, useState, useEffect } from "react";
+import { WebPartContext } from "@microsoft/sp-webpart-base";
+import {
+  Alert, Box, Divider, Grid, Paper, Stack, Tab, Tabs, TextField, Typography, useMediaQuery
+} from "@mui/material";
+import { DataSource } from "../../data/ds";
+import { formatError } from "../../services/utils";
+import { IConfigItem, IEntityItem, ILobItem, IOgItem, IPeoplePicker } from "../../data/props";
+import { useTheme } from "@mui/material/styles";
+import { IPersonaProps } from "@fluentui/react/lib/Persona";
+import { LobDefaultsSection } from "./LobPanel";
+import { OgDefaultsSection } from "./OgPanel";
+import { CompanyDefaultsSection } from "./CompanyPanel";
+import { EntityDefaultsSection } from "./EntityPanel";
+
+type ApproverSection = "company" | "lobs" | "ogs" | "entities";
+type BusyRunner = <T, >(message: string, fn: () => Promise<T>) => Promise<T>;
+type FieldErrorMap = Record<string, string>;
+export type OgField = "president" | "cm";
+export type ConfigKey = "config-ceo" | "config-svp";
+
+interface ApproversAdminPanelProps {
+  context: WebPartContext;
+  config: IConfigItem[];
+  lobs: ILobItem[];
+  ogs: IOgItem[];
+  entities: IEntityItem[];
+  runBusy: BusyRunner;
+  onSaved: () => Promise<void>; // refresh snapshot in parent
+  onSuccess: (message: string) => void;
+}
+
+export type PeoplePickerContext = {
+  absoluteUrl: string;
+  msGraphClientFactory: WebPartContext["msGraphClientFactory"];
+  spHttpClient: WebPartContext["spHttpClient"];
+};
+
+export const toPickerValue = (person?: IPeoplePicker): string[] => {
+  const email = person?.EMail;
+  return email ? [email] : [];
+};
+
+export const firstOrUndefined = (items: IPersonaProps[], selectionLimit: number): IPersonaProps | undefined => {
+  if (!items?.length) return undefined;
+  return selectionLimit === 1 ? items[0] : items[0];
+};
+
+// Helper to safely run async from event handlers without `void`
+export const run = (p: Promise<void>): void => {
+  p.catch((err) => console.error(err));
+};
+
+/* ------------------------- Main Panel ------------------------- */
+export const ApproversAdminPanel: React.FC<ApproversAdminPanelProps> = ({
+  context,
+  config,
+  lobs,
+  ogs,
+  entities,
+  runBusy,
+  onSaved,
+  onSuccess
+}) => {
+  const theme = useTheme();
+  const isSmall = useMediaQuery(theme.breakpoints.down("md"));
+
+  const [error, setError] = useState<string>("");
+  const [savingKey, setSavingKey] = useState<string>("");
+  const [filter, setFilter] = useState<string>("");
+  const [section, setSection] = useState<ApproverSection>("company");
+  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
+
+  const ceo = useMemo(() => config.find(c => c.IsFor === "CEO"), [config]);
+  const svp = useMemo(() => config.find(c => c.IsFor === "SVPContracts"), [config]);
+
+  const peoplePickerContext: PeoplePickerContext = {
+    absoluteUrl: context.pageContext.web.absoluteUrl,
+    msGraphClientFactory: context.msGraphClientFactory,
+    spHttpClient: context.spHttpClient
+  };
+
+  /****************************** VALIDATION **********************************/
+  const upsertFieldErrors = (
+    prev: FieldErrorMap,
+    checks: Array<{ key: string; valid: boolean; message: string }>
+  ): FieldErrorMap => {
+    const next: FieldErrorMap = { ...prev };
+
+    for (const c of checks) {
+      if (!c.valid) next[c.key] = c.message;
+      else delete next[c.key];
+    }
+
+    return next;
+  };
+
+const hasPerson = (p?: { Id?: number; EMail?: string; Title?: string } | null): boolean => {
+  // check email and ID
+  const idOk = typeof p?.Id === "number" && p.Id > 0;
+  const emailOk = typeof p?.EMail === "string" && p.EMail.trim().length > 0;
+
+  return idOk && emailOk;
+};
+
+  const clearFieldError = (key: string): void => {
+    setFieldErrors(prev => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const setFieldError = (key: string, msg: string): void => {
+    setFieldErrors(prev => ({ ...prev, [key]: msg }));
+  };
+
+  // validation for Company
+  useEffect(() => {
+    setFieldErrors(prev =>
+      upsertFieldErrors(prev, [
+        {
+          key: "config-ceo",
+          valid: hasPerson(ceo?.User),
+          message: "CEO is required."
+        },
+        {
+          key: "config-svp",
+          valid: hasPerson(svp?.User),
+          message: "SVP Contracts is required."
+        }
+      ])
+    );
+  }, [ceo?.User?.Id, svp?.User?.Id]);
+
+  // validation for LOBs
+  useEffect(() => {
+    const checks = lobs.map(lob => ({
+      key: `lob-${lob.Id}-coo`,
+      valid: hasPerson(lob.coo),
+      message: `COO is required for ${lob.Title}.`
+    }));
+
+    setFieldErrors(prev => upsertFieldErrors(prev, checks));
+  }, [lobs]);
+
+  // validation for OGs
+  const ogSig = React.useMemo(() => { //use a stable signature for OG array ref
+    return ogs
+      .map(o => `${o.Id}:${o.president?.Id ?? 0}:${o.CM?.Id ?? 0}`)
+      .join("|");
+  }, [ogs]);
+  useEffect(() => {
+    const checks = ogs.flatMap(og => ([
+      {
+        key: `og-${og.Id}-president`,
+        valid: hasPerson(og.president),
+        message: `OG President is required for ${og.Title}.`
+      },
+      {
+        key: `og-${og.Id}-cm`,
+        valid: hasPerson(og.CM),
+        message: `Contract Manager is required for ${og.Title}.`
+      }
+    ]));
+
+    setFieldErrors(prev => upsertFieldErrors(prev, checks));
+  }, [ogSig]);
+
+  // validation for Entity
+  useEffect(() => {
+    const checks = entities.map(ent => ({
+      key: `entity-${ent.Id}-gm`,
+      valid: hasPerson(ent.GM),
+      message: `GM is required for ${ent.abbr || ent.Title}.`
+    }));
+
+    setFieldErrors(prev => upsertFieldErrors(prev, checks));
+  }, [entities]);
+
+
+  const filteredLobs = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return lobs;
+    return lobs.filter(l => (l.Title ?? "").toLowerCase().includes(q));
+  }, [lobs, filter]);
+
+  const filteredOgs = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return ogs;
+    return ogs.filter(o => (o.Title ?? "").toLowerCase().includes(q));
+  }, [ogs, filter]);
+
+  const filteredEntities = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return entities;
+    return entities.filter(e => ((e.combinedTitle ?? e.Title ?? "")).toLowerCase().includes(q));
+  }, [entities, filter]);
+
+
+  const save = async (key: string, message: string, label: string, fn: () => Promise<void>): Promise<void> => {
+    setError("");
+    setSavingKey(key);
+
+    try {
+      await runBusy(message, async () => {
+        await fn();
+        await onSaved();
+      });
+
+      onSuccess(`${label} updated successfully`);
+    } catch (e) {
+      console.log(`Error saving ${label}`, e);
+      setError(formatError(e));
+    } finally {
+      setSavingKey("");
+    }
+  };
+
+  /********************  Save for CONFIG > CEO or SVP *********************************/
+  const handleSaveConfigPerson = async (
+    key: ConfigKey,
+    label: string,
+    configItem?: IConfigItem,
+    person?: IPersonaProps
+  ): Promise<void> => {
+    if (!configItem?.Id) {
+      setError("Config item was not found. Please verify the Config list has the required rows.");
+      return;
+    }
+
+    const personId = Number(person?.id);
+    if (!personId || Number.isNaN(personId)) {
+      setFieldError(key, `${label} is required.`);
+      return; // don't save blanks !!!
+    }
+
+    clearFieldError(key);
+
+    await save(key, `Saving ${label}…`, label, async () => {
+      await DataSource.updateConfigApprover(configItem.Id, personId);
+    });
+  };
+
+  /********************  Save for LOB > COO *********************************/
+  const handleSaveLobCoo = async (lobId: number, lobTitle: string, label: string, person?: IPersonaProps): Promise<void> => {
+    const errKey = `lob-${lobId}-coo`;
+    const personId = Number(person?.id);
+
+    if (!personId || Number.isNaN(personId)) {
+      setFieldError(errKey, `COO is required for ${lobTitle}.`);
+      return;
+    }
+
+    clearFieldError(errKey);
+
+    await save(`lob-${lobId}`, `Saving COO for ${lobTitle}…`, label, async () => {
+      await DataSource.updateLobCoo(lobId, personId);
+    });
+  };
+
+  /********************  Save for OG > President or CM *********************************/
+  const handleSaveOgPerson = async (
+    ogId: number,
+    ogTitle: string,
+    label: string,
+    changedField: OgField,
+    presidentId?: number,
+    cmId?: number
+  ): Promise<void> => {
+
+    const presKey = `og-${ogId}-president`;
+    const cmKey = `og-${ogId}-cm`;
+
+    // const presId = Number(president?.id);
+    // const cmId = Number(cm?.id);
+
+    // validate ONLY the field the user touched
+    if (changedField === "president") {
+      if (!presidentId || Number.isNaN(presidentId)) {
+        setFieldError(presKey, `OG President is required for ${ogTitle}.`);
+        return;
+      }
+      clearFieldError(presKey);
+    }
+
+    if (changedField === "cm") {
+      if (!cmId || Number.isNaN(cmId)) {
+        setFieldError(cmKey, `Contract Manager is required for ${ogTitle}.`);
+        return;
+      }
+      clearFieldError(cmKey);
+    }
+
+    // still must send BOTH ids for updateOgApprovers
+    // so use existing values for the "other" field
+    await save(`og-${ogId}`, `Saving approvers for ${ogTitle}…`, label, async () => {
+      await DataSource.updateOgApprovers(
+        ogId,
+        presidentId,
+        cmId
+      );
+    });
+  };
+
+  /******************** Save for ENITY > GM **************************/
+  const handleSaveEntityGm = async (entityId: number, entityTitle: string, label: string, person?: IPersonaProps): Promise<void> => {
+    const errKey = `entity-${entityId}-gm`;
+    const personId = Number(person?.id);
+
+    if (!personId || Number.isNaN(personId)) {
+      setFieldError(errKey, `GM is required for ${entityTitle}.`);
+      return;
+    }
+
+    clearFieldError(errKey);
+
+    await save(`entity-${entityId}`, `Saving GM for ${entityTitle}…`, label, async () => {
+      await DataSource.updateEntityGm(entityId, Number(person?.id) ?? undefined);
+    });
+  };
+
+  const showFilter = section !== "company";
+  const filterLabel =
+    section === "lobs" ? "Filter LOBs" :
+      section === "ogs" ? "Filter OGs" :
+        "Filter Entities";
+
+  return (
+    <Stack spacing={2} sx={{ width: "100%", minWidth: 0 }}>
+      {error && <Alert severity="error">{error}</Alert>}
+
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Typography variant="h6" fontWeight={700}>Default Approvers</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Edit defaults where they are stored (Config / LOB / OG / Entities)
+        </Typography>
+      </Paper>
+
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Grid container spacing={2} sx={{ minWidth: 0 }}>
+          <Grid size={{ xs: 12, md: 2 }} sx={{ minWidth: "200px" }}>
+            <Tabs
+              orientation={isSmall ? "horizontal" : "vertical"}
+              value={section}
+              onChange={(_, v) => setSection(v as ApproverSection)}
+              variant={isSmall ? "scrollable" : "standard"}
+              allowScrollButtonsMobile
+              sx={(theme) => ({
+                borderRight: !isSmall ? 1 : 0,
+                borderColor: "divider",
+
+                // Indicator color
+                "& .MuiTabs-indicator": {
+                  backgroundColor: theme.palette.action.active,
+                  width: "3px"
+                },
+
+                // Default tab color
+                "& .MuiTab-root": {
+                  //color: theme.palette.text.secondary,
+                  alignItems: "flex-start",
+                  justifyContent: "flex-start",
+                  textAlign: "left"
+                },
+
+                // Selected tab color
+                "& .Mui-selected": {
+                  color: theme.palette.action.active
+                },
+
+                // Important: inner wrapper alignment fix
+                "& .MuiTab-root .MuiTab-wrapper": {
+                  alignItems: "flex-start",
+                  textAlign: "left",
+                  width: "100%"
+                }
+              })}
+            >
+              <Tab value="company" label="Company" />
+              <Tab value="lobs" label="LOBs" />
+              <Tab value="ogs" label="Operating Groups" />
+              <Tab value="entities" label="Entities" />
+            </Tabs>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 10 }} sx={{ minWidth: 0 }}>
+            {showFilter && (
+              <Box sx={{ mb: 2, minWidth: 0 }}>
+                <TextField
+                  size="small"
+                  fullWidth
+                  label={filterLabel}
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                />
+              </Box>
+            )}
+
+            {section !== "company" &&
+              <Divider sx={{ mb: 2 }} />
+            }
+
+            {section === "company" && (
+              <CompanyDefaultsSection
+                ceo={ceo}
+                svp={svp}
+                peoplePickerContext={peoplePickerContext}
+                savingKey={savingKey}
+                errors={fieldErrors}
+                clearError={clearFieldError}
+                onChangeCEO={async (person) => {
+                  await handleSaveConfigPerson("config-ceo", "CEO", ceo, person);
+                }}
+                onChangeSVP={async (person) => {
+                  await handleSaveConfigPerson("config-svp", "SVP", svp, person);
+                }}
+              />
+            )}
+
+            {section === "lobs" && (
+              <LobDefaultsSection
+                lobs={filteredLobs}
+                peoplePickerContext={peoplePickerContext}
+                savingKey={savingKey}
+                onChangeCoo={handleSaveLobCoo}
+                errors={fieldErrors}
+                clearError={clearFieldError}
+              />
+            )}
+
+            {section === "ogs" && (
+              <OgDefaultsSection
+                ogs={filteredOgs}
+                peoplePickerContext={peoplePickerContext}
+                savingKey={savingKey}
+                onChangeOg={handleSaveOgPerson}
+                errors={fieldErrors}
+                clearError={clearFieldError}
+              />
+            )}
+
+            {section === "entities" && (
+              <EntityDefaultsSection
+                entities={filteredEntities}
+                peoplePickerContext={peoplePickerContext}
+                savingKey={savingKey}
+                onChangeGm={handleSaveEntityGm}
+                errors={fieldErrors}
+                clearError={clearFieldError}
+              />
+            )}
+          </Grid>
+        </Grid>
+      </Paper>
+    </Stack>
+  );
+};

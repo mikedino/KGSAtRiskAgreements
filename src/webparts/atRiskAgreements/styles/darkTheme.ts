@@ -4,7 +4,7 @@ import { baseTheme } from "./theme.base";
 
 export const darkTheme = createTheme(baseTheme, {
   //...baseTheme,
-  palette: {
+  palette: { 
     mode: "dark",
 
     primary: { light: "#a2e0ee", dark: "#003057", main: "#2499C2" },     // KGS Navy
@@ -55,7 +55,7 @@ export const darkTheme = createTheme(baseTheme, {
           backgroundColor: "#F2C744",
           color: "#003057",
           "&:hover": {
-            backgroundColor: "#D9B238",
+            backgroundColor: "#ecd284",
           }
         },
 

@@ -2,13 +2,7 @@ import * as React from "react";
 import { AppBar, Toolbar, Typography, Button, useMediaQuery, Box, Stack, Avatar } from "@mui/material";
 import { useAgreements } from "../services/agreementsContext";
 import { useTheme } from "@mui/material/styles";
-import Handshake from "@mui/icons-material/Handshake";
-import AddIcon from "@mui/icons-material/Add";
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import WorkIcon from "@mui/icons-material/Work";
-import ListAltIcon from "@mui/icons-material/ListAlt";
-import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
-import Refresh from "@mui/icons-material/Refresh";
+import { Handshake, Add, Dashboard, Work, ListAlt, AdminPanelSettings, Refresh, HelpOutlineOutlined } from "@mui/icons-material";
 import IconButton from '@mui/material/IconButton';
 import { Link } from "react-router-dom";
 import ThemeSwitcher from "./ThemeSwitcher";
@@ -45,7 +39,7 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
             <Toolbar sx={{ pl: 2, pr: 1 }}>
 
                 {/* ICON + TITLE */}
-                <Box sx={{ display: "flex", alignItems: "center", flexGrow: 1, gap: 1 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, marginRight: 4 }}>
                     {/* Always show the icon */}
                     <Handshake sx={{ fontSize: 38, color: "inherit" }} />
 
@@ -55,8 +49,42 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
                     )}
                 </Box>
 
-                {/* ROUTER LINKS */}
-                <Stack direction="row" spacing={2}>
+                {/* MAIN ROUTER LINKS/BUTTONS */}
+                <Stack
+                    direction="row"
+                    spacing={2}
+                    sx={{
+                        alignItems: "center",
+                        alignContent: "flex-start",
+                        display: "flex",
+                        flexGrow: 1,
+                        "& .MuiButton-textInherit:hover": {
+                            color: "#F2C744",
+                            backgroundColor: "rgba(242, 199, 68, 0.08)"
+                        }
+                    }}>
+                    <Button title="My Work" startIcon={<Work />} color="inherit" component={Link} to="/my-work" >{!isSmall && "My Work"}</Button>
+                    <Button title="All Agreeements" startIcon={<ListAlt />} color="inherit" component={Link} to="/all-agreements">{!isSmall && "All Agreements"}</Button>
+                    <Button title="Dashboard" startIcon={<Dashboard />} color="inherit" component={Link} to="/dashboard">{!isSmall && "Dashboard"}</Button>
+                    {showAdmin && (
+                        <Button title="Admin" startIcon={<AdminPanelSettings />} color="inherit" component={Link} to="/admin">
+                            {!isSmall && "Admin"}
+                        </Button>
+                    )}
+
+                </Stack>
+
+                {/* REFRESH, NEW AGREEMENT BUTTON */}
+                <Stack direction="row" spacing={1}>
+                    <IconButton
+                        onClick={() => alert("help link")}
+                        size="medium"
+                        aria-label="User Guide"
+                        title="User Guide"
+                    >
+                        <HelpOutlineOutlined />
+                    </IconButton>
+
                     <IconButton
                         onClick={async () => {
                             await refresh(true);
@@ -69,24 +97,15 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
                     >
                         <Refresh sx={{ animation: isRefreshing ? "spin 1s linear infinite" : undefined }} />
                     </IconButton>
-                    <Button title="My Work" startIcon={<WorkIcon />} color="inherit" component={Link} to="/my-work" >{!isSmall && "My Work"}</Button>
-                    <Button title="All Agreeements" startIcon={<ListAltIcon />} color="inherit" component={Link} to="/all-agreements">{!isSmall && "All Agreements"}</Button>
-                    <Button title="Dashboard" startIcon={<DashboardIcon />} color="inherit" component={Link} to="/dashboard">{!isSmall && "Dashboard"}</Button>
-                    {showAdmin && (
-                        <Button title="Admin" startIcon={<AdminPanelSettingsIcon />} color="inherit" component={Link} to="/admin">
-                            {!isSmall && "Admin"}
-                        </Button>
-                    )}
+
+                    <Button title="Add New Agreement" startIcon={<Add />} variant="contained" color="primary" sx={{ mx: 2, whiteSpace: "nowrap" }} component={Link} to="/new" >
+                        New Agreement
+                    </Button>
 
                 </Stack>
 
-                {/* NEW AGREEMENT BUTTON */}
-                <Button title="Add New Agreement" startIcon={<AddIcon />} variant="contained" color="primary" sx={{ mx: 2, whiteSpace: "nowrap" }} component={Link} to="/new" >
-                    New Agreement
-                </Button>
-
                 {/* USER DISPLAY */}
-                <Stack direction="column" alignItems="flex-end" sx={{ mx: 1 }}>
+                <Stack direction="column" alignItems="flex-end" sx={{ mx: 2 }}>
                     {isSmall ? (
                         <Avatar alt={context.pageContext.user.displayName} {...stringAvatar(context.pageContext.user.displayName)} />
                     ) : (
@@ -103,18 +122,19 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
 
                 {/* THEME SWITCHER ICON */}
                 <Box sx={{ ml: 1 }}>
-                    <ThemeSwitcher 
-                    useDarkTheme={useDarkTheme} 
-                    onToggle={async () => {
-                        const next = !useDarkTheme;
-                        setUseDarkTheme(next);
 
-                        try {
-                            await AppUserService.updateMyModePreference(next ? "dark" : "light");
-                        } catch (e) {
-                            console.error("failed to save theme preference", e);
-                        }
-                    }}
+                    <ThemeSwitcher
+                        useDarkTheme={useDarkTheme}
+                        onToggle={async () => {
+                            const next = !useDarkTheme;
+                            setUseDarkTheme(next);
+
+                            try {
+                                await AppUserService.updateMyModePreference(next ? "dark" : "light");
+                            } catch (e) {
+                                console.error("failed to save theme preference", e);
+                            }
+                        }}
                     />
                 </Box>
 

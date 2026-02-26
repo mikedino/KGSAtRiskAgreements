@@ -75,7 +75,7 @@ export class RiskAgreementService {
 
     try {
 
-      await Web().Lists(Strings.Sites.main.lists.Agreements).Items().getById(itemId).update({
+      await Web().Lists(Strings.Sites.main.lists.Agreements).Items(itemId).update({
         __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.Agreements)}ListItem` },
         currentRunId
       }).executeAndWait();

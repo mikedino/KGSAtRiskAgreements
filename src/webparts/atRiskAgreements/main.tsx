@@ -19,7 +19,7 @@ import { Configuration } from "./data/cfg";
 import { InstallationRequired } from "dattatable";
 import { useAgreementsData } from "./data/agreementsDataCall";
 
-import { ThemeProvider, CssBaseline, Box, Stack, Typography, Alert, Backdrop, Fab } from "@mui/material";
+import { ThemeProvider, CssBaseline, Box, Stack, Typography, Alert, Backdrop, Fab, AppBar, Toolbar } from "@mui/material";
 import CircularProgress from '@mui/material/CircularProgress';
 import CheckIcon from '@mui/icons-material/Check';
 import { darkTheme } from "./styles/darkTheme";
@@ -28,6 +28,7 @@ import styles from "./styles/styles.module.scss";
 import { formatError } from "./services/utils";
 import Strings from "../../strings";
 import { ContextInfo } from "gd-sprest";
+import { loadStyles } from "@microsoft/load-themed-styles";
 
 import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
@@ -39,9 +40,18 @@ type InstallState = "checking" | "ready" | "blocked" | "error";
 
 export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
 
+  React.useEffect(() => {
+    //////////////// inject global CSS to hide the OOB page EDIT button /////////////////////////
+    loadStyles(`
+      #spCommandBar button[name="Edit"] {
+        display: none !important;
+      }
+    `);
+  }, []);
+
   const [installState, setInstallState] = React.useState<InstallState>("checking");
   const [useDarkTheme, setUseDarkTheme] = useState<boolean>(() => {
-    const cached = sessionStorage.getItem("ara_theme");
+    const cached = sessionStorage.getItem("ara_theme"); // access session storage to eliminate color swap flash
     if (cached === "dark") return true;
     if (cached === "light") return false;
     return false; // default if nothing cached
@@ -528,8 +538,13 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
 
       <AgreementsContext.Provider value={agreementsCtxValue}>
 
-        {/* HEADER WITH THEME TOGGLE */}
-        <NavHeader context={context} useDarkTheme={useDarkTheme} setUseDarkTheme={setUseDarkTheme} />
+        {/* HEADER WITH THEME TOGGLE - USE APPBAR and TOOLBAR to provide "sticky" appearance */}
+        <AppBar position="sticky" elevation={1} sx={{ top: 0, zIndex: (t) => t.zIndex.drawer + 1 }} >
+          {/* Toolbar gives you the standard header height + padding */}
+          <Toolbar disableGutters sx={{ px: 2 }}>
+            <NavHeader context={context} useDarkTheme={useDarkTheme} setUseDarkTheme={setUseDarkTheme} />
+          </Toolbar>
+        </AppBar>
 
         {/* PAGE CONTENT - wrap in default text color otherwise SPO will overwrite */}
         <Box sx={{ p: 3, color: "text.primary", mx: "auto", maxWidth: "1600px" }}>
@@ -540,7 +555,22 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
             <Route path="/my-work" component={MyWork} />
             <Route path="/all-agreements" component={Agreements} />
             <Route path="/dashboard" component={Dashboard} />
-            <Route path="/admin" render={() => <Admin context={context} />} />
+            <Route path="/admin" render={() => (
+              <Admin
+                context={context}
+                showBusy={(msg) => {
+                  setBackdropMessage(msg ?? "");
+                  setShowProgress(true);
+                  setShowBackdrop(true);
+                }}
+                hideBusy={() => {
+                  setShowBackdrop(false);
+                  setShowProgress(false);
+                  setBackdropMessage("");
+                }}
+              />
+            )} />
+
             <Route path="/new" render={() => {
 
               const handleCancel = async (reason: CancelReason): Promise<void> => {

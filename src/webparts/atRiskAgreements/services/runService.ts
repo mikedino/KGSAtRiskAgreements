@@ -193,8 +193,7 @@ export class WorkflowRunService {
             // complete run as rejected
             await Web()
                 .Lists(Strings.Sites.main.lists.WorkflowRuns)
-                .Items()
-                .getById(run.Id)
+                .Items().getById(run.Id)
                 .update({
                     __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.WorkflowRuns)}ListItem` },
 

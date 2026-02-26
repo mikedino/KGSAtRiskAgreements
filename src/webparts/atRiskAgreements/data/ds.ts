@@ -384,8 +384,8 @@ export class DataSource {
         });
     }
     // update config approvers real-time
-    static async updateConfigApprover(configItemId: number, user?: IPeoplePicker): Promise<void> {
-        await ConfigService.updateApprover(configItemId, user);
+    static async updateConfigApprover(configItemId: number, userId?: number): Promise<void> {
+        await ConfigService.updateApprover(configItemId, userId);
         await this.getConfig();
     }
 
@@ -430,8 +430,8 @@ export class DataSource {
         });
     }
     // update Entity / Entity GM real-time
-    static async updateEntityGm(entityId: number, gm?: IPeoplePicker): Promise<void> {
-        await EntityService.updateGm(entityId, gm);
+    static async updateEntityGm(entityId: number, gmId?: number): Promise<void> {
+        await EntityService.updateGm(entityId, gmId);
         await this.getEntities();
     }
 
@@ -476,8 +476,8 @@ export class DataSource {
         });
     }
     // update LOB / COO real-time
-    static async updateLobCoo(lobId: number, coo?: IPeoplePicker): Promise<void> {
-        await LobService.updateCoo(lobId, coo);
+    static async updateLobCoo(lobId: number, cooId?: number): Promise<void> {
+        await LobService.updateCoo(lobId, cooId);
         await this.getLOBs();
     }
 
@@ -526,8 +526,8 @@ export class DataSource {
         });
     }
     // update OG, OGPres, CM, SCM real-time
-    static async updateOgApprovers(ogId: number, president?: IPeoplePicker, cm?: IPeoplePicker, scm?: IPeoplePicker): Promise<void> {
-        await OgService.updateApprovers(ogId, president, cm, scm);
+    static async updateOgApprovers(ogId: number, presidentId?: number, cmId?: number): Promise<void> {
+        await OgService.updateApprovers(ogId, presidentId, cmId);
         await this.getOGs();
     }
 

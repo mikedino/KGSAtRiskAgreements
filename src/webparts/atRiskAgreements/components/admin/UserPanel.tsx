@@ -4,7 +4,8 @@ import {
     Avatar, Box, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider,
     IconButton, List, ListItem, ListItemAvatar, ListItemText, MenuItem, Paper, Stack, TextField,
     Typography, Button,
-    Alert
+    Alert,
+    Grid
 } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 //import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"; // (not used yet)
@@ -114,46 +115,54 @@ export const UsersAdminPanel: React.FC<UsersAdminPanelProps> = ({ users, onRoleC
                 </Box>
             </Stack>
 
-            <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} sx={{ mb: 2 }}>
-                <TextField
-                    size="small"
-                    placeholder="Search users..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    fullWidth
-                />
+            <Grid container spacing={1.25} sx={{ mb: 2 }} alignItems="center">
 
-                <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-                    <Chip
-                        label="All"
-                        clickable
-                        color={roleFilter === "all" ? "info" : "default"}
-                        variant={roleFilter === "all" ? "filled" : "outlined"}
-                        onClick={() => setRoleFilter("all")}
+                {/* Search */}
+                <Grid size={{ xs: 12, md: 6, xl: 8 }}>
+                    <TextField
+                        size="small"
+                        placeholder="Search users..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        fullWidth
                     />
-                    <Chip
-                        label="Admins"
-                        clickable
-                        color={roleFilter === "admin" ? "info" : "default"}
-                        variant={roleFilter === "admin" ? "filled" : "outlined"}
-                        onClick={() => setRoleFilter("admin")}
-                    />
-                    <Chip
-                        label="CMs"
-                        clickable
-                        color={roleFilter === "cm" ? "info" : "default"}
-                        variant={roleFilter === "cm" ? "filled" : "outlined"}
-                        onClick={() => setRoleFilter("cm")}
-                    />
-                    <Chip
-                        label="Users"
-                        clickable
-                        color={roleFilter === "user" ? "info" : "default"}
-                        variant={roleFilter === "user" ? "filled" : "outlined"}
-                        onClick={() => setRoleFilter("user")}
-                    />
-                </Stack>
-            </Stack>
+                </Grid>
+
+                {/* Chips */}
+                <Grid size={{ xs: 12, md: 6, xl: 4 }}>
+                    <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", alignItems: "center" }} >
+                        <Chip
+                            label="All"
+                            clickable
+                            color={roleFilter === "all" ? "info" : "default"}
+                            variant={roleFilter === "all" ? "filled" : "outlined"}
+                            onClick={() => setRoleFilter("all")}
+                        />
+                        <Chip
+                            label="Admins"
+                            clickable
+                            color={roleFilter === "admin" ? "info" : "default"}
+                            variant={roleFilter === "admin" ? "filled" : "outlined"}
+                            onClick={() => setRoleFilter("admin")}
+                        />
+                        <Chip
+                            label="CMs"
+                            clickable
+                            color={roleFilter === "cm" ? "info" : "default"}
+                            variant={roleFilter === "cm" ? "filled" : "outlined"}
+                            onClick={() => setRoleFilter("cm")}
+                        />
+                        <Chip
+                            label="Users"
+                            clickable
+                            color={roleFilter === "user" ? "info" : "default"}
+                            variant={roleFilter === "user" ? "filled" : "outlined"}
+                            onClick={() => setRoleFilter("user")}
+                        />
+                    </Stack>
+                </Grid>
+
+            </Grid>
 
             <Divider sx={{ mb: 1 }} />
 
@@ -172,7 +181,7 @@ export const UsersAdminPanel: React.FC<UsersAdminPanelProps> = ({ users, onRoleC
                                     borderRadius: 2
                                 }}
                                 secondaryAction={
-                                    <Stack direction="row" spacing={0.5} alignItems="center">
+                                    <Stack direction="row" spacing={2} alignItems="center">
                                         <Chip
                                             size="small"
                                             label={role === "admin" ? "Admin" : role === "cm" ? "CM" : "User"}

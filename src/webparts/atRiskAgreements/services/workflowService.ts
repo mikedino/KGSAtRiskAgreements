@@ -97,8 +97,12 @@ export class WorkflowDecisionService {
     // 2) Update Run (source of truth)
     const result = await WorkflowRunService.applyDecision(agreement, run, decision);
 
+    const isRejected = decision === "Rejected";
+    const isApproved = decision === "Approved";
+    const isFinalApproval = isApproved && result.completed;
+
     // 2b) If rejected, log that it was returned to submitter
-    if (decision === "Rejected") {
+    if (isRejected) {
       await WorkflowActionService.createAction({
         agreement,
         run,
@@ -109,27 +113,32 @@ export class WorkflowDecisionService {
     }
 
     // 2c) If approved, capture and log the complete JSON snapshot and store on the run
-    if (decision === "Approved" && result.completed) {
+    if (isFinalApproval) {
       const snapshot = this.buildApprovedSnapshot(agreement);
-      await Web().Lists(Strings.Sites.main.lists.WorkflowRuns).Items().getById(run.Id).update({
-        __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.WorkflowRuns)}ListItem` },
-        approvedSnapshotJson: JSON.stringify(snapshot),
-        approvedSnapshotDate: new Date().toISOString()
-      }).executeAndWait();
+      await Web()
+        .Lists(Strings.Sites.main.lists.WorkflowRuns)
+        .Items()
+        .getById(run.Id)
+        .update({
+          __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.WorkflowRuns)}ListItem` },
+          approvedSnapshotJson: JSON.stringify(snapshot),
+          approvedSnapshotDate: new Date().toISOString()
+        })
+        .executeAndWait();
     }
 
     // 3) Update Agreement status (business status)
     const nextStatus: AraStatus =
       decision === "Rejected"
         ? "Rejected"
-        : result.completed
+        : isFinalApproval
           ? "Approved"
           : (agreement.araStatus === "Mod Review" ? "Mod Review" : "Under Review");
 
-    // 4) if approved, set effectiveApprovedRun ID
-    const runId = (decision === "Approved" && result.completed) ? run.Id : undefined;
+    // 4) If approved, set effectiveApprovedRunId
+    const effectiveApprovedRunId = isFinalApproval ? run.Id : undefined;
 
-    await this.updateAgreementStatus(agreement.Id, nextStatus, runId);
+    await this.updateAgreementStatus(agreement.Id, nextStatus, effectiveApprovedRunId);
   }
 
 

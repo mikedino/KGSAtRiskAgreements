@@ -40,7 +40,7 @@ const Strings = {
             lists: {
                 Entities: "Entities",
                 OGs: "OGPresidents",
-                LOBs: "lob",
+                LOBs: "LOB",
                 Config: "Config"
             }
         }
@@ -76,6 +76,6 @@ const Strings = {
             blueGray: "#ccd6dd"
         }
     },
-    Version: "1.4.0.1"
+    Version: "1.4.0.3"
 };
 export default Strings;

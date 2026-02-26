@@ -1,131 +1,133 @@
 import * as React from "react";
 import { IPersonaProps } from "@fluentui/react";
 import { SxProps, Theme } from "@mui/material";
-import { FormControl, FormLabel, useTheme } from "@mui/material";
+import { FormControl, FormHelperText, FormLabel, useTheme } from "@mui/material";
 import { PeoplePicker, PrincipalType, IPeoplePickerContext } from "@pnp/spfx-controls-react/lib/PeoplePicker";
 
 export interface MuiPeoplePickerProps {
-    label: string;
-    context: IPeoplePickerContext;
-    value?: string[];
-    required?: boolean;
-    disabled?: boolean;
-    onChange: (items: IPersonaProps[]) => void;
-    selectionLimit?: number;
-    sx?: SxProps<Theme>;
-    showtooltip?: boolean;
-    tooltipMessage?: string;
+  label: string;
+  context: IPeoplePickerContext;
+  value?: string[];
+  required?: boolean;
+  disabled?: boolean;
+  onChange: (items: IPersonaProps[]) => void;
+  selectionLimit?: number;
+  sx?: SxProps<Theme>;
+  showtooltip?: boolean;
+  tooltipMessage?: string;
+
+  // ✅ new
+  error?: boolean;
+  helperText?: string;
 }
 
 export const MuiPeoplePicker: React.FC<MuiPeoplePickerProps> = ({
-    label,
-    context,
-    value,
-    required = false,
-    disabled = false,
-    onChange,
-    selectionLimit = 1,
-    sx,
-    showtooltip = false,
-    tooltipMessage
+  label,
+  context,
+  value,
+  required = false,
+  disabled = false,
+  onChange,
+  selectionLimit = 1,
+  sx,
+  showtooltip = false,
+  tooltipMessage,
+  error = false,
+  helperText
 }) => {
-    const theme = useTheme();
+  const theme = useTheme();
+  const [focused, setFocused] = React.useState(false);
 
-    // const defaultBorderColor =
-    //     theme.palette.mode === "dark"
-    //         ? theme.palette.divider
-    //         : theme.palette.grey[400];
+  const borderColor = error
+    ? theme.palette.error.main
+    : focused
+      ? theme.palette.primary.main
+      : theme.palette.secondary.light;
 
-    return (
-        <FormControl
-            fullWidth
-            required={required}
-            disabled={disabled}
-            sx={{ position: "relative", m: 0, p: 0 }}
-        >
-            <FormLabel
-                sx={(theme) => ({
-                    position: "absolute",
-                    left: 0,
-                    top: 0,
-                    transform: "translate(14px, -9px) scale(0.75)",
-                    transformOrigin: "top left",
-                    color: theme.palette.text.secondary,
-                    fontWeight: 400,
-                    fontSize: theme.typography.body1.fontSize,
-                    backgroundColor: theme.palette.background.default,
-                    lineHeight: "1.4375em",
-                    px: "4px",
-                    zIndex: 1,
-                    pointerEvents: "none",
-                    maxWidth: "calc(133% - 32px)",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis"
-                })}
-            >
-                {label}
-            </FormLabel>
+  return (
+    <FormControl
+      fullWidth
+      required={required}
+      disabled={disabled}
+      error={error}
+      sx={{ position: "relative", m: 0, p: 0, minWidth: 0, ...sx }}
+    >
+      <FormLabel
+        sx={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          transform: "translate(14px, -9px) scale(0.75)",
+          transformOrigin: "top left",
+          color: theme.palette.text.secondary,
+          fontWeight: 400,
+          fontSize: theme.typography.body1.fontSize,
+          backgroundColor: theme.palette.background.default,
+          lineHeight: "1.4375em",
+          px: "4px",
+          zIndex: 1,
+          pointerEvents: "none",
+          maxWidth: "calc(133% - 32px)",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis"
+        }}
+      >
+        {label}
+      </FormLabel>
 
-            <PeoplePicker
-                context={context}
-                personSelectionLimit={selectionLimit}
-                principalTypes={[PrincipalType.User]}
-                ensureUser
-                showtooltip={showtooltip}
-                tooltipMessage={tooltipMessage}
-                disabled={disabled}
-                defaultSelectedUsers={value}
-                resolveDelay={1000}
-                onChange={onChange} //pass thru unchanged
-                styles={{
-                    root: {
-                        border: `1px solid ${theme.palette.secondary.light}`,
-                        borderRadius: theme.shape.borderRadius,
-                        padding: "8px 14px 6px 10px",
-                        minHeight: 41,
-                        // backgroundColor: disabled
-                        //     ? theme.palette.action.disabledBackground
-                        //     : theme.palette.background.paper,
-                        selectors: {
-                            ".ms-BasePicker-text": {
-                                border: "none",
-                                minHeight: "unset"
-                            },
-                            ".ms-PickerPersona-container": {
-                                background: theme.palette.background.paper,
-                                color: theme.palette.text.primary
-                            },
-                            ".ms-Persona-primaryText": {
-                                color: theme.palette.text.primary
-                            },
-                            // typed text color
-                            ".ms-BasePicker-input": {
-                                color: theme.palette.text.primary
-                            },
+      {/* wrapper div lets us control focus + border */}
+      <div
+        onFocusCapture={() => setFocused(true)}
+        onBlurCapture={() => setFocused(false)}
+        style={{
+          border: `1px solid ${borderColor}`,
+          borderRadius: theme.shape.borderRadius,
+          padding: "8px 14px 6px 10px",
+          minHeight: 41,
+          boxSizing: "border-box",
+          width: "100%",
+          minWidth: 0
+        }}
+      >
+        <PeoplePicker
+          context={context}
+          personSelectionLimit={selectionLimit}
+          principalTypes={[PrincipalType.User]}
+          ensureUser
+          showtooltip={showtooltip}
+          tooltipMessage={tooltipMessage}
+          disabled={disabled}
+          defaultSelectedUsers={value}
+          resolveDelay={1000}
+          onChange={onChange}
+          styles={{
+            root: {
+              width: "100%",
+              minWidth: 0,
+              selectors: {
+                ".ms-BasePicker-text": { border: "none", minHeight: "unset" },
+                ".ms-PickerPersona-container": {
+                  background: theme.palette.background.paper,
+                  color: theme.palette.text.primary
+                },
+                ".ms-Persona-primaryText": { color: theme.palette.text.primary },
+                ".ms-BasePicker-input": { color: theme.palette.text.primary },
+                "input::placeholder": {
+                  color: theme.palette.text.secondary,
+                  opacity: 1
+                }
+              }
+            }
+          }}
+        />
+      </div>
 
-                            // placeholder color
-                            "input::placeholder": {
-                                color: theme.palette.text.secondary,
-                                opacity: 1
-                            },
-                        },
-                        '&:hover': {
-                            borderColor: theme.palette.text.primary
-                        },
-                        '&.focused': {
-                            borderColor: theme.palette.primary.main,
-                            borderWidth: 2
-                        },
-                        '&.error': {
-                            borderColor: theme.palette.error.main
-                        },
-                        '&.disabled': {
-                            borderColor: theme.palette.action.disabled
-                        }
-                    }
-                }}
-            />
-        </FormControl>
-    );
+      {!!helperText && (
+        <FormHelperText sx={{ mt: 0.5 }}>
+          {helperText}
+        </FormHelperText>
+      )}
+    </FormControl>
+  );
 };
