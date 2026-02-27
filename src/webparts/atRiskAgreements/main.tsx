@@ -289,7 +289,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
       if (submitMode === "new") {
 
         // 1) UPDATE AGREEMENT BUSINESS DATA
-        const agreement = await RiskAgreementService.edit({ ...item, ...approvers }, "Under Review");
+        const agreement = await RiskAgreementService.submitNew({ ...item, ...approvers }, "Under Review");
 
         // 2) CREATE RUN (LINKED TO AGREEMENT)
         setBackdropMessage("Creating Approval Workflow…");

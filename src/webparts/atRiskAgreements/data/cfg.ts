@@ -142,13 +142,13 @@ export const Configuration = Helper.SPConfig({
                     multi: false,
                     indexed: true
                 } as Helper.IFieldInfoLookup,
-                                {
+                {
                     name: "effectiveApprovedRun",
                     title: "Effective Approved Run",
                     type: Helper.SPCfgFieldType.Lookup,
                     listName: Strings.Sites.main.lists.WorkflowRuns,
                     description: "the approved baseline we're currently using for the agreement fields (might be different than 'currentRun')." +
-                    "This run will capture the approved metadata if/when needed later for comparison.",
+                        "This run will capture the approved metadata if/when needed later for comparison.",
                     showField: "ID",
                     multi: false,
                     indexed: true
@@ -248,7 +248,7 @@ export const Configuration = Helper.SPConfig({
                         "<OrderBy><FieldRef Name=\"lastVisit\" Ascending=\"FALSE\" /></OrderBy>",
                     ViewFields: [
                         "user",
-                        "role",                        
+                        "role",
                         "lastVisit",
                         "visitCount",
                         "modePreference"
@@ -569,6 +569,54 @@ export const Configuration = Helper.SPConfig({
                     ]
                 }
             ]
-        }
+        },
+
+        /********************************************************************
+         * COUNTERs TABLE (for numbering)
+         ********************************************************************/
+        {
+            ListInformation: {
+                Title: Strings.Sites.main.lists.Counters,
+                Description: "At-Risk Agreements Counters Table for smart ID numbering",
+                OnQuickLaunch: false,
+                BaseTemplate: SPTypes.ListTemplateType.GenericList,
+                Hidden: true
+            },
+            TitleFieldDisplayName: "Year",
+            TitleFieldIndexed: true,
+            CustomFields: [
+                {
+                    name: "currentId",
+                    title: "Current ID",
+                    type: Helper.SPCfgFieldType.Number,
+                    decimals: 0,
+                    description: "last Agreement ID that consumed a number"
+                } as Helper.IFieldInfoNumber,
+                {
+                    name: "currentSeq",
+                    title: "Last Sequence Number",
+                    type: Helper.SPCfgFieldType.Number,
+                    decimals: 0,
+                    description: "last allocated sequence"
+                } as Helper.IFieldInfoNumber,
+                {
+                    name: "nextSeq",
+                    title: "Next Sequence Number",
+                    type: Helper.SPCfgFieldType.Number,
+                    decimals: 0,
+                    description: "next available sequence (authoritative)"
+                } as Helper.IFieldInfoNumber,
+            ],
+            ViewInformation: [
+                {
+                    ViewName: "All Items",
+                    Default: true,
+                    ViewQuery:
+                        "<OrderBy><FieldRef Name=\"Title\" Ascending=\"TRUE\" /></OrderBy>",
+                    ViewFields: ["LinkTitle", "currentId", "currentSeq", "nextSeq"]
+                }
+            ]
+        },
+
     ]
 });

@@ -295,14 +295,17 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
         return outcomeOk;
     }, [allRuns, run]);
 
+    const riskStartDate = dayjs(item.riskStart);
+    const today = dayjs().startOf("day");
     const isElevated = DataSource.isAdmin || DataSource.isCM;
     const isSubmitter = (item.Author.Id === ContextInfo.userId) || (item.backupRequestor.Id === ContextInfo.userId);
     const isActive = !!run && run.runStatus === "Active";
     const isFinalStatus = item.araStatus === "Resolved" || item.araStatus === "Canceled";
+    const isRiskStarted = !riskStartDate.startOf("day").isAfter(today);
     const isMod = item.araStatus === "Mod Review";
 
     const canApprove = isActive && (run.pendingApproverId === ContextInfo.userId || isElevated);
-    const canCancel = !isFinalStatus && (isSubmitter || isElevated);
+    const canCancel = !isFinalStatus && !isRiskStarted && (isSubmitter || isElevated);
     const canEdit = !isFinalStatus && (isSubmitter || isElevated);
     const canResolve = !!run && run.runStatus === "Completed" && item.araStatus === "Approved" && isElevated;
     const canRevert = isActive && isMod && previousRunIsApproved && isElevated;

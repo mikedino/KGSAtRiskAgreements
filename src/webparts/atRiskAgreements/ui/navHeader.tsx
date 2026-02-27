@@ -127,8 +127,14 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
                         useDarkTheme={useDarkTheme}
                         onToggle={async () => {
                             const next = !useDarkTheme;
+
+                            //update state immediately
                             setUseDarkTheme(next);
 
+                            // update session storage (prevents flicker on refresh)
+                            sessionStorage.setItem("ara_theme", next ? "dark" : "light");
+
+                            // persist to profile
                             try {
                                 await AppUserService.updateMyModePreference(next ? "dark" : "light");
                             } catch (e) {

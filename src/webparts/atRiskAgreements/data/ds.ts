@@ -89,7 +89,14 @@ export class DataSource {
 
         if (existing?.Id) {
             //existing user > increment visit and date
-            await AppUserService.touchCurrentUser(existing.Id);
+            await AppUserService.touchCurrentUser(existing.Id, existing.visitCount ?? 0);
+
+            // keep in-memory object consistent so UI reflects it immediately
+            if (sessionStorage.getItem(AppUserService.visitSessionKey) === "1") {
+                existing.visitCount = (existing.visitCount ?? 0) + 1;
+            }
+            existing.lastVisit = new Date().toISOString();
+
             this.setCurrentUser(existing);
             return existing;
         }

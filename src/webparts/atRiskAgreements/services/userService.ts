@@ -7,7 +7,7 @@ import { DataSource } from "../data/ds";
 
 export class AppUserService {
 
-    private static readonly _visitSessionKey = "ara_visit_counted";
+    static readonly visitSessionKey = "ara_visit_counted";
 
     static createNewUser(): Promise<IAppUserItem> {
         const now = new Date().toISOString();
@@ -25,29 +25,27 @@ export class AppUserService {
     }
 
     // Update lastVisit always; increment count only once per browser session
-    static async touchCurrentUser(userItemId: number): Promise<void> {
+    static async touchCurrentUser(userItemId: number, currentVisitCount: number): Promise<void> {
         const now = new Date().toISOString();
 
-        const counted = sessionStorage.getItem(this._visitSessionKey) === "1";
+        const counted = sessionStorage.getItem(this.visitSessionKey) === "1";
         const shouldIncrement = !counted;
 
+        const updatePayload: Record<string, unknown> = {
+            __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.Users)}ListItem` },
+            lastVisit: now
+        };
+
+        if (shouldIncrement) {
+            updatePayload.visitCount = currentVisitCount + 1;
+        }
+
         await new Promise<void>((resolve, reject) => {
-            const updatePayload: Record<string, unknown> = {
-                __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.Users)}ListItem` },
-                lastVisit: now
-            };
-
-            if (shouldIncrement) {
-                // If you need safe increment (avoid race), do it with validateUpdateListItem or read+update.
-                // With 50–70 users this is fine, but concurrency can still happen with multi-tabs.
-                updatePayload.visitCount = (DataSource.CurrentUser?.visitCount ?? 0) + 1;
-            }
-
             Web().Lists(Strings.Sites.main.lists.Users).Items().getById(userItemId)
                 .update(updatePayload)
                 .execute(
                     () => {
-                        if (shouldIncrement) sessionStorage.setItem(this._visitSessionKey, "1");
+                        if (shouldIncrement) sessionStorage.setItem(this.visitSessionKey, "1");
                         resolve();
                     },
                     (error) => reject(new Error(`Error updating lastVisit/visitCount: ${formatError(error)}`))

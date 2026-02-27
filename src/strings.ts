@@ -25,7 +25,8 @@ const Strings = {
                 Agreements: "AtRiskAgreements",
                 WorkflowRuns: "ARAWorkflowRuns",
                 WorkflowActions: "ARAWorkflowActions",
-                Users: "ARAUsers"
+                Users: "ARAUsers",
+                Counters: "ARACounters"
             }
         },
         jamis: {
@@ -76,6 +77,6 @@ const Strings = {
             blueGray: "#ccd6dd"
         }
     },
-    Version: "1.4.0.3"
+    Version: "1.4.0.4"
 };
 export default Strings;

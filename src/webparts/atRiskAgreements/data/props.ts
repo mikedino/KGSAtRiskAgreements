@@ -223,3 +223,14 @@ export interface IAppUserItem {
   lastVisit?: string;
   visitCount?: number;
 }
+
+export interface ICounterItem {
+  Id: number;
+  Title: string; // year
+  currentId: number; // last agreement ID that consumed a number
+  currentSeq: number; // last allocated sequence
+  nextSeq: number; // next available sequence (authoritative)
+  __metadata?: {
+    etag?: string;
+  };
+}

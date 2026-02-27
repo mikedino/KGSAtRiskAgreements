@@ -2,7 +2,7 @@ import * as React from "react";
 import { useMemo, useState } from "react";
 import {
     Avatar, Box, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider,
-    IconButton, List, ListItem, ListItemAvatar, ListItemText, MenuItem, Paper, Stack, TextField,
+    IconButton, List, ListItem, MenuItem, Paper, Stack, TextField,
     Typography, Button,
     Alert,
     Grid
@@ -19,12 +19,26 @@ interface UsersAdminPanelProps {
 }
 
 const getInitials = (displayName?: string): string => {
-    const name = (displayName ?? "").trim();
-    if (!name) return "?";
-    const parts = name.split(/\s+/).filter(Boolean);
-    const first = parts[0]?.[0] ?? "?";
-    const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
-    return (first + last).toUpperCase();
+  const name = (displayName ?? "").trim();
+  if (!name) return "?";
+
+  // If format is "Last, First MI"
+  if (name.includes(",")) {
+    const [lastPart, firstPart] = name.split(",").map(s => s.trim());
+
+    const firstInitial = firstPart?.[0] ?? "?";
+    const lastInitial = lastPart?.[0] ?? "";
+
+    return (firstInitial + lastInitial).toUpperCase();
+  }
+
+  // Fallback: normal "First Last"
+  const parts = name.split(/\s+/).filter(Boolean);
+
+  const first = parts[0]?.[0] ?? "?";
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+
+  return (first + last).toUpperCase();
 };
 
 const formatLastVisit = (iso?: string): string => {
@@ -174,54 +188,88 @@ export const UsersAdminPanel: React.FC<UsersAdminPanelProps> = ({ users, onRoleC
 
                     return (
                         <React.Fragment key={u.Id}>
-                            <ListItem
-                                sx={{
-                                    py: 1.25,
-                                    px: 1,
-                                    borderRadius: 2
-                                }}
-                                secondaryAction={
-                                    <Stack direction="row" spacing={2} alignItems="center">
-                                        <Chip
-                                            size="small"
-                                            label={role === "admin" ? "Admin" : role === "cm" ? "CM" : "User"}
-                                            variant="outlined"
-                                            color={role === "admin" ? "warning" : role === "cm" ? "info" : "default"}
-                                        />
-                                        <Chip
-                                            size="small"
-                                            label={u.modePreference === "dark" ? "Dark" : "Light"}
-                                            variant="outlined"
-                                        />
-                                        <Typography variant="caption" color="text.secondary" sx={{ ml: 1, mr: 0.5 }}>
-                                            Last visit: {formatLastVisit(u.lastVisit)}
+                            <ListItem sx={{ py: 1.25, px: 1, borderRadius: 2 }}>
+                                <Grid
+                                    container
+                                    spacing={1.5}
+                                    alignItems="center"
+                                    sx={{
+                                        width: "100%",
+                                        minWidth: 0,
+                                        flexWrap: { xs: "wrap", sm: "nowrap" } // keep single row on sm+
+                                    }}
+                                >
+                                    {/* Avatar column (fixed) */}
+                                    <Grid size={{ xs: "auto" }} sx={{ flex: "0 0 auto" }}>
+                                        <Avatar sx={{ width: 40, height: 40 }}>
+                                            {getInitials(name)}
+                                        </Avatar>
+                                    </Grid>
+
+                                    {/* Name/email column (flex, can shrink) */}
+                                    <Grid
+                                        size={{ xs: 12, sm: 6, md: 7, lg: 7 }}
+                                        sx={{ minWidth: 0, flex: "1 1 auto" }}   // must be able to shrink
+                                    >
+                                        <Typography fontWeight={700} noWrap>
+                                            {name}
                                         </Typography>
 
-                                        <IconButton size="small" onClick={() => openEdit(u)} aria-label="Edit user">
-                                            <EditOutlinedIcon fontSize="small" />
-                                        </IconButton>
-
-                                        {/* future */}
-                                        {/* <IconButton size="small" disabled aria-label="Delete user">
-                      <DeleteOutlineIcon fontSize="small" />
-                    </IconButton> */}
-                                    </Stack>
-                                }
-                            >
-                                <ListItemAvatar>
-                                    <Avatar>{getInitials(name)}</Avatar>
-                                </ListItemAvatar>
-
-                                <ListItemText
-                                    primary={<Typography fontWeight={700}>{name}</Typography>}
-                                    secondary={
-                                        <Typography variant="body2" color="text.secondary">
+                                        <Typography variant="body2" color="text.secondary" noWrap sx={{ minWidth: 0 }}>
                                             {email}
                                             {typeof u.visitCount === "number" ? ` • Visits: ${u.visitCount}` : ""}
                                         </Typography>
-                                    }
-                                />
+                                    </Grid>
+
+                                    {/* Right column (fixed-ish, stays right) */}
+                                    <Grid
+                                        size={{ xs: 12, sm: "auto" }}
+                                        sx={{
+                                            minWidth: 0,
+                                            flex: { xs: "1 1 100%", sm: "0 0 auto" }, // full width on xs, auto on sm+
+                                            display: "flex",
+                                            justifyContent: { xs: "flex-start", sm: "flex-end" }
+                                        }}
+                                    >
+                                        <Stack
+                                            direction="row"
+                                            spacing={1}
+                                            alignItems="center"
+                                            sx={{
+                                                flexWrap: "wrap",
+                                                justifyContent: { xs: "flex-start", sm: "flex-end" },
+                                                maxWidth: "100%",
+                                                minWidth: 0
+                                            }}
+                                        >
+                                            <Chip
+                                                size="small"
+                                                label={role === "admin" ? "Admin" : role === "cm" ? "CM" : "User"}
+                                                variant="outlined"
+                                                color={role === "admin" ? "warning" : role === "cm" ? "info" : "default"}
+                                            />
+
+                                            <Chip
+                                                size="small"
+                                                label={u.modePreference === "dark" ? "Dark" : "Light"}
+                                                variant="outlined"
+                                            />
+
+                                            {/* keep last visit + edit together */}
+                                            <Stack direction="row" spacing={1} alignItems="center" sx={{ whiteSpace: "nowrap" }}>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    Last visit: {formatLastVisit(u.lastVisit)}
+                                                </Typography>
+
+                                                <IconButton size="small" onClick={() => openEdit(u)} aria-label="Edit user">
+                                                    <EditOutlinedIcon fontSize="small" />
+                                                </IconButton>
+                                            </Stack>
+                                        </Stack>
+                                    </Grid>
+                                </Grid>
                             </ListItem>
+
                             <Divider sx={{ my: 0.5 }} />
                         </React.Fragment>
                     );
