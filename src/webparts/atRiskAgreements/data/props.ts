@@ -91,6 +91,10 @@ export interface IRiskAgreementItem {
   // Workflow pointer (SharePoint Lookup column to Runs)
   currentRun?: ILookupItem;
   effectiveApprovedRun?: ILookupItem
+
+  // FLOW NOTIFICATION USE
+  popReminderLastSentOn: string; //date only
+  expiredReminderLastSentOn: string; //date only
 }
 
 // "instance state machine" row. One row per run.
@@ -138,6 +142,10 @@ export interface IWorkflowRunItem {
   coo: IPeoplePicker;
   ceo: IPeoplePicker;
   svpContracts: IPeoplePicker;
+
+  // FLOW NOTIFICATION USE
+  bicNotifiedOn: string; // datetime
+  bicNotifiedTo: string // auditing/troubleshooting
 }
 
 //Append-only rows. This is what renders in the timeline and use for "My Reviewed."
@@ -159,7 +167,6 @@ export interface IWorkflowActionItem {
   comment?: string;
   changeSummary?: string; // Mod/change details (optional)
   changePayloadJson?: string; // old/new values JSON
-  // Ordering convenience (optional)
   sequence?: number;
 }
 

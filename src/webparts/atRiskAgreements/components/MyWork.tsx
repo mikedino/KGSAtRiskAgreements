@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Box, Button, Grid, Stack, Tooltip, ToggleButton, ToggleButtonGroup } from "@mui/material";
+import { Box, Button, Grid, Stack, Tooltip, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
 import InfoCard from "../ui/InfoCard";
 import { useAgreements } from "../services/agreementsContext";
 import { ContextInfo } from "gd-sprest";
@@ -122,15 +122,15 @@ const MyWork: React.FC = () => {
 
   // Write to URL whenever user changes view/mode (so Back remembers it)
   const updateUrlState = React.useCallback((nextView: MyWorkViewKey, nextMode: MyWorkDisplayMode) => {
-      const qs = new URLSearchParams();
-      qs.set("view", nextView);
-      qs.set("mode", nextMode);
+    const qs = new URLSearchParams();
+    qs.set("view", nextView);
+    qs.set("mode", nextMode);
 
-      history.replace({
-        pathname: location.pathname,
-        search: `?${qs.toString()}`
-      });
-    }, [history, location.pathname]
+    history.replace({
+      pathname: location.pathname,
+      search: `?${qs.toString()}`
+    });
+  }, [history, location.pathname]
   );
 
   const handleSelectView = React.useCallback((key: MyWorkViewKey) => {
@@ -380,7 +380,14 @@ const MyWork: React.FC = () => {
 
 
   return (
-    <>
+    <Box sx={{ width: "100%" }}>
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="h4" fontWeight={700}>My Work</Typography>
+        <Typography variant="body2" color="text.secondary">
+          View My Approvals and My Submitted Agreements
+        </Typography>
+      </Box>
+
       <Grid container spacing={3}>
         <Grid size={4}>
           <InfoCard
@@ -508,7 +515,7 @@ const MyWork: React.FC = () => {
         )}
       </Box>
 
-    </>
+    </Box>
   )
 };
 

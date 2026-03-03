@@ -148,6 +148,7 @@ export const baseTheme = createTheme({
         MuiInputLabel: {
             styleOverrides: {
                 root: ({ theme }) => ({
+                    fontSize: fontSizeDefault,
                     "&.Mui-focused": {
                         color: theme.palette.info.main
                     },

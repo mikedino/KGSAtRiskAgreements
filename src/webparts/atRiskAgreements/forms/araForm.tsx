@@ -3,19 +3,17 @@ import { useState, useMemo, useEffect } from "react";
 import {
   Box, Grid, Typography, TextField, MenuItem, Button, Divider, Autocomplete,
   Skeleton, List, ListItem, ListItemText, CircularProgress,
-  FormLabel,
-  RadioGroup,
-  FormControlLabel,
-  Radio
+  FormLabel, RadioGroup, FormControlLabel, Radio, Stack,
+  ListItemIcon, IconButton, Link
 } from "@mui/material";
-import AttachFileOutlined from "@mui/icons-material/AttachFileOutlined";
+import { AttachFileOutlined, Close } from "@mui/icons-material";
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { Dayjs } from 'dayjs';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
-import { ContractType, IAttachmentInfo, IContractItem, IRiskAgreementItem } from "../data/props";
-import { IPersonaProps, Stack } from "@fluentui/react";
+import { ContractType, IAttachmentInfo, IContractItem, IPeoplePicker, IRiskAgreementItem } from "../data/props";
+import { IPersonaProps } from "@fluentui/react";
 import CurrencyField from "../ui/CurrencyField";
 import { DataSource } from "../data/ds";
 import { Web } from "gd-sprest";
@@ -24,7 +22,7 @@ import AlertDialog from "../ui/Alert";
 import { MuiPeoplePicker } from "../ui/CustomPeoplePicker";
 import { RiskAgreementService } from "../services/agreementService";
 import { buildAgreementDelta, formatDeltaSummary } from "../services/agreementDiff";
-//import { useTheme } from "@mui/material/styles";
+import { useTheme } from "@mui/material/styles";
 
 export type CancelReason = { type: "draft"; draftId: number } | { type: "normal" };
 
@@ -46,6 +44,7 @@ type SubmissionType = "existing" | "newOpp";
 
 const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mode, onSubmit, onCancel }) => {
 
+  const theme = useTheme();
   const [loading, setLoading] = useState<boolean>(true);
   const [invoiceLoading, setInvoiceLoading] = useState(false);
   const [submissionType, setSubmissionType] = useState<SubmissionType>("existing");
@@ -55,6 +54,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
   const [draftItemId, setDraftItemId] = useState<number | undefined>(undefined);
   const [attachments, setAttachments] = useState<IAttachmentInfo[]>([]);
   const [cmTouched, setCmTouched] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState<IRiskAgreementItem>({
     ...item,
     riskFundingRequested: item?.riskFundingRequested
@@ -136,6 +136,13 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
     });
   };
 
+  // helper for getting Project Manager automatically from Contract selection
+  const getProjectMgrRecord = async (email: string): Promise<IPeoplePicker | undefined> => {
+    const user = await Web().SiteUsers().getByEmail(email).executeAndWait() as unknown as IPeoplePicker;
+    if (!user) return undefined;
+    return { EMail: email, Id: user.Id, Title: user.Title }
+  }
+
   // helper for contract onChange to find OG and set, then find CM and set
   const applyOgAndCmFromContract = (contract: IContractItem | null): void => {
     const ogTitle = contract?.field_75 ?? "";
@@ -180,9 +187,72 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
     setAttachments((prev) => [...prev, newFile]);
   }
 
+  const removeAttachment = async (att: IAttachmentInfo): Promise<void> => {
+    if (!draftItemId) return;
+
+    //get the file
+    const file = await Web()
+      .Lists(Strings.Sites.main.lists.Agreements)
+      .Items()
+      .getById(draftItemId)
+      .AttachmentFiles()
+      .getByFileName(att.FileName)
+      .executeAndWait();
+
+    // then delete the file (would not do this all in one call)
+    await file.delete().executeAndWait();
+
+    setAttachments((prev) => prev.filter((a) => a.FileName !== att.FileName));
+  };
+
+  // RISK DATE VALIDATION HELPERS
+  //const tomorrow = dayjs().add(1, "day").startOf("day");
+  const today = dayjs().startOf("day");
+  const startPlusOne = form.riskStart ? dayjs(form.riskStart).add(1, "day").startOf("day") : null;
+  const riskEndMin = startPlusOne && startPlusOne.isAfter(today) ? startPlusOne : today;
+  const riskEndDay = form.riskEnd ? dayjs(form.riskEnd) : null;
+  const riskEndInvalid = !!riskEndDay && riskEndDay.isValid() && riskEndDay.isBefore(riskEndMin);
+  const riskEndMissing = !form.riskEnd;
+  const riskEndShowError = riskEndInvalid || (submitted && riskEndMissing);
+  const riskEndHelperText =
+    riskEndInvalid
+      ? `End date must be on/after ${riskEndMin.format("M/D/YYYY")} (after Risk Start and after today).`
+      : (submitted && riskEndMissing)
+        ? "Risk End Date is required."
+        : "End date must be after Risk Start and after today";
+
+  // Check for required and set error
+  const isRequiredError = (value?: unknown): boolean =>
+    submitted && (value === undefined || value === "" || value === null);
+
+  // Set custom form validation
+  const formInvalid =
+    riskEndInvalid ||
+    !form.riskStart ||
+    !form.riskEnd ||
+    !form.projectMgr ||
+    !form.contractMgr ||
+    !form.contractType ||
+    !form.entity ||
+    !form.og ||
+    !form.riskFundingRequested ||
+    !form.riskJustification ||
+    !attachments.length ||
+    !form.riskReason ||
+    (submissionType === "existing" && (!form.contractId || !form.invoice || !form.popEnd));
+
   // SUBMIT HANDLER
   const handleSubmit = (e: React.FormEvent): void => {
+
     e.preventDefault();
+
+    setSubmitted(true);
+
+    // STOP HERE if invalid
+    if (formInvalid) {
+      setDialogProps("Missing Required Fields", "Please correct the highlighted fields before submitting.");
+      return;
+    }
 
     // EDIT mode
     if (mode === "edit") {
@@ -201,7 +271,8 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
 
     // NEW mode
     if (!draftItemId) {
-      console.error("New mode submit before draft item created");
+      setDialogProps("Submit Error", "New mode submitted before a valid draft was created." +
+        "Please refresh and try again or contact IT Support if this continues.")
       return;
     }
 
@@ -219,22 +290,48 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
       <Typography variant="h6"><AttachFileOutlined /> Attachments</Typography>
       <Divider />
       <List dense>
-        {attachments.map(a => (
-          <ListItem key={a.FileName} component="a" href={a.ServerRelativeUrl} target="_blank">
-            <ListItemText primary={a.FileName} />
+        {attachments.map((a) => (
+          <ListItem key={a.FileName} disableGutters sx={{ px: 1, py: 0 }}          >
+            {/* Left "X" */}
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <IconButton
+                edge="start"
+                size="small"
+                aria-label={`Remove ${a.FileName}`}
+                onClick={() => {
+                  removeAttachment(a).catch((e) => {
+                    setDialogProps("Error deleting attachment", e);
+                  });
+
+                }}
+              >
+                <Close fontSize="small" />
+              </IconButton>
+            </ListItemIcon>
+
+            {/* Clickable file name */}
+            <ListItemText primary={
+              <Link href={a.ServerRelativeUrl} target="_blank" rel="noreferrer" underline="hover">
+                {a.FileName}
+              </Link>
+            } />
           </ListItem>
         ))}
       </List>
-      <Button variant="outlined" color="primary" component="label">
-        Upload Documents
-        <input hidden type="file" multiple
-          onChange={(e) => {
-            const files = e.target.files;
-            if (!files) return;
-            Array.from(files).forEach(uploadAttachment);
-          }}
-        />
-      </Button>
+      <Stack direction="column" spacing={1} alignItems="flex-start">
+        {!attachments.length && (<Typography variant="caption" color={submitted ? "error" : "primary"}>At least one attachment is required.</Typography>)}
+        <Button variant="outlined" color="primary" component="label">
+          Upload Documents
+          <input hidden type="file" multiple
+            onChange={(e) => {
+              const files = e.target.files;
+              if (!files) return;
+              Array.from(files).forEach(uploadAttachment);
+              e.target.value = ""; // allows re-uploading same filename immediately
+            }}
+          />
+        </Button>
+      </Stack>
     </Box>
   );
 
@@ -265,21 +362,19 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
 
   const fontSizeDefault = 14;
   const minHeight = "41px";
-  //const lineHeight = "21px";
   const paddingVertical = "10px";
 
   return (
 
-    <form onSubmit={handleSubmit}>
+    // let me handle the validation instead of the MUI/Browser
+    <form onSubmit={handleSubmit} noValidate>
       <Box
-        // Override font size for this form
         sx={{
-          //"& .MuiInputBase-root": { fontSize: fontSizeDefault, lineHeight: lineHeight },
-          //"& .MuiInputLabel-root": { fontSize: fontSizeDefault },
-          //"& .MuiTextField-root": { fontSize: fontSizeDefault, minHeight: minHeight },
-          //"& .MuiFormHelperText-root": { fontSize: "0.75rem" },
+          backgroundColor: theme.custom?.cardBg,
+          borderColor: theme.custom?.cardBorder,
+          border: "1px solid",
+          padding: 2,
           "& .MuiPickersSectionList-root": { fontSize: fontSizeDefault, py: paddingVertical, minHeight: minHeight },
-          //"& .MuiOutlinedInput-input": { py: paddingVertical, lineHeight: lineHeight },
           "& .MuiAutocomplete-root .MuiOutlinedInput-root.MuiOutlinedInput-root": { padding: 0, minHeight: minHeight },
           "& .MuiAutocomplete-root .MuiOutlinedInput-root.MuiInputBase-sizeSmall .MuiAutocomplete-input": { padding: "10px 14px" }
         }}>
@@ -341,23 +436,38 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                   onChange={(_, newValue) => {
                     updateField("projectName", newValue?.field_20 ?? "");
                     updateField("contractId", newValue?.field_19 ?? undefined);
+
+                    // get/verify PM
+                    const pmEmail = (newValue?.field_21 ?? "").trim();
+                    if (pmEmail) {
+                      getProjectMgrRecord(pmEmail)
+                        .then((person) => updateField("projectMgr", person))
+                        .catch((e) => console.error("Could not set Project Manager field", e))
+                    } else {
+                      updateField("projectMgr", undefined);
+                    }
+
                     // force defaults for OG and CM
                     applyOgAndCmFromContract(newValue);
+
                     // reset invoice when contract changes
                     updateField("invoice", "");
+
                   }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
                       label="Project / Contract Name"
                       required
+                      error={submitted && submissionType === "existing" && !form.contractId}
+                      helperText={submitted && !form.contractId ? "Contract is required" : undefined}
                     />
                   )}
                   renderOption={(props, option) => (
                     <li {...props} key={option.field_19}>
                       <Stack>
-                        <Typography fontSize={14} fontWeight={500}>{option.field_20}</Typography>
-                        <Typography variant="body2" color="text.secondary">{option.field_35}</Typography>
+                        <Typography fontSize={14} fontWeight={500} about="Contract Title">{option.field_20}</Typography>
+                        <Typography variant="body2" color="text.secondary" about="Customer Contract Code">{option.field_35}</Typography>
                       </Stack>
                     </li>
                   )}
@@ -393,14 +503,22 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                       label="JAMIS Invoice No."
                       required
                       disabled={!form.contractId || invoiceLoading}
-                      InputProps={{
-                        ...params.InputProps,
-                        endAdornment: (
-                          <>
-                            {invoiceLoading ? <CircularProgress size={18} /> : null}
-                            {params.InputProps.endAdornment}
-                          </>
-                        )
+                      error={submitted && submissionType === "existing" && !form.invoice}
+                      helperText={
+                        submitted && submissionType === "existing" && !form.invoice
+                          ? "Invoice is required"
+                          : undefined
+                      }
+                      slotProps={{
+                        input: {
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {invoiceLoading ? <CircularProgress size={18} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          )
+                        }
                       }}
                     />
                   )}
@@ -422,14 +540,22 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                   <TextField
                     label="Contract Name"
                     fullWidth
-                    required
+                    required={submissionType === "newOpp"}
                     disabled
                     value="New Award"
                   />
                 </Grid>
 
                 <Grid size={{ xs: 12, md: 6, xl: 4 }}>
-                  <TextField label="Program Name" fullWidth required value={form.programName ?? ""} onChange={(e) => updateField("programName", e.target.value)} />
+                  <TextField
+                    label="Program Name"
+                    fullWidth
+                    required={submissionType === "newOpp"}
+                    error={submitted && submissionType === "newOpp" && isRequiredError(form.programName)}
+                    helperText={submitted && !form.programName ? "Program Name is required" : undefined}
+                    value={form.programName ?? ""}
+                    onChange={(e) => updateField("programName", e.target.value)}
+                  />
                 </Grid>
               </>
             )}
@@ -476,6 +602,8 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                 label="Contract Type"
                 fullWidth
                 required
+                error={submitted && isRequiredError(form.contractType)}
+                helperText={submitted && !form.contractType ? "Contract Type is required" : undefined}
                 value={form.contractType ?? ""}
                 onChange={(e) => updateField("contractType", e.target.value as ContractType)}
               >
@@ -498,7 +626,10 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                   }
                   slotProps={{
                     textField: {
-                      fullWidth: true
+                      fullWidth: true,
+                      required: submissionType === "existing",
+                      error: submitted && isRequiredError(form.popEnd),
+                      helperText: submitted && !form.popEnd ? "PoP End Date is required" : undefined
                     }
                   }}
                 />
@@ -506,7 +637,16 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
             )}
 
             <Grid size={{ xs: 12, md: 6, xl: 4 }}>
-              <TextField select label="Entity" required fullWidth value={form.entity ?? ""} onChange={(e) => updateField("entity", e.target.value)} >
+              <TextField
+                select
+                label="Entity"
+                required
+                fullWidth
+                value={form.entity ?? ""}
+                error={submitted && isRequiredError(form.entity)}
+                helperText={submitted && !form.entity ? "Entity is required" : undefined}
+                onChange={(e) => updateField("entity", e.target.value)}
+              >
                 <MenuItem value="">Select Entity</MenuItem>
                 {DataSource.Entities.map((e) => (
                   <MenuItem key={e.Id} value={e.abbr}>
@@ -517,8 +657,14 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
             </Grid>
 
             <Grid size={{ xs: 12, md: 6, xl: 4 }}>
-              <TextField select label="Operating Group" required fullWidth
+              <TextField
+                select
+                label="Operating Group"
+                required
+                fullWidth
                 value={form.og ?? ""}
+                error={submitted && isRequiredError(form.og)}
+                helperText={submitted && !form.og ? "OG is required" : undefined}
                 onChange={(e) => {
                   // on change, default CM only if not touched (or CM empty)
                   const newOg = e.target.value;
@@ -546,6 +692,8 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                 value={form.projectMgr?.EMail ? [form.projectMgr.EMail] : []}
                 required
                 onChange={(items) => handlePeoplePicker(items, "projectMgr")}
+                error={submitted && isRequiredError(form.projectMgr)}
+                helperText={submitted && isRequiredError(form.projectMgr) ? "Project Manager is required" : undefined}
                 selectionLimit={1}
               />
             </Grid>
@@ -560,6 +708,8 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                   setCmTouched(true);
                   handlePeoplePicker(items, "contractMgr");
                 }}
+                error={submitted && isRequiredError(form.contractMgr)}
+                helperText={submitted && isRequiredError(form.contractMgr) ? "Contract Manager is required" : undefined}
                 selectionLimit={1}
               />
             </Grid>
@@ -582,7 +732,9 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                 slotProps={{
                   textField: {
                     fullWidth: true,
-                    required: true
+                    required: true,
+                    error: submitted && isRequiredError(form.riskStart),
+                    helperText: submitted && !form.riskStart ? "Risk Start Date is required" : undefined
                   }
                 }}
               />
@@ -591,14 +743,17 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
             <Grid size={{ xs: 12, md: 6, lg: 3 }}>
               <DatePicker
                 label="Risk End Date"
-                value={form.riskEnd ? dayjs(form.riskEnd) : null}
+                value={riskEndDay}
+                minDate={riskEndMin}
                 onChange={(value: Dayjs | null) =>
                   updateField("riskEnd", value ? value.format("MM/DD/YYYY") : "")
                 }
                 slotProps={{
                   textField: {
                     fullWidth: true,
-                    required: true
+                    required: true,
+                    error: riskEndShowError,
+                    helperText: riskEndHelperText
                   }
                 }}
               />
@@ -606,7 +761,16 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
 
             {submissionType === "existing" && (
               <Grid size={{ xs: 12, md: 6, lg: 3 }}>
-                <TextField select label="Reason for At-Risk Work" fullWidth required value={form.riskReason ?? ""} onChange={(e) => updateField("riskReason", e.target.value as IRiskAgreementItem["riskReason"])} >
+                <TextField
+                  select
+                  label="Reason for At-Risk Work"
+                  fullWidth
+                  required
+                  error={submitted && isRequiredError(form.riskReason)}
+                  helperText={submitted && !form.riskReason ? "Risk Reason is required" : undefined}
+                  value={form.riskReason ?? ""}
+                  onChange={(e) => updateField("riskReason", e.target.value as IRiskAgreementItem["riskReason"])}
+                >
                   <MenuItem value="Lack of funding">Lack of funding</MenuItem>
                   <MenuItem value="PoP End">PoP End</MenuItem>
                 </TextField>
@@ -620,10 +784,10 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                 required
                 value={form.riskFundingRequested}
                 onChange={(val) => updateField("riskFundingRequested", val)}
-                error={form.riskFundingRequested !== undefined && form.riskFundingRequested < 0}
+                error={submitted && isRequiredError(form.riskFundingRequested)}
                 helperText={
-                  form.riskFundingRequested === undefined
-                    ? "Enter an amount (0 is allowed)"
+                  submitted && isRequiredError(form.riskFundingRequested)
+                    ? "A Risk Funding Amount is required (0 is allowed)"
                     : undefined
                 }
               />
@@ -663,7 +827,10 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                 multiline
                 rows={5}
                 fullWidth
-                placeholder="Explain why this at-risk work is necessary..."
+                required
+                error={submitted && isRequiredError(form.riskJustification)}
+                helperText={submitted && !form.riskJustification ? "Justification is required" : undefined}
+                placeholder="(REQUIRED) Explain why this at-risk work is necessary..."
                 value={form.riskJustification ?? ""}
                 onChange={(e) => updateField("riskJustification", e.target.value)}
                 sx={{

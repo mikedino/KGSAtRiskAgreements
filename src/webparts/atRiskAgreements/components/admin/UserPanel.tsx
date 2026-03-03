@@ -19,26 +19,26 @@ interface UsersAdminPanelProps {
 }
 
 const getInitials = (displayName?: string): string => {
-  const name = (displayName ?? "").trim();
-  if (!name) return "?";
+    const name = (displayName ?? "").trim();
+    if (!name) return "?";
 
-  // If format is "Last, First MI"
-  if (name.includes(",")) {
-    const [lastPart, firstPart] = name.split(",").map(s => s.trim());
+    // If format is "Last, First MI"
+    if (name.includes(",")) {
+        const [lastPart, firstPart] = name.split(",").map(s => s.trim());
 
-    const firstInitial = firstPart?.[0] ?? "?";
-    const lastInitial = lastPart?.[0] ?? "";
+        const firstInitial = firstPart?.[0] ?? "?";
+        const lastInitial = lastPart?.[0] ?? "";
 
-    return (firstInitial + lastInitial).toUpperCase();
-  }
+        return (firstInitial + lastInitial).toUpperCase();
+    }
 
-  // Fallback: normal "First Last"
-  const parts = name.split(/\s+/).filter(Boolean);
+    // Fallback: normal "First Last"
+    const parts = name.split(/\s+/).filter(Boolean);
 
-  const first = parts[0]?.[0] ?? "?";
-  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+    const first = parts[0]?.[0] ?? "?";
+    const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
 
-  return (first + last).toUpperCase();
+    return (first + last).toUpperCase();
 };
 
 const formatLastVisit = (iso?: string): string => {
@@ -208,8 +208,8 @@ export const UsersAdminPanel: React.FC<UsersAdminPanelProps> = ({ users, onRoleC
 
                                     {/* Name/email column (flex, can shrink) */}
                                     <Grid
-                                        size={{ xs: 12, sm: 6, md: 7, lg: 7 }}
-                                        sx={{ minWidth: 0, flex: "1 1 auto" }}   // must be able to shrink
+                                        size={{ xs: 12, sm: "grow" }}
+                                        sx={{ minWidth: 0 }}  
                                     >
                                         <Typography fontWeight={700} noWrap>
                                             {name}

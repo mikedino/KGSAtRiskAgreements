@@ -114,7 +114,7 @@ export const formatSinceDate = (date?: string | Date): string => {
 
     // Previous year → numeric date
     if (d.year() !== now.year()) {
-        return d.format("MM/DD/YYYY");
+        return d.format("M/D/YYYY");
     }
 
     // Same year → long month, no year

@@ -123,7 +123,7 @@ const Admin: React.FC<AdminModuleProps> = ({ context, showBusy, hideBusy }) => {
 
   return (
     <>
-      <Box sx={{ p: 2, width: "100%" }}>
+      <Box sx={{ width: "100%" }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
           <Box>
             <Typography variant="h4" fontWeight={700}>Admin Panel</Typography>

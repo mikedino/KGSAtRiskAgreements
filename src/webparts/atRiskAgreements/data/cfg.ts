@@ -152,7 +152,21 @@ export const Configuration = Helper.SPConfig({
                     showField: "ID",
                     multi: false,
                     indexed: true
-                } as Helper.IFieldInfoLookup
+                } as Helper.IFieldInfoLookup,
+                {
+                    name: "popReminderLastSentOn",
+                    title: "POP Reminder Last Sent On",
+                    description: "(FROM FLOW) Tracks the last day the 'POP ending soon' reminder was sent.",
+                    type: Helper.SPCfgFieldType.Date,
+                    format: SPTypes.DateFormat.DateOnly
+                } as Helper.IFieldInfoDate,
+                {
+                    name: "expiredReminderLastSentOn",
+                    title: "Expired Reminder Last Sent On",
+                    description: "(FROM FLOW) Tracks the last day the 'Expired' reminder was sent.",
+                    type: Helper.SPCfgFieldType.Date,
+                    format: SPTypes.DateFormat.DateOnly
+                } as Helper.IFieldInfoDate
             ],
             ViewInformation: [
                 {
@@ -168,6 +182,23 @@ export const Configuration = Helper.SPConfig({
                         "popEnd",
                         "entity",
                         "projectMgr",
+                        "riskReason",
+                        "riskFundingRequested",
+                        "araStatus"
+                    ]
+                },
+                {
+                    ViewName: "FlowInfo",
+                    Default: false,
+                    ViewQuery: "<OrderBy><FieldRef Name=\"Modified\" Ascending=\"FALSE\" /></OrderBy>",
+                    ViewFields: [
+                        "LinkTitle",
+                        "Title",
+                        "projectName",
+                        "contractType",
+                        "riskStart",
+                        "riskEnd",
+                        "popEnd",
                         "riskReason",
                         "riskFundingRequested",
                         "araStatus"
@@ -430,7 +461,20 @@ export const Configuration = Helper.SPConfig({
                     name: "svpContracts",
                     title: "SVP Contracts",
                     type: Helper.SPCfgFieldType.User
-                } as Helper.IFieldInfoUser
+                } as Helper.IFieldInfoUser,
+                {
+                    name: "bicNotifiedOn",
+                    title: "BIC Notified On",
+                    description: "(FROM FLOW) Set when the initial BIC email is sent. Used to decide whether Flow should send again after a reassignment",
+                    type: Helper.SPCfgFieldType.Date,
+                    format: SPTypes.DateFormat.DateTime
+                } as Helper.IFieldInfoDate,
+                {
+                    name: "bicNotifiedTo",
+                    title: "BIC Notified To",
+                    description: "(FROM FLOW) Stores the email(s) it was sent to (primary + backup later). Helpful for troubleshooting/auditing",
+                    type: Helper.SPCfgFieldType.Text
+                },
             ],
             ViewInformation: [
                 {

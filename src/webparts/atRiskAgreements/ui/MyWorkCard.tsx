@@ -3,6 +3,7 @@ import { Card, CardContent, Typography, Chip, Stack, Grid, Divider, Box } from "
 import { IRiskAgreementItem } from "../data/props";
 import { AgreementWorkflowSummary } from "../components/MyWork";
 import { formatSinceDate, formatCurrency } from "../services/utils";
+import dayjs from "dayjs";
 
 interface MyWorkCardProps {
     item: IRiskAgreementItem;
@@ -19,7 +20,7 @@ const MyWorkCard: React.FC<MyWorkCardProps> = ({ item, workflow, onClick, varian
     const chipColor: "success" | "warning" | "error" | "default" =
         isResolved ? "success" : workflow.statusColor;
 
-    const formatDate = (value?: string): string => value ? new Date(value).toLocaleDateString() : "—"
+    const formatDate = (value?: string): string => value ? dayjs(value).format("M/D/YYYY") : "—";
 
     if (variant === "compact") {
         return (

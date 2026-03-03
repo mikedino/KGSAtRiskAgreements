@@ -96,13 +96,13 @@ export const ApproversAdminPanel: React.FC<ApproversAdminPanelProps> = ({
     return next;
   };
 
-const hasPerson = (p?: { Id?: number; EMail?: string; Title?: string } | null): boolean => {
-  // check email and ID
-  const idOk = typeof p?.Id === "number" && p.Id > 0;
-  const emailOk = typeof p?.EMail === "string" && p.EMail.trim().length > 0;
+  const hasPerson = (p?: { Id?: number; EMail?: string; Title?: string } | null): boolean => {
+    // check email and ID
+    const idOk = typeof p?.Id === "number" && p.Id > 0;
+    const emailOk = typeof p?.EMail === "string" && p.EMail.trim().length > 0;
 
-  return idOk && emailOk;
-};
+    return idOk && emailOk;
+  };
 
   const clearFieldError = (key: string): void => {
     setFieldErrors(prev => {
@@ -341,7 +341,7 @@ const hasPerson = (p?: { Id?: number; EMail?: string; Title?: string } | null): 
 
       <Paper variant="outlined" sx={{ p: 2 }}>
         <Grid container spacing={2} sx={{ minWidth: 0 }}>
-          <Grid size={{ xs: 12, md: 2 }} sx={{ minWidth: "200px" }}>
+          <Grid size={{ xs: 12, md: 3, xl: 2 }} >
             <Tabs
               orientation={isSmall ? "horizontal" : "vertical"}
               value={section}
@@ -386,7 +386,7 @@ const hasPerson = (p?: { Id?: number; EMail?: string; Title?: string } | null): 
             </Tabs>
           </Grid>
 
-          <Grid size={{ xs: 12, md: 10 }} sx={{ minWidth: 0 }}>
+          <Grid size={{ xs: 12, md: 9, xl: 10 }} sx={{ minWidth: 0 }}>
             {showFilter && (
               <Box sx={{ mb: 2, minWidth: 0 }}>
                 <TextField

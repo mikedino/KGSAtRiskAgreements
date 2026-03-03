@@ -62,7 +62,7 @@ export const MuiPeoplePicker: React.FC<MuiPeoplePickerProps> = ({
           color: theme.palette.text.secondary,
           fontWeight: 400,
           fontSize: theme.typography.body1.fontSize,
-          backgroundColor: theme.palette.background.default,
+          backgroundColor: theme.palette.background.paper,
           lineHeight: "1.4375em",
           px: "4px",
           zIndex: 1,

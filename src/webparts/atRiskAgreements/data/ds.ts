@@ -164,7 +164,7 @@ export class DataSource {
     public static agreementSelectQuery: string[] = [
         "Id", "Title", "projectName", "contractId", "invoice", "contractType", "riskStart", "riskEnd", "popEnd",
         "entity", "riskReason", "riskFundingRequested", "riskJustification", "contractName", "programName",
-        "araStatus", "Created", "Modified", "og", "hasSubcontract",
+        "araStatus", "Created", "Modified", "og", "hasSubcontract", "Attachments",
         "Author/Id", "Author/Title", "Author/EMail",
         "backupRequestor/Id", "backupRequestor/Title", "backupRequestor/EMail",
         "projectMgr/Id", "projectMgr/Title", "projectMgr/EMail",
@@ -557,18 +557,25 @@ export class DataSource {
                 .query({
                     GetAllItems: true,
                     OrderBy: ["field_20"],
-                    Select: ["Id", "Title", "field_19", "field_20", "field_35", "field_21", "field_23", "field_75"],
-                    Filter: `field_16 ge datetime'${today.toISOString()}'`, //Completion Date in the future
+                    Select: ["Id", "Title", "field_19", "field_20", "field_35", "field_21", "field_23", "field_75", "field_16"],
+                    //Filter: `field_16 ge datetime'${today.toISOString()}'`, //Completion Date in the future
+                    //field_16 (Completion Date is stored as text so we can't do a proper comparison)
                     Top: 5000
                 })
                 .execute(
                     // Success
                     (items) => {
                         if (items?.results?.length) {
-                            this._contracts = items.results as unknown as IContractItem[];
+                            const allContracts = items.results as unknown as IContractItem[];
 
-                            // resolve with retrieved items
+                            this._contracts = allContracts.filter((c) => new Date(c.field_16) >= today)
+
+                            // resolve with filtered items
                             resolve(this._contracts);
+
+                            //console.log("All Contracts", this._contracts);
+                            //console.log("Filtered Contracts", filtered);
+
                         } else {
                             //none found - resolve with empty array
                             resolve([]);

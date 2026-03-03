@@ -16,6 +16,7 @@ type AgreementViewKey =
   | "pending"
   | "rejected"
   | "canceled"
+  | "resolved"
   | "expiring"
   | "expired";
 
@@ -73,6 +74,12 @@ const AgreementsGrid: React.FC = () => {
       predicate: a => a.araStatus === "Canceled"
     },
     {
+      key: "resolved",
+      label: "Resolved",
+      tooltip: "All Resolved agreements",
+      predicate: a => a.araStatus === "Resolved"
+    },
+    {
       key: "expiring",
       label: "Expiring soon",
       tooltip: "Approved or Resolved agreements expiring within 4 weeks",
@@ -85,9 +92,9 @@ const AgreementsGrid: React.FC = () => {
     {
       key: "expired",
       label: "Expired",
-      tooltip: "Approved or Resolved agreements with a past Risk End date",
+      tooltip: "Approved agreements with a past Risk End date",
       predicate: a =>
-        ["Approved", "Resolved"].includes(a.araStatus) &&
+        a.araStatus==="Approved" &&
         !!a.riskEnd &&
         dayjs(a.riskEnd).isBefore(today, "day")
     }
@@ -292,7 +299,7 @@ const AgreementsGrid: React.FC = () => {
       minWidth: 120,
       renderCell: (params) =>
         params.row.riskStart
-          ? dayjs(params.row.riskStart).format("MM/DD/YYYY")
+          ? dayjs(params.row.riskStart).format("M/D/YYYY")
           : ""
     },
     {
@@ -301,7 +308,7 @@ const AgreementsGrid: React.FC = () => {
       minWidth: 120,
       renderCell: (params) =>
         params.row.riskEnd
-          ? dayjs(params.row.riskEnd).format("MM/DD/YYYY")
+          ? dayjs(params.row.riskEnd).format("M/D/YYYY")
           : ""
     },
     {
@@ -310,7 +317,7 @@ const AgreementsGrid: React.FC = () => {
       minWidth: 120,
       renderCell: (params) =>
         params.row.popEnd
-          ? dayjs(params.row.popEnd).format("MM/DD/YYYY")
+          ? dayjs(params.row.popEnd).format("M/D/YYYY")
           : ""
     },
     {
@@ -335,7 +342,7 @@ const AgreementsGrid: React.FC = () => {
       minWidth: 120,
       renderCell: (params) =>
         params.row.Created
-          ? dayjs(params.row.Created).format("MM/DD/YYYY")
+          ? dayjs(params.row.Created).format("M/D/YYYY")
           : ""
     }
   ];
@@ -362,6 +369,11 @@ const AgreementsGrid: React.FC = () => {
           title: "No canceled agreements",
           description: "There are no canceled agreements in this view."
         };
+              case "resolved":
+        return {
+          title: "No resolved agreements",
+          description: "There are no Resolved agreements in this view."
+        };
       case "expiring":
         return {
           title: "Nothing expiring soon",
@@ -370,7 +382,7 @@ const AgreementsGrid: React.FC = () => {
       case "expired":
         return {
           title: "No expired agreements",
-          description: "There are no Approved or Resolved agreements with a past Risk End date."
+          description: "There are no Approved agreements with a past Risk End date."
         };
       case "all":
       default:
@@ -382,8 +394,13 @@ const AgreementsGrid: React.FC = () => {
   };
 
   return (
-    <Box sx={{ px: 3, pb: 4 }}>
-      <Typography variant="h4" fontWeight={600} gutterBottom>All Agreements</Typography>
+    <Box sx={{ width: "100%" }}>
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="h4" fontWeight={700}>All Agreements</Typography>
+        <Typography variant="body2" color="text.secondary">
+          View and find all Agreements
+        </Typography>
+      </Box>
 
       {/* SEARCH + FILTER BAR */}
       <Box

@@ -9,7 +9,7 @@ export const lightTheme = createTheme(baseTheme, {
     primary: { main: "#003057" },
     secondary: { main: "#005C6C", light: "#0000003b"  },   // light = input borders!
     error: { main: "#B00020" },
-    warning: { main: "#F4B740", contrastText: "#003057" },
+    warning: { main: "#ffa900", contrastText: "#003057" },
     info: { main: "#0078D4" },
     success: { main: "#3BA55C" },
 

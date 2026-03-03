@@ -113,178 +113,187 @@ const Dashboard: React.FC = () => {
   const stageValues = avgStageTimes.map((s) => Number(s.avgDays.toFixed(2)));
 
   return (
-    <Grid container spacing={3}>
-      <Grid size={{ lg: 3, md: 3, sm: 6, xs: 12 }}>
-        <InfoCard
-          title="Total Agreements"
-          value={kpis.totalAgreements}
-          subtitle="All time"
-          icon={<TrendingUpIcon />}
-          iconColor="success"
-        />
-      </Grid>
+    <Box sx={{ width: "100%" }}>
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="h4" fontWeight={700}>Dashboard</Typography>
+        <Typography variant="body2" color="text.secondary">
+          View metrics and actionable data
+        </Typography>
+      </Box>
 
-      <Grid size={{ lg: 3, md: 3, sm: 6, xs: 12 }}>
-        <InfoCard
-          title="Pending Approvals"
-          value={kpis.pendingApprovals}
-          subtitle="Require action"
-          icon={<AccessTimeIcon />}
-          iconColor="error"
-        />
-      </Grid>
-
-      <Grid size={{ lg: 3, md: 3, sm: 6, xs: 12 }}>
-        <InfoCard
-          title="Overdue Approvals"
-          value={kpis.overdueSummary.overdueCount}
-          subtitle="Over 7 days"
-          icon={<HourglassTop />}
-          iconColor="warning"
-          footer={overdueFooter}
-        />
-      </Grid>
-
-      <Grid size={{ lg: 3, md: 3, sm: 6, xs: 12 }}>
-        <InfoCard
-          title="Oldest Pending"
-          value={kpis.overdueSummary.oldestPendingDays !== undefined ? `${kpis.overdueSummary.oldestPendingDays.toFixed(1)}d` : "—"}
-          subtitle="Longest wait"
-          icon={<AccessTimeIcon />}
-          iconColor="info"
-        />
-      </Grid>
-
-      <Grid size={{ lg: 3, md: 3, sm: 6, xs: 12 }}>
-        <InfoCard
-          title="Approved This Month"
-          value={kpis.approvedThisMonth}
-          subtitle=""
-          icon={<CheckCircleIcon />}
-          iconColor="success"
-        />
-      </Grid>
-
-      <Grid size={{ lg: 3, md: 3, sm: 6, xs: 12 }}>
-        <InfoCard
-          title="Expiring Soon"
-          value={kpis.expiringSoon}
-          subtitle="Next 30 days"
-          icon={<HourglassTop />}
-          iconColor="warning"
-        />
-      </Grid>
-
-      <Grid size={{ lg: 3, md: 3, sm: 6, xs: 12 }}>
-        <InfoCard
-          title="Avg Approval Time"
-          value={kpis.avgApprovalDays !== undefined ? `${kpis.avgApprovalDays.toFixed(1)}d` : "—"}
-          subtitle={
-            kpis.avgApprovalDaysDelta !== undefined
-              ? `${kpis.avgApprovalDaysDelta > 0 ? "+" : ""}${kpis.avgApprovalDaysDelta.toFixed(1)}d from last month`
-              : ""
-          }
-          icon={<AccessTimeIcon />}
-          iconColor="info"
-        />
-      </Grid>
-
-      <Grid size={{ lg: 3, md: 3, sm: 6, xs: 12 }}>
-        <InfoCard
-          title="At-Risk Value"
-          value={fmtMoney(kpis.atRiskValue)}
-          subtitle="Active pipeline"
-          icon={<MonetizationOnIcon />}
-          iconColor="warning"
-        />
-      </Grid>
-
-      {/* CHARTS GRID */}
-      <Grid container spacing={3} sx={{ mt: 0 }}>
-        <Grid size={{ lg: 6, md: 12, xs: 12 }}>
-          {/* Monthly Line chart */}
-          <ChartCard title="Monthly Agreement Trends">
-            <LineChart
-              dataset={monthlyTrends} // IMonthlyTrendPoint[]
-              xAxis={[{ dataKey: "month", scaleType: "point" }]}
-              series={[
-                { dataKey: "created", label: "Created" },
-                { dataKey: "approved", label: "Approved" }
-              ]}
-              height={300}
-              margin={{ left: 20, right: 20, top: 20, bottom: 30 }}
-            />
-          </ChartCard>
+      <Grid container spacing={3}>
+        <Grid size={{ lg: 3, md: 3, sm: 6, xs: 12 }}>
+          <InfoCard
+            title="Total Agreements"
+            value={kpis.totalAgreements}
+            subtitle="All time"
+            icon={<TrendingUpIcon />}
+            iconColor="success"
+          />
         </Grid>
 
-        <Grid size={{ lg: 6, md: 12, xs: 12 }}>
-          {/* Status donut */}
-          <ChartCard title="Agreement Status Distribution">
-            <PieChart
-              series={[
-                {
-                  data: statusDistribution, // IDistributionPoint[]
-                  innerRadius: 40,
-                  outerRadius: 100,
-                  paddingAngle: 2,
-                  cornerRadius: 5
-                }
-              ]}
-              height={300}
-              margin={{ left: 10, right: 20, top: 10, bottom: 10 }}
-            />
-          </ChartCard>
+        <Grid size={{ lg: 3, md: 3, sm: 6, xs: 12 }}>
+          <InfoCard
+            title="Pending Approvals"
+            value={kpis.pendingApprovals}
+            subtitle="Require action"
+            icon={<AccessTimeIcon />}
+            iconColor="error"
+          />
         </Grid>
 
-        <Grid size={{ lg: 6, md: 12, xs: 12 }}>
-          {/* Stage bar */}
-          <ChartCard title="Average Approval Time by Stage">
-            <BarChart
-              xAxis={[{
-                scaleType: "band",
-                data: stageLabels,
-                valueFormatter: (v) => wrapLabel(String(v), 16, 3),
-                tickLabelStyle: { whiteSpace: "pre-line", fontSize: 12 }
-              }]}
-              series={[{
-                data: stageValues,
-                //label: "Avg days",
-                valueFormatter: (v) => `${Number(v).toFixed(1)}d`
-              }]}
-              height={300}
-              borderRadius={5}
-              margin={{ left: 20, right: 20, top: 20, bottom: 40 }}
-              slotProps={{
-                barLabel: { style: { fontSize: 12 } }
-              }}
-            >
-              <ChartsReferenceLine y={5} lineStyle={{ stroke: theme.palette.warning.main, strokeWidth: 1 }} />
-              <ChartsReferenceLine y={10} lineStyle={{ stroke: "#fa4f58", strokeWidth: 1 }} />
-            </BarChart>
-          </ChartCard>
+        <Grid size={{ lg: 3, md: 3, sm: 6, xs: 12 }}>
+          <InfoCard
+            title="Overdue Approvals"
+            value={kpis.overdueSummary.overdueCount}
+            subtitle="Over 7 days"
+            icon={<HourglassTop />}
+            iconColor="warning"
+            footer={overdueFooter}
+          />
         </Grid>
 
-        <Grid size={{ lg: 6, md: 12, xs: 12 }}>
-          {/* Risk donut */}
-          <ChartCard title="Risk Level Distribution">
-            <PieChart
-              series={[
-                {
-                  data: riskDistribution, // IDistributionPoint[]
-                  innerRadius: 40,
-                  outerRadius: 100,
-                  paddingAngle: 2,
-                  cornerRadius: 5
-                }
-              ]}
-              height={300}
-              margin={{ left: 10, right: 20, top: 10, bottom: 10 }}
-            />
-          </ChartCard>
+        <Grid size={{ lg: 3, md: 3, sm: 6, xs: 12 }}>
+          <InfoCard
+            title="Oldest Pending"
+            value={kpis.overdueSummary.oldestPendingDays !== undefined ? `${kpis.overdueSummary.oldestPendingDays.toFixed(1)}d` : "—"}
+            subtitle="Longest wait"
+            icon={<AccessTimeIcon />}
+            iconColor="info"
+          />
         </Grid>
+
+        <Grid size={{ lg: 3, md: 3, sm: 6, xs: 12 }}>
+          <InfoCard
+            title="Approved This Month"
+            value={kpis.approvedThisMonth}
+            subtitle=""
+            icon={<CheckCircleIcon />}
+            iconColor="success"
+          />
+        </Grid>
+
+        <Grid size={{ lg: 3, md: 3, sm: 6, xs: 12 }}>
+          <InfoCard
+            title="Expiring Soon"
+            value={kpis.expiringSoon}
+            subtitle="Next 30 days"
+            icon={<HourglassTop />}
+            iconColor="warning"
+          />
+        </Grid>
+
+        <Grid size={{ lg: 3, md: 3, sm: 6, xs: 12 }}>
+          <InfoCard
+            title="Avg Approval Time"
+            value={kpis.avgApprovalDays !== undefined ? `${kpis.avgApprovalDays.toFixed(1)}d` : "—"}
+            subtitle={
+              kpis.avgApprovalDaysDelta !== undefined
+                ? `${kpis.avgApprovalDaysDelta > 0 ? "+" : ""}${kpis.avgApprovalDaysDelta.toFixed(1)}d from last month`
+                : ""
+            }
+            icon={<AccessTimeIcon />}
+            iconColor="info"
+          />
+        </Grid>
+
+        <Grid size={{ lg: 3, md: 3, sm: 6, xs: 12 }}>
+          <InfoCard
+            title="At-Risk Value"
+            value={fmtMoney(kpis.atRiskValue)}
+            subtitle="Active pipeline"
+            icon={<MonetizationOnIcon />}
+            iconColor="warning"
+          />
+        </Grid>
+
+        {/* CHARTS GRID */}
+        <Grid container spacing={3} sx={{ mt: 0 }}>
+          <Grid size={{ lg: 6, md: 12, xs: 12 }}>
+            {/* Monthly Line chart */}
+            <ChartCard title="Monthly Agreement Trends">
+              <LineChart
+                dataset={monthlyTrends} // IMonthlyTrendPoint[]
+                xAxis={[{ dataKey: "month", scaleType: "point" }]}
+                series={[
+                  { dataKey: "created", label: "Created" },
+                  { dataKey: "approved", label: "Approved" }
+                ]}
+                height={300}
+                margin={{ left: 20, right: 20, top: 20, bottom: 30 }}
+              />
+            </ChartCard>
+          </Grid>
+
+          <Grid size={{ lg: 6, md: 12, xs: 12 }}>
+            {/* Status donut */}
+            <ChartCard title="Agreement Status Distribution">
+              <PieChart
+                series={[
+                  {
+                    data: statusDistribution, // IDistributionPoint[]
+                    innerRadius: 40,
+                    outerRadius: 100,
+                    paddingAngle: 2,
+                    cornerRadius: 5
+                  }
+                ]}
+                height={300}
+                margin={{ left: 10, right: 20, top: 10, bottom: 10 }}
+              />
+            </ChartCard>
+          </Grid>
+
+          <Grid size={{ lg: 6, md: 12, xs: 12 }}>
+            {/* Stage bar */}
+            <ChartCard title="Average Approval Time by Stage">
+              <BarChart
+                xAxis={[{
+                  scaleType: "band",
+                  data: stageLabels,
+                  valueFormatter: (v) => wrapLabel(String(v), 16, 3),
+                  tickLabelStyle: { whiteSpace: "pre-line", fontSize: 12 }
+                }]}
+                series={[{
+                  data: stageValues,
+                  //label: "Avg days",
+                  valueFormatter: (v) => `${Number(v).toFixed(1)}d`
+                }]}
+                height={300}
+                borderRadius={5}
+                margin={{ left: 20, right: 20, top: 20, bottom: 40 }}
+                slotProps={{
+                  barLabel: { style: { fontSize: 12 } }
+                }}
+              >
+                <ChartsReferenceLine y={5} lineStyle={{ stroke: theme.palette.warning.main, strokeWidth: 1 }} />
+                <ChartsReferenceLine y={10} lineStyle={{ stroke: "#fa4f58", strokeWidth: 1 }} />
+              </BarChart>
+            </ChartCard>
+          </Grid>
+
+          <Grid size={{ lg: 6, md: 12, xs: 12 }}>
+            {/* Risk donut */}
+            <ChartCard title="Risk Level Distribution">
+              <PieChart
+                series={[
+                  {
+                    data: riskDistribution, // IDistributionPoint[]
+                    innerRadius: 40,
+                    outerRadius: 100,
+                    paddingAngle: 2,
+                    cornerRadius: 5
+                  }
+                ]}
+                height={300}
+                margin={{ left: 10, right: 20, top: 10, bottom: 10 }}
+              />
+            </ChartCard>
+          </Grid>
+        </Grid>
+
       </Grid>
-
-    </Grid>
+    </Box>
   );
 };
 

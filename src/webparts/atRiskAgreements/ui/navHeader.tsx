@@ -4,7 +4,7 @@ import { useAgreements } from "../services/agreementsContext";
 import { useTheme } from "@mui/material/styles";
 import { Handshake, Add, Dashboard, Work, ListAlt, AdminPanelSettings, Refresh, HelpOutlineOutlined } from "@mui/icons-material";
 import IconButton from '@mui/material/IconButton';
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import ThemeSwitcher from "./ThemeSwitcher";
 import { WebPartContext } from "@microsoft/sp-webpart-base";
 import { stringAvatar } from "../services/utils";
@@ -13,11 +13,12 @@ import { AppUserService } from "../services/userService";
 
 interface NavHeaderProps {
     context: WebPartContext;
+    appTitle: string;
     useDarkTheme: boolean;
     setUseDarkTheme: (val: boolean) => void;
 }
 
-const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDarkTheme }) => {
+const NavHeader: React.FC<NavHeaderProps> = ({ context, appTitle, useDarkTheme, setUseDarkTheme }) => {
 
     const theme = useTheme();
 
@@ -29,6 +30,17 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
     const isLarge = useMediaQuery(theme.breakpoints.down("lg"));
 
     const showAdmin = DataSource.isAdmin
+
+    // reusable style for button links
+    const navButtonSx = {
+        "&.active": {
+            color: "#a2e0ee"
+        },
+        "&:hover": {
+            color: "#F2C744",
+            backgroundColor: "rgba(242, 199, 68, 0.08)"
+        }
+    };
 
     return (
         <AppBar
@@ -45,7 +57,7 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
 
                     {/* Hide title when screen is small */}
                     {!isLarge && (
-                        <Typography variant="h5" sx={{ fontWeight: 600 }}>At-Risk Agreements</Typography>
+                        <Typography variant="h5" sx={{ fontWeight: 600 }}>{appTitle}</Typography>
                     )}
                 </Box>
 
@@ -53,21 +65,19 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
                 <Stack
                     direction="row"
                     spacing={2}
-                    sx={{
-                        alignItems: "center",
-                        alignContent: "flex-start",
-                        display: "flex",
-                        flexGrow: 1,
-                        "& .MuiButton-textInherit:hover": {
-                            color: "#F2C744",
-                            backgroundColor: "rgba(242, 199, 68, 0.08)"
-                        }
-                    }}>
-                    <Button title="My Work" startIcon={<Work />} color="inherit" component={Link} to="/my-work" >{!isSmall && "My Work"}</Button>
-                    <Button title="All Agreeements" startIcon={<ListAlt />} color="inherit" component={Link} to="/all-agreements">{!isSmall && "All Agreements"}</Button>
-                    <Button title="Dashboard" startIcon={<Dashboard />} color="inherit" component={Link} to="/dashboard">{!isSmall && "Dashboard"}</Button>
+                    sx={{ alignItems: "center", alignContent: "flex-start", display: "flex", flexGrow: 1 }}
+                >
+                    <Button title="My Work" startIcon={<Work />} color="inherit" component={NavLink} to="/my-work" sx={navButtonSx}>
+                        {!isSmall && "My Work"}
+                    </Button>
+                    <Button title="All Agreeements" startIcon={<ListAlt />} color="inherit" component={NavLink} to="/all-agreements" sx={navButtonSx}>
+                        {!isSmall && "All Agreements"}
+                    </Button>
+                    <Button title="Dashboard" startIcon={<Dashboard />} color="inherit" component={NavLink} to="/dashboard" sx={navButtonSx}>
+                        {!isSmall && "Dashboard"}
+                    </Button>
                     {showAdmin && (
-                        <Button title="Admin" startIcon={<AdminPanelSettings />} color="inherit" component={Link} to="/admin">
+                        <Button title="Admin" startIcon={<AdminPanelSettings />} color="inherit" component={NavLink} to="/admin" sx={navButtonSx}>
                             {!isSmall && "Admin"}
                         </Button>
                     )}
@@ -77,7 +87,7 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, useDarkTheme, setUseDark
                 {/* REFRESH, NEW AGREEMENT BUTTON */}
                 <Stack direction="row" spacing={1}>
                     <IconButton
-                        onClick={() => alert("help link")}
+                        onClick={() => alert("help link TBD")}
                         size="medium"
                         aria-label="User Guide"
                         title="User Guide"
