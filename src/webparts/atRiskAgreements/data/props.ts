@@ -18,7 +18,10 @@ export interface IPeoplePicker extends IPersonaProps {
   Title: string;
 }
 
-export interface IAttachmentInfo extends Types.SP.Attachment { }
+export interface IAttachmentInfo extends Types.SP.Attachment {
+  UniqueId?: string;  //GUID
+  LinkingUrl?: string;
+}
 
 // interface IHyperlinkField {
 //   Url: string;

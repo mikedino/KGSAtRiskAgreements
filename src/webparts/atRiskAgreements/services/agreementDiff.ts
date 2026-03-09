@@ -1,4 +1,5 @@
 import { IRiskAgreementItem, IPeoplePicker } from "../data/props";
+import { formatDate } from "./utils";
 
 export type FieldDelta = {
     label: string;
@@ -8,12 +9,12 @@ export type FieldDelta = {
 
 export type AgreementDelta = Record<string, FieldDelta>;
 
-const fmtDate = (value?: string): string => {
-    if (!value) return "";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return value; // fallback
-    return d.toLocaleDateString();
-};
+// const fmtDate = (value?: string): string => {
+//     if (!value) return "";
+//     const d = new Date(value);
+//     if (Number.isNaN(d.getTime())) return value; // fallback
+//     return d.toLocaleDateString();
+// };
 
 const fmtCurrency0 = (n?: number): string => {
     const num = typeof n === "number" ? n : 0;
@@ -42,9 +43,9 @@ export const buildAgreementDelta = (before: IRiskAgreementItem, after: IRiskAgre
     add("contractId", "Contract ID", fmtText(before.contractId), fmtText(after.contractId));
     add("invoice", "Invoice", fmtText(before.invoice), fmtText(after.invoice));
     add("contractType", "Contract Type", fmtText(before.contractType), fmtText(after.contractType));
-    add("riskStart", "Risk Start", fmtDate(before.riskStart), fmtDate(after.riskStart));
-    add("riskEnd", "Risk End", fmtDate(before.riskEnd), fmtDate(after.riskEnd));
-    add("popEnd", "PoP End", fmtDate(before.popEnd), fmtDate(after.popEnd));
+    add("riskStart", "Risk Start", formatDate(before.riskStart), formatDate(after.riskStart));
+    add("riskEnd", "Risk End", formatDate(before.riskEnd), formatDate(after.riskEnd));
+    add("popEnd", "PoP End", formatDate(before.popEnd), formatDate(after.popEnd));
     add("entity", "Entity", fmtText(before.entity), fmtText(after.entity));
     add("og", "Operating Group", fmtText(before.og), fmtText(after.og));
     add("projectMgr", "Project Manager", fmtPerson(before.projectMgr), fmtPerson(after.projectMgr));

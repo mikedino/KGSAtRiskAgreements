@@ -240,14 +240,45 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
         const load = async (): Promise<void> => {
             setAttachmentsLoading(true);
 
-            const files = await Web()
+            // get attachments
+            const attachedFiles = await Web()
                 .Lists(Strings.Sites.main.lists.Agreements)
                 .Items()
                 .getById(item.Id)
                 .AttachmentFiles()
                 .executeAndWait();
 
-            setAttachments(files.results ?? []);
+                //attachedFiles.results.forEach(a => a.FileName)
+
+            const baseAttachments = (attachedFiles.results ?? []) as IAttachmentInfo[];
+
+            // for each attachment, get the unique GUID to build out the custom URL
+            const enriched = await Promise.all(
+                baseAttachments.map(async (a) => {
+                    try {
+                        const file = await Web()
+                            .getFileByServerRelativeUrl(a.ServerRelativeUrl)
+                            .query({
+                                Select: ["UniqueId"]
+                            })
+                            .executeAndWait();
+
+                        const uniqueId = file?.UniqueId as string | undefined;
+                        const linkingUrl = file?.LinkingUrl as string | undefined;
+
+                        return {
+                            ...a,
+                            UniqueId: uniqueId,
+                            LinkingUrl: linkingUrl
+                        } as IAttachmentInfo;
+                    } catch (error) {
+                        console.warn("Could not resolve attachment UniqueId:", a.FileName, error);
+                        return a as IAttachmentInfo;
+                    }
+                })
+            );
+
+            setAttachments(enriched);
             setAttachmentsLoading(false);
         };
 

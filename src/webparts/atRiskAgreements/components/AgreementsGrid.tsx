@@ -9,6 +9,7 @@ import { IRiskAgreementItem, AraStatus } from "../data/props";
 import { useTheme } from "@mui/material/styles";
 import EmptyState, { EmptyStateProps } from "../ui/EmptyStateBox";
 import { useAgreements } from "../services/agreementsContext";
+import { formatDate } from "../services/utils";
 
 type AgreementViewKey =
   | "all"
@@ -297,28 +298,19 @@ const AgreementsGrid: React.FC = () => {
       field: "riskStart",
       headerName: "Risk Start",
       minWidth: 120,
-      renderCell: (params) =>
-        params.row.riskStart
-          ? dayjs(params.row.riskStart).format("M/D/YYYY")
-          : ""
+      renderCell: (params) => formatDate(params.row.riskStart)
     },
     {
       field: "riskEnd",
       headerName: "Risk End",
       minWidth: 120,
-      renderCell: (params) =>
-        params.row.riskEnd
-          ? dayjs(params.row.riskEnd).format("M/D/YYYY")
-          : ""
+      renderCell: (params) => formatDate(params.row.riskEnd)
     },
     {
       field: "popEnd",
       headerName: "PoP End",
       minWidth: 120,
-      renderCell: (params) =>
-        params.row.popEnd
-          ? dayjs(params.row.popEnd).format("M/D/YYYY")
-          : ""
+      renderCell: (params) => formatDate(params.row.popEnd)
     },
     {
       field: "riskFundingRequested",

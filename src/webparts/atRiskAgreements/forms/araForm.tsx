@@ -178,33 +178,6 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
   // ContractType options array
   const contractTypeOptions: ContractType[] = ["FFP/LOE", "T&M", "LH", "Hybrid", "Cost Plus/Reimbursable"];
 
-  const uploadAttachment = async (file: File): Promise<void> => {
-    if (!draftItemId) return;
-
-    const newFile = await Web().Lists(Strings.Sites.main.lists.Agreements).Items().getById(draftItemId)
-      .AttachmentFiles().add(file.name, file).executeAndWait();
-
-    setAttachments((prev) => [...prev, newFile]);
-  }
-
-  const removeAttachment = async (att: IAttachmentInfo): Promise<void> => {
-    if (!draftItemId) return;
-
-    //get the file
-    const file = await Web()
-      .Lists(Strings.Sites.main.lists.Agreements)
-      .Items()
-      .getById(draftItemId)
-      .AttachmentFiles()
-      .getByFileName(att.FileName)
-      .executeAndWait();
-
-    // then delete the file (would not do this all in one call)
-    await file.delete().executeAndWait();
-
-    setAttachments((prev) => prev.filter((a) => a.FileName !== att.FileName));
-  };
-
   // RISK DATE VALIDATION HELPERS
   //const tomorrow = dayjs().add(1, "day").startOf("day");
   const today = dayjs().startOf("day");
@@ -238,8 +211,36 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
     !form.riskFundingRequested ||
     !form.riskJustification ||
     !attachments.length ||
-    !form.riskReason ||
-    (submissionType === "existing" && (!form.contractId || !form.invoice || !form.popEnd));
+    (submissionType === "existing" && (!form.contractId || !form.invoice || !form.popEnd || !form.riskReason));
+
+  const uploadAttachment = async (file: File): Promise<void> => {
+    if (!draftItemId) return;
+
+    const buffer: ArrayBuffer = await file.arrayBuffer();
+
+    const newFile = await Web().Lists(Strings.Sites.main.lists.Agreements).Items().getById(draftItemId)
+      .AttachmentFiles().add(file.name, buffer).executeAndWait();
+
+    setAttachments((prev) => [...prev, newFile]);
+  }
+
+  const removeAttachment = async (att: IAttachmentInfo): Promise<void> => {
+    if (!draftItemId) return;
+
+    //get the file
+    const file = await Web()
+      .Lists(Strings.Sites.main.lists.Agreements)
+      .Items()
+      .getById(draftItemId)
+      .AttachmentFiles()
+      .getByFileName(att.FileName)
+      .executeAndWait();
+
+    // then delete the file (would not do this all in one call)
+    await file.delete().executeAndWait();
+
+    setAttachments((prev) => prev.filter((a) => a.FileName !== att.FileName));
+  };
 
   // SUBMIT HANDLER
   const handleSubmit = (e: React.FormEvent): void => {
@@ -488,12 +489,11 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                   isOptionEqualToValue={(option, value) => option.InvoiceID1 === value.InvoiceID1}
                   filterOptions={(options, { inputValue }) => {
                     const search = inputValue.toLowerCase().trim();
-                    if (!search) { return options.slice(0, 20); }
+                    if (!search) { return options; }
                     return options
                       .filter(o =>
                         o.field_42?.toLowerCase().includes(search) ||
-                        o.field_28?.toLowerCase().includes(search))
-                      .slice(0, 20);
+                        o.field_28?.toLowerCase().includes(search));
                   }}
                   value={selectedInvoice}
                   onChange={(_, newValue) => { updateField("invoice", newValue?.InvoiceID1 ?? ""); }}

@@ -93,9 +93,10 @@ export function buildWorkflowState(agreement: IRiskAgreementItem, run: IWorkflow
   const cancelAction = actions
     .filter(a => a.actionType === "Canceled")
     .sort((a, b) => new Date(b.actionCompletedDate).getTime() - new Date(a.actionCompletedDate).getTime())[0];
-  const isCanceled = agreement.araStatus === "Canceled" || !!cancelAction;
+  const isCanceled = !!cancelAction || (run.runStatus === "Completed" && agreement.araStatus === "Canceled");
   const cancelDate = cancelAction?.actionCompletedDate ?? run.completed;
   const cancelComment = cancelAction?.comment ?? "";
+  const cancelActorName = cancelAction?.actor?.Title ?? agreement.Author?.Title ?? "Unknown User";
 
   // RESOLVE DETECTION action for this run (if any)
   const resolveAction = actions
@@ -181,7 +182,7 @@ export function buildWorkflowState(agreement: IRiskAgreementItem, run: IWorkflow
         return {
           ...step,
           status: "Canceled",
-          approverName: decisionAction?.actor.Title,
+          approverName: `Canceled by ${cancelActorName}`,
           completeDate: cancelDate,
           comment: cancelComment,
           hidden: false
@@ -241,7 +242,7 @@ export function buildWorkflowState(agreement: IRiskAgreementItem, run: IWorkflow
       return {
         ...step,
         status: "Canceled",
-        approverName: `Canceled at this step by ${agreement.Author?.Title}`,
+        approverName: `Canceled by ${cancelActorName}`,
         completeDate: cancelDate,
         comment: cancelComment
       };

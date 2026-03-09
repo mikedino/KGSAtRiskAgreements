@@ -7,7 +7,7 @@ dayjs.extend(isToday);
 dayjs.extend(isYesterday);
 
 // format a number into a $0.00 USD display string
-export const formatCurrency = (value: number | undefined ): string => {
+export const formatCurrency = (value: number | undefined): string => {
     if (value === null || value === undefined) return "-"
 
     return value.toLocaleString("en-US", {
@@ -91,6 +91,15 @@ export const encodeListName = (
     });
 }
 
+/**
+ * Helper function that forces the date value to be formatted in M/D/YYYY regardless of browser setting
+ * @param value string value of a date
+ * @returns date value in M/D/YYYY or "-"
+ */
+export const formatDate = (value?: string): string => {
+    return value ? dayjs(value).format("M/D/YYYY") : "—";
+}
+
 
 /**
  * Helper function to format dates like SPO like "today" or "yesterday" or long month and
@@ -119,4 +128,89 @@ export const formatSinceDate = (date?: string | Date): string => {
 
     // Same year → long month, no year
     return d.format("MMMM D");
+};
+
+/**
+ * 
+ * @param fileType send in the file extension as a string (e.g. "docx" or "ppt")
+ * @returns Fluent UI icon name
+ */
+
+export const getFileIcon = (fileType: string): string => {
+    switch (fileType.toLowerCase()) {
+        // Word Documents
+        case 'doc':
+        case 'docx':
+        case 'dotx':
+        case 'dotm':
+        case 'docm':
+            return 'WordDocument';
+
+        // Excel Files
+        case 'xls':
+        case 'xlsx':
+        case 'xlsm':
+        case 'xlsb':
+        case 'xltx':
+        case 'xltm':
+            return 'ExcelDocument';
+
+        // PowerPoint Files
+        case 'ppt':
+        case 'pptx':
+        case 'pptm':
+        case 'ppsx':
+        case 'ppsm':
+        case 'potx':
+        case 'potm':
+            return 'PowerPointDocument';
+
+        // PDF Files
+        case 'pdf':
+            return 'PDF';
+
+        // Image Files
+        case 'jpg':
+        case 'jpeg':
+        case 'png':
+        case 'gif':
+        case 'bmp':
+        case 'tiff':
+            return 'FileImage';
+
+        // Text Files
+        case 'txt':
+            return 'TextDocument';
+
+        // Video Files
+        case 'mp4':
+        case 'avi':
+        case 'mov':
+        case 'wmv':
+        case 'flv':
+        case 'mkv':
+            return 'Video';
+
+        // Code Files
+        case 'html':
+        case 'css':
+        case 'js':
+        case 'ts':
+        case 'json':
+        case 'xml':
+        case 'py':
+        case 'java':
+        case 'c':
+        case 'cpp':
+        case 'cs':
+        case 'php':
+        case 'rb':
+        case 'swift':
+        case 'go':
+            return 'FileCode';
+
+        // Default / Other Files
+        default:
+            return 'Page';
+    }
 };
