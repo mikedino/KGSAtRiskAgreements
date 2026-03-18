@@ -9,7 +9,7 @@ export class AppUserService {
 
     static readonly visitSessionKey = "ara_visit_counted";
 
-    static createNewUser(): Promise<IAppUserItem> {
+    static createNewUserOnFirstVisit(): Promise<IAppUserItem> {
         const now = new Date().toISOString();
         return new Promise<IAppUserItem>((resolve, reject) => {
             Web().Lists(Strings.Sites.main.lists.Users).Items().add({
@@ -22,6 +22,20 @@ export class AppUserService {
                 (error) => reject(new Error(`Error creating user row: ${formatError(error)}`))
             );
         })
+    }
+
+    static createNewUserInAdminPanel(personId: number, role: IAppUserItem["role"], modePreference: IAppUserItem["modePreference"]): Promise<IAppUserItem> {
+        return new Promise<IAppUserItem>((resolve, reject) => {
+            Web().Lists(Strings.Sites.main.lists.Users).Items().add({
+                __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.Users)}ListItem` },
+                userId: personId,
+                modePreference,
+                role
+            }).execute(
+                (item) => resolve(item as unknown as IAppUserItem),
+                (error) => reject(new Error(`Error creating user row: ${formatError(error)}`))
+            );
+        });
     }
 
     // Update lastVisit always; increment count only once per browser session

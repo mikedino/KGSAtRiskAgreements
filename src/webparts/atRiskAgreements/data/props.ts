@@ -7,7 +7,7 @@ export interface IAppProps {
   context: WebPartContext;
 }
 
-interface ILookupItem {
+export interface ILookupItem {
   Id: number;
   Title?: string;
 }
@@ -201,7 +201,7 @@ export interface IOgItem {
   president: IPeoplePicker;
   lob: ILookupItem;
   CM: IPeoplePicker;
-  SCM: IPeoplePicker;
+  SCM?: IPeoplePicker;
 }
 
 export interface ILobItem {

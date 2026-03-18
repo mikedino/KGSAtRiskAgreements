@@ -16,9 +16,6 @@ import {
 } from "./props";
 import { formatError } from "../services/utils";
 import { AppUserService } from "../services/userService";
-import { EntityService } from "../services/entityService";
-import { LobService } from "../services/lobService";
-import { OgService } from "../services/ogService";
 import { ConfigService } from "../services/configService";
 
 export class DataSource {
@@ -101,7 +98,7 @@ export class DataSource {
             return existing;
         }
 
-        const created = await AppUserService.createNewUser();
+        const created = await AppUserService.createNewUserOnFirstVisit();
         this.setCurrentUser(created);
         return created;
     }
@@ -436,11 +433,6 @@ export class DataSource {
                 );
         });
     }
-    // update Entity / Entity GM real-time
-    static async updateEntityGm(entityId: number, gmId?: number): Promise<void> {
-        await EntityService.updateGm(entityId, gmId);
-        await this.getEntities();
-    }
 
     // Load all the OG's
     private static _lobs: ILobItem[] = [];
@@ -483,10 +475,10 @@ export class DataSource {
         });
     }
     // update LOB / COO real-time
-    static async updateLobCoo(lobId: number, cooId?: number): Promise<void> {
-        await LobService.updateCoo(lobId, cooId);
-        await this.getLOBs();
-    }
+    // static async updateLobCoo(lobId: number, cooId?: number): Promise<void> {
+    //     await LobService.updateCoo(lobId, cooId);
+    //     await this.getLOBs();
+    // }
 
     // Load all the OG's
     private static _ogs: IOgItem[] = [];
@@ -531,11 +523,6 @@ export class DataSource {
                     }
                 );
         });
-    }
-    // update OG, OGPres, CM, SCM real-time
-    static async updateOgApprovers(ogId: number, presidentId?: number, cmId?: number): Promise<void> {
-        await OgService.updateApprovers(ogId, presidentId, cmId);
-        await this.getOGs();
     }
 
     // Load all the Contracts from JAMIS

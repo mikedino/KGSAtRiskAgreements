@@ -2,8 +2,10 @@ import * as React from "react";
 import { useMemo, useState, useEffect } from "react";
 import { WebPartContext } from "@microsoft/sp-webpart-base";
 import {
-  Alert, Box, Divider, Grid, Paper, Stack, Tab, Tabs, TextField, Typography, useMediaQuery
+  Alert, Box, Divider, Grid, IconButton, InputAdornment, Paper, Stack, Tab, Tabs,
+  TextField, Typography, useMediaQuery
 } from "@mui/material";
+import ClearIcon from "@mui/icons-material/Clear";
 import { DataSource } from "../../data/ds";
 import { formatError } from "../../services/utils";
 import { IConfigItem, IEntityItem, ILobItem, IOgItem, IPeoplePicker } from "../../data/props";
@@ -13,6 +15,9 @@ import { LobDefaultsSection } from "./LobPanel";
 import { OgDefaultsSection } from "./OgPanel";
 import { CompanyDefaultsSection } from "./CompanyPanel";
 import { EntityDefaultsSection } from "./EntityPanel";
+import { LobService } from "../../services/lobService";
+import { EntityService } from "../../services/entityService";
+import { IOgPayload, OgService } from "../../services/ogService";
 
 type ApproverSection = "company" | "lobs" | "ogs" | "entities";
 type BusyRunner = <T, >(message: string, fn: () => Promise<T>) => Promise<T>;
@@ -257,7 +262,39 @@ export const ApproversAdminPanel: React.FC<ApproversAdminPanelProps> = ({
     clearFieldError(errKey);
 
     await save(`lob-${lobId}`, `Saving COO for ${lobTitle}…`, label, async () => {
-      await DataSource.updateLobCoo(lobId, personId);
+      await LobService.updateCoo(lobId, personId);
+    });
+  };
+
+  const handleSaveLobTitle = async (lobId: number, currentTitle: string, nextTitle: string): Promise<void> => {
+    const trimmed = nextTitle.trim();
+
+    if (!trimmed) {
+      setError("LOB title is required.");
+      return;
+    }
+
+    await save(`lob-${lobId}`, `Saving ${currentTitle} title…`, `${currentTitle} title`, async () => {
+      await LobService.updateTitle(lobId, trimmed);
+    });
+  };
+
+  const handleCreateLob = async (title: string, cooId?: number): Promise<void> => {
+    const trimmed = title.trim();
+
+    if (!trimmed) {
+      setError("LOB title is required.");
+      return;
+    }
+
+    await save("lob-create", `Creating ${trimmed}…`, trimmed, async () => {
+      await LobService.create(trimmed, cooId);
+    });
+  };
+
+  const handleDeleteLob = async (lobId: number, lobTitle: string): Promise<void> => {
+    await save(`lob-${lobId}`, `Deleting ${lobTitle}…`, lobTitle, async () => {
+      await LobService.delete(lobId);
     });
   };
 
@@ -273,9 +310,6 @@ export const ApproversAdminPanel: React.FC<ApproversAdminPanelProps> = ({
 
     const presKey = `og-${ogId}-president`;
     const cmKey = `og-${ogId}-cm`;
-
-    // const presId = Number(president?.id);
-    // const cmId = Number(cm?.id);
 
     // validate ONLY the field the user touched
     if (changedField === "president") {
@@ -297,11 +331,25 @@ export const ApproversAdminPanel: React.FC<ApproversAdminPanelProps> = ({
     // still must send BOTH ids for updateOgApprovers
     // so use existing values for the "other" field
     await save(`og-${ogId}`, `Saving approvers for ${ogTitle}…`, label, async () => {
-      await DataSource.updateOgApprovers(
-        ogId,
-        presidentId,
-        cmId
-      );
+      await OgService.updateApprovers(ogId, presidentId, cmId);
+    });
+  };
+
+  const handleUpdateOg = async (item: IOgPayload): Promise<void> => {
+    await save(`og-${item.Id}`, `Saving ${item.Title} title…`, `${item.Title} title`, async () => {
+      await OgService.update(item);
+    });
+  };
+
+  const handleCreateOg = async (item: IOgPayload): Promise<void> => {
+    await save("og-create", `Creating ${item.Title}…`, item.Title, async () => {
+      await OgService.create(item);
+    });
+  };
+
+  const handleDeleteOg = async (ogId: number, ogTitle: string): Promise<void> => {
+    await save(`og-${ogId}`, `Deleting ${ogTitle}…`, ogTitle, async () => {
+      await OgService.delete(ogId);
     });
   };
 
@@ -318,9 +366,44 @@ export const ApproversAdminPanel: React.FC<ApproversAdminPanelProps> = ({
     clearFieldError(errKey);
 
     await save(`entity-${entityId}`, `Saving GM for ${entityTitle}…`, label, async () => {
-      await DataSource.updateEntityGm(entityId, Number(person?.id) ?? undefined);
+      await EntityService.updateGm(entityId, Number(person?.id) ?? undefined);
     });
   };
+
+
+  const handleSaveEntityTitle = async (entityId: number, abbr: string, currentTitle: string, nextTitle: string): Promise<void> => {
+    const trimmed = nextTitle.trim();
+
+    if (!trimmed) {
+      setError("Entity title is required.");
+      return;
+    }
+
+    await save(`lob-${entityId}`, `Saving ${currentTitle} title…`, `${currentTitle} title`, async () => {
+      await EntityService.updateTitle(entityId, abbr, trimmed);
+    });
+  };
+
+  const handleCreateEntity = async (title: string, abbr: string, gmId?: number): Promise<void> => {
+    const trimmed = title.trim();
+
+    if (!trimmed) {
+      setError("Entity title is required.");
+      return;
+    }
+
+    await save("entity-create", `Creating ${trimmed}…`, trimmed, async () => {
+      await EntityService.create(trimmed, abbr, gmId);
+    });
+  };
+
+  const handleDeleteEntity = async (entityId: number, entityTitle: string): Promise<void> => {
+    await save(`lob-${entityId}`, `Deleting ${entityTitle}…`, entityTitle, async () => {
+      await EntityService.delete(entityId);
+    });
+  };
+
+  //////////////////////////////// end handlers /////////////
 
   const showFilter = section !== "company";
   const filterLabel =
@@ -391,10 +474,30 @@ export const ApproversAdminPanel: React.FC<ApproversAdminPanelProps> = ({
               <Box sx={{ mb: 2, minWidth: 0 }}>
                 <TextField
                   size="small"
+                  placeholder="Type to filter..."
                   fullWidth
                   label={filterLabel}
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
+                  sx={{ maxWidth: 350 }}
+                  slotProps={{
+                    input: {
+                      endAdornment: filter ? (
+                        <InputAdornment position="end">
+                          <IconButton
+                            size="small"
+                            onClick={() => setFilter("")}
+                            onMouseDown={(e) => e.preventDefault()} // keeps focus
+                            edge="end"
+                            aria-label="Clear filter"
+                            sx={{ color: "text.secondary" }}
+                          >
+                            <ClearIcon fontSize="small" />
+                          </IconButton>
+                        </InputAdornment>
+                      ) : undefined
+                    }
+                  }}
                 />
               </Box>
             )}
@@ -426,6 +529,9 @@ export const ApproversAdminPanel: React.FC<ApproversAdminPanelProps> = ({
                 peoplePickerContext={peoplePickerContext}
                 savingKey={savingKey}
                 onChangeCoo={handleSaveLobCoo}
+                onEditTitle={handleSaveLobTitle}
+                onCreate={handleCreateLob}
+                onDelete={handleDeleteLob}
                 errors={fieldErrors}
                 clearError={clearFieldError}
               />
@@ -434,9 +540,13 @@ export const ApproversAdminPanel: React.FC<ApproversAdminPanelProps> = ({
             {section === "ogs" && (
               <OgDefaultsSection
                 ogs={filteredOgs}
+                lobs={lobs}
                 peoplePickerContext={peoplePickerContext}
                 savingKey={savingKey}
                 onChangeOg={handleSaveOgPerson}
+                onUpdate={handleUpdateOg}
+                onCreate={handleCreateOg}
+                onDelete={handleDeleteOg}
                 errors={fieldErrors}
                 clearError={clearFieldError}
               />
@@ -447,7 +557,10 @@ export const ApproversAdminPanel: React.FC<ApproversAdminPanelProps> = ({
                 entities={filteredEntities}
                 peoplePickerContext={peoplePickerContext}
                 savingKey={savingKey}
+                onEditTitle={handleSaveEntityTitle}
+                onCreate={handleCreateEntity}
                 onChangeGm={handleSaveEntityGm}
+                onDelete={handleDeleteEntity}
                 errors={fieldErrors}
                 clearError={clearFieldError}
               />

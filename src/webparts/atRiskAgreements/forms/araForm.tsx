@@ -23,6 +23,7 @@ import { MuiPeoplePicker } from "../ui/CustomPeoplePicker";
 import { RiskAgreementService } from "../services/agreementService";
 import { buildAgreementDelta, formatDeltaSummary } from "../services/agreementDiff";
 import { useTheme } from "@mui/material/styles";
+import { formatError } from "../services/utils";
 
 export type CancelReason = { type: "draft"; draftId: number } | { type: "normal" };
 
@@ -79,6 +80,8 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
           setDialogProps("Error creating temporary draft", "Refresh and try again. If this continues to happen, please contact IT Support.")
         });
     } else if (item) {
+      //set draftItemId to current ID
+      setDraftItemId(item.Id);
       //get item attachments on load for edit item
       const files = Web().Lists(Strings.Sites.main.lists.Agreements).Items()
         .getById(item.Id).AttachmentFiles().executeAndWait();
@@ -292,16 +295,16 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
       <Divider />
       <List dense>
         {attachments.map((a) => (
-          <ListItem key={a.FileName} disableGutters sx={{ px: 1, py: 0 }}          >
+          <ListItem key={a.FileName} disableGutters sx={{ px: 1, py: 0 }} >
             {/* Left "X" */}
             <ListItemIcon sx={{ minWidth: 36 }}>
               <IconButton
                 edge="start"
                 size="small"
-                aria-label={`Remove ${a.FileName}`}
+                title={`Remove ${a.FileName}`}
                 onClick={() => {
                   removeAttachment(a).catch((e) => {
-                    setDialogProps("Error deleting attachment", e);
+                    setDialogProps("Error deleting attachment", formatError(e));
                   });
 
                 }}

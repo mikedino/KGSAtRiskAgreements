@@ -9,6 +9,7 @@ import { UsersAdminPanel } from "./admin/UserPanel";
 import { ApproversAdminPanel } from "./admin/ApproversPanel";
 import { WebPartContext } from "@microsoft/sp-webpart-base";
 import { useTheme } from "@mui/material/styles";
+import { AppUserService } from "../services/userService";
 
 type AdminTabKey = "users" | "approvers";
 
@@ -175,9 +176,20 @@ const Admin: React.FC<AdminModuleProps> = ({ context, showBusy, hideBusy }) => {
             ) : (
               <UsersAdminPanel
                 users={users}
+                peoplePickerContext={{
+                  absoluteUrl: context.pageContext.web.absoluteUrl,
+                  msGraphClientFactory: context.msGraphClientFactory,
+                  spHttpClient: context.spHttpClient
+                }}
                 onRoleChanged={async (appUserItemId, role) => {
                   await withBusy("Saving user role…", async () => {
                     await DataSource.updateAppUserRole(appUserItemId, role);
+                    await loadUsers();
+                  });
+                }}
+                onAddUser={async (person, role, modePreference) => {
+                  await withBusy("Adding user…", async () => {
+                    await AppUserService.createNewUserInAdminPanel(Number(person.id), role, modePreference);
                     await loadUsers();
                   });
                 }}

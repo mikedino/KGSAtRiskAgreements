@@ -251,7 +251,7 @@ export const Configuration = Helper.SPConfig({
                     name: "visitCount",
                     title: "Visit Count",
                     type: Helper.SPCfgFieldType.Number,
-                    defaultValue: "1",
+                    defaultValue: "0",
                     decimals: 0
                 } as Helper.IFieldInfoNumber,
             ],

@@ -3,19 +3,27 @@ import { useMemo, useState } from "react";
 import {
     Avatar, Box, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider,
     IconButton, List, ListItem, MenuItem, Paper, Stack, TextField,
-    Typography, Button,
-    Alert,
-    Grid
+    Typography, Button, Alert, Grid
 } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 //import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline"; // (not used yet)
 import { IAppUserItem } from "../../data/props";
+import { IPersonaProps } from "@fluentui/react";
+import { MuiPeoplePicker } from "../../ui/CustomPeoplePicker";
+import { IPeoplePickerContext } from "@pnp/spfx-controls-react/lib/PeoplePicker";
 
 type RoleFilter = "all" | "admin" | "cm" | "user";
 
 interface UsersAdminPanelProps {
     users: IAppUserItem[];
+    peoplePickerContext: IPeoplePickerContext;
     onRoleChanged: (appUserItemId: number, role: IAppUserItem["role"]) => Promise<void>;
+    onAddUser: (
+        person: IPersonaProps,
+        role: IAppUserItem["role"],
+        modePreference: IAppUserItem["modePreference"]
+    ) => Promise<void>;
 }
 
 const getInitials = (displayName?: string): string => {
@@ -49,7 +57,7 @@ const formatLastVisit = (iso?: string): string => {
     return d.toLocaleString();
 };
 
-export const UsersAdminPanel: React.FC<UsersAdminPanelProps> = ({ users, onRoleChanged }) => {
+export const UsersAdminPanel: React.FC<UsersAdminPanelProps> = ({ users, peoplePickerContext, onRoleChanged, onAddUser }) => {
     const [search, setSearch] = useState<string>("");
     const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
 
@@ -57,6 +65,12 @@ export const UsersAdminPanel: React.FC<UsersAdminPanelProps> = ({ users, onRoleC
     const [editUser, setEditUser] = useState<IAppUserItem | null>(null);
     const [editRole, setEditRole] = useState<IAppUserItem["role"]>("user");
     const [saving, setSaving] = useState<boolean>(false);
+
+    const [addOpen, setAddOpen] = useState<boolean>(false);
+    const [addPerson, setAddPerson] = useState<IPersonaProps | undefined>(undefined);
+    const [addRole, setAddRole] = useState<IAppUserItem["role"]>("user");
+    const [addModePreference, setAddModePreference] = useState<IAppUserItem["modePreference"]>("dark");
+    const [addError, setAddError] = useState<string>("");
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -93,6 +107,7 @@ export const UsersAdminPanel: React.FC<UsersAdminPanelProps> = ({ users, onRoleC
         return currentEditRole === "admin" && adminCount <= 1 && editRole !== "admin";
     }, [editUser, currentEditRole, adminCount, editRole]);
 
+    ///////////////////////////////// EDIT USER //////////////////////////////////
     const openEdit = (u: IAppUserItem): void => {
         setEditUser(u);
         setEditRole((u.role ?? "user").toLowerCase() as IAppUserItem["role"]);
@@ -118,6 +133,44 @@ export const UsersAdminPanel: React.FC<UsersAdminPanelProps> = ({ users, onRoleC
         }
     };
 
+    /////////////////////////////// ADD USER /////////////////////////////
+    const openAdd = (): void => {
+        setAddPerson(undefined);
+        setAddRole("user");
+        setAddModePreference("dark");
+        setAddError("");
+        setAddOpen(true);
+    };
+
+    const closeAdd = (): void => {
+        if (saving) return;
+        setAddOpen(false);
+    };
+
+    const handleAddSave = async (): Promise<void> => {
+        if (!addPerson?.id) {
+            setAddError("Please select a user.");
+            return;
+        }
+
+        const duplicate = users.some(
+            u => Number(u.user?.Id) === Number(addPerson.id)
+        );
+
+        if (duplicate) {
+            setAddError("That user already exists in the Users list.");
+            return;
+        }
+
+        setSaving(true);
+        try {
+            await onAddUser(addPerson, addRole, addModePreference);
+            setAddOpen(false);
+        } finally {
+            setSaving(false);
+        }
+    };
+
     return (
         <Paper variant="outlined" sx={{ p: 2 }}>
             <Stack direction="row" alignItems="flex-start" justifyContent="space-between" sx={{ mb: 2 }}>
@@ -127,6 +180,10 @@ export const UsersAdminPanel: React.FC<UsersAdminPanelProps> = ({ users, onRoleC
                         Manage Admin and Contract Manager access
                     </Typography>
                 </Box>
+
+                <Button variant="contained" color="secondary" startIcon={<PersonAddIcon />} onClick={openAdd}>
+                    Add User
+                </Button>
             </Stack>
 
             <Grid container spacing={1.25} sx={{ mb: 2 }} alignItems="center">
@@ -209,7 +266,7 @@ export const UsersAdminPanel: React.FC<UsersAdminPanelProps> = ({ users, onRoleC
                                     {/* Name/email column (flex, can shrink) */}
                                     <Grid
                                         size={{ xs: 12, sm: "grow" }}
-                                        sx={{ minWidth: 0 }}  
+                                        sx={{ minWidth: 0 }}
                                     >
                                         <Typography fontWeight={700} noWrap>
                                             {name}
@@ -284,6 +341,7 @@ export const UsersAdminPanel: React.FC<UsersAdminPanelProps> = ({ users, onRoleC
                 )}
             </List>
 
+            {/* EDIT USER DIALOG */}
             <Dialog open={editOpen} onClose={closeEdit} fullWidth maxWidth="xs">
                 <DialogTitle>Edit User</DialogTitle>
                 <DialogContent dividers>
@@ -322,6 +380,65 @@ export const UsersAdminPanel: React.FC<UsersAdminPanelProps> = ({ users, onRoleC
                         disabled={saving || !editUser || isDemotingLastAdmin}
                     >
                         Save
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* ADD USER DIALOG */}
+            <Dialog open={addOpen} onClose={closeAdd} fullWidth maxWidth="sm">
+                <DialogTitle>Add User</DialogTitle>
+                <DialogContent dividers>
+                    <Stack spacing={3}>
+                        {addError && (
+                            <Alert severity="error">{addError}</Alert>
+                        )}
+
+                        <MuiPeoplePicker
+                            label="User"
+                            context={peoplePickerContext}
+                            value={addPerson?.secondaryText ? [String(addPerson.secondaryText)] : []}
+                            required
+                            selectionLimit={1}
+                            onChange={(items: IPersonaProps[]) => {
+                                setAddError("");
+                                setAddPerson(items?.[0]);
+                            }}
+                        />
+
+                        <TextField
+                            select
+                            label="Role"
+                            value={addRole}
+                            onChange={(e) => setAddRole(e.target.value as IAppUserItem["role"])}
+                            fullWidth
+                            size="small"
+                        >
+                            <MenuItem value="user">User</MenuItem>
+                            <MenuItem value="cm">CM</MenuItem>
+                            <MenuItem value="admin">Admin</MenuItem>
+                        </TextField>
+
+                        <TextField
+                            select
+                            label="Default Theme"
+                            value={addModePreference}
+                            onChange={(e) => setAddModePreference(e.target.value as IAppUserItem["modePreference"])}
+                            fullWidth
+                            size="small"
+                        >
+                            <MenuItem value="dark">Dark</MenuItem>
+                            <MenuItem value="light">Light</MenuItem>
+                        </TextField>
+                    </Stack>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={closeAdd} disabled={saving}>Cancel</Button>
+                    <Button
+                        variant="contained"
+                        onClick={() => handleAddSave()}
+                        disabled={saving}
+                    >
+                        Add
                     </Button>
                 </DialogActions>
             </Dialog>
