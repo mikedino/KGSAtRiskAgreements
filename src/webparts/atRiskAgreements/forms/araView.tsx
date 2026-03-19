@@ -652,7 +652,8 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                     "& .MuiDrawer-paper": {
                         top: `48px`,
                         height: `calc(100% - 48px)` //fit under SP Suite Nav Header
-                    }
+                    },
+                    zIndex: (theme) => theme.zIndex.appBar + 1  //always show above app bar
                 }}
             >
                 <Box sx={{ width: 520, p: 3 }}>

@@ -228,7 +228,7 @@ export const EntityDefaultsSection: React.FC<EntityDefaultsSectionProps> = ({
                     const errKey = `entity-${ent.Id}-gm`;
 
                     return (
-                        <Paper key={ent.Id} variant="outlined" sx={{ p: 1.5, minWidth: 0 }}>
+                        <Paper key={ent.Id} sx={{ p: 1.5, minWidth: 0}}>
                             <Grid container spacing={2} alignItems="center" sx={{ minWidth: 0 }}>
                                 <Grid size={{ sm: 12, md: 6, lg: 4 }} sx={{ minWidth: 0 }}>
                                     <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>

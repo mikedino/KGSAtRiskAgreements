@@ -162,7 +162,7 @@ export function buildWorkflowState(agreement: IRiskAgreementItem, run: IWorkflow
         ...step,
         label: run.runNumber > 1 ? "Resubmitted" : step.label,
         status: "Submitted",
-        approverName: agreement.Author?.Title,
+        approverName: agreement.Editor?.Title,
         completeDate: submittedDate,
         hidden: false
       };

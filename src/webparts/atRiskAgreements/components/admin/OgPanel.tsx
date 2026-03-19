@@ -266,7 +266,7 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
                     const cmKey = `og-${og.Id}-cm`;
 
                     return (
-                        <Paper key={og.Id} variant="outlined" sx={{ p: 1.5, minWidth: 0 }}>
+                        <Paper key={og.Id} sx={{ p: 1.5, minWidth: 0}}>
                             <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
                                 <Typography fontWeight={700} sx={{ mb: 1 }} noWrap>
                                     {og.Title}

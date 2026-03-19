@@ -35,6 +35,7 @@ import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
 import { DataSource } from "./data/ds";
+import dayjs from "dayjs";
 
 type InstallState = "checking" | "ready" | "blocked" | "error";
 
@@ -74,6 +75,10 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
   //runs and actions by agreement - only loaded for VIEW item
   const [runsByAgreementId, setRunsByAgreementId] = React.useState<Map<number, IWorkflowRunItem[]>>(new Map());
   const [actionsByAgreementId, setActionsByAgreementId] = React.useState<Map<number, IWorkflowActionItem[]>>(new Map());
+
+  //all actions (from past year) -- only loaded for DASHBOARD
+  const [dashboardActions, setDashboardActions] = React.useState<IWorkflowActionItem[]>([]);
+  const [isDashboardActionsLoading, setIsDashboardActionsLoading] = React.useState(false);
 
   // track per-agreement load state
   const [agreementDetailLoading, setAgreementDetailLoading] = React.useState<Map<number, boolean>>(new Map());
@@ -245,6 +250,43 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
     });
   }, []);
 
+  ///////////// ALL ACTIONS (CACHE) FOR DASHBOARD /////////////////
+
+  //To stop the callback from changing when loading flips, use a ref for loaded and loading too:
+  const dashboardActionsLoadedRef = React.useRef(false);
+  const dashboardActionsLoadingRef = React.useRef(false);
+
+  const loadDashboardActions = React.useCallback(async (force = false): Promise<void> => {
+    if (dashboardActionsLoadingRef.current) return;
+    if (!force && dashboardActionsLoadedRef.current) return;
+
+    dashboardActionsLoadingRef.current = true;
+    setIsDashboardActionsLoading(true);
+
+    const oneYearAgo = dayjs().subtract(12, 'month').toISOString();
+
+    try {
+      const actions = await DataSource.getWorkflowActionsByDateRange(oneYearAgo);
+
+      const sorted = [...(actions ?? [])].sort((a, b) =>
+        new Date(b.actionCompletedDate).getTime() - new Date(a.actionCompletedDate).getTime()
+      );
+
+      setDashboardActions(sorted);
+    } catch (err) {
+      console.error("loadDashboardActions error", err);
+      setDialogProps("Error Loading all Workflow Actions", formatError(err));
+      setDashboardActions([]);
+    } finally {
+      setIsDashboardActionsLoading(false);
+    }
+  }, [isDashboardActionsLoading, dashboardActions.length]);
+
+  // clear Action cache
+  const clearDashboardActionsCache = React.useCallback((): void => {
+    setDashboardActions([]);
+  }, []);
+
   ///////////// SET DATA STATE ////////////
   const {
     agreements,
@@ -404,19 +446,28 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
   const agreementsCtxValue = React.useMemo(() => ({
     agreements,
     runByAgreementId,
+
     runsByAgreementId,
     actionsByAgreementId,
     isAgreementDetailLoading,
     loadAgreementDetail, //nothing loads unless a page calls it
     clearAgreementDetailCache,
+
+    dashboardActions,
+    isDashboardActionsLoading,
+    loadDashboardActions, // load on dashboard mount
+    clearDashboardActionsCache,
+
     myActions,
     isMyActionsLoading,
     loadMyActions, //nothing loads unless a page calls it
+
     isRefreshing,
     lastRefreshed,
     refresh
   }), [
     agreements, runByAgreementId, runsByAgreementId, actionsByAgreementId, isAgreementDetailLoading, loadAgreementDetail,
+    dashboardActions, isDashboardActionsLoading, loadDashboardActions, clearDashboardActionsCache,
     clearAgreementDetailCache, myActions, isMyActionsLoading, loadMyActions, isRefreshing, lastRefreshed, refresh
   ]);
 
@@ -541,7 +592,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
       <AgreementsContext.Provider value={agreementsCtxValue}>
 
         {/* HEADER WITH THEME TOGGLE - USE APPBAR and TOOLBAR to provide "sticky" appearance */}
-        <AppBar position="sticky" elevation={1} sx={{ top: 0, zIndex: (t) => t.zIndex.drawer + 1 }} >
+        <AppBar position="sticky" elevation={1} sx={{ top: 0 }} >
           {/* Toolbar gives you the standard header height + padding */}
           <Toolbar disableGutters sx={{ px: 2 }}>
             <NavHeader context={context} appTitle={wpTitle} useDarkTheme={useDarkTheme} setUseDarkTheme={setUseDarkTheme} />

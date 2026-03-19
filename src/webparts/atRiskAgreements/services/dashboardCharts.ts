@@ -34,8 +34,8 @@ const STATUS_COLORS: Record<AraStatus, string> = {
   Submitted: "#F4B740",        // warning / yellow
   "Under Review": "#4b82ff",   // info / blue
   "Mod Review": "#7b61ff",     // purple-ish
-  Approved: "#3BA55C",         // green
-  Resolved: "#3BA55C",         // green (same outcome)
+  Approved: "#3BA55C",   // strong green
+  Resolved: "#2CB1A1",   // tealish green
   Rejected: "#fd3030",         // red
   Canceled: "#9e9e9e"         // neutral
 };
@@ -47,7 +47,6 @@ const STATUS_COLORS: Record<AraStatus, string> = {
 export const buildMonthlyTrends = (
   items: IRiskAgreementItem[],
   runByAgreementId: Map<number, IWorkflowRunItem>,
-  actionsByRunId: Map<number, IWorkflowActionItem[]>,
   monthsBack = 6
 ): IMonthlyTrendPoint[] => {
   const now = dayjs();
@@ -67,8 +66,7 @@ export const buildMonthlyTrends = (
     }
 
     const run = runByAgreementId.get(i.Id);
-    const actions = run ? (actionsByRunId.get(run.Id) ?? []) : [];
-    const final = getFinalApprovalDate(run, actions);
+    const final = getFinalApprovalDate(run);
 
     if (final) {
       const key = dayjs(final).startOf("month").format("YYYY-MM");
@@ -76,7 +74,7 @@ export const buildMonthlyTrends = (
     }
   });
 
-  return months.map(m => {
+  return months.map((m) => {
     const key = m.format("YYYY-MM");
     return {
       month: m.format("MMM"),
@@ -85,7 +83,6 @@ export const buildMonthlyTrends = (
     };
   });
 };
-
 
 
 // Status distribution (donut)
@@ -117,45 +114,57 @@ export const buildStatusDistribution = (items: IRiskAgreementItem[]): IDistribut
 export const buildAvgStageTimes = (
   items: IRiskAgreementItem[],
   runByAgreementId: Map<number, IWorkflowRunItem>,
-  actionsByRunId: Map<number, IWorkflowActionItem[]>
+  dashboardActions: IWorkflowActionItem[]
 ): IStageAvgPoint[] => {
   const bucket = new Map<string, { label: string; values: number[] }>();
+
+  const actionsByRunId = new Map<number, IWorkflowActionItem[]>();
+
+  dashboardActions.forEach((action) => {
+    const runId = action.run?.Id;
+    if (!runId) return;
+
+    const existing = actionsByRunId.get(runId);
+    if (existing) {
+      existing.push(action);
+    } else {
+      actionsByRunId.set(runId, [action]);
+    }
+  });
 
   items.forEach((agreement) => {
     const run = runByAgreementId.get(agreement.Id);
     if (!run) return;
 
     const actions = actionsByRunId.get(run.Id) ?? [];
+    if (actions.length === 0) return;
+
     const wf = buildWorkflowState(agreement, run, actions);
 
-    // Use Submitted complete date as starting point (matches your state logic)
     let prevCompleted: string | undefined =
-      wf.find(s => s.isInitial)?.completeDate ?? agreement.Created;
+      wf.find((s) => s.isInitial)?.completeDate ?? agreement.Created;
 
-    wf.forEach(step => {
+    wf.forEach((step) => {
       if (step.status !== "Approved" && step.status !== "Rejected") return;
       if (!isValidDate(step.completeDate) || !isValidDate(prevCompleted)) {
         prevCompleted = step.completeDate ?? prevCompleted;
         return;
       }
 
-      const dur = dayjs(step.completeDate!).diff(dayjs(prevCompleted!), "day", true);
+      const dur = dayjs(step.completeDate).diff(dayjs(prevCompleted), "day", true);
       prevCompleted = step.completeDate;
 
       if (!Number.isFinite(dur) || dur < 0) return;
 
-      const key = step.key;
-      const existing = bucket.get(key);
-
+      const existing = bucket.get(step.key);
       if (existing) existing.values.push(dur);
-      else bucket.set(key, { label: step.label, values: [dur] });
+      else bucket.set(step.key, { label: step.label, values: [dur] });
     });
   });
 
-  // Return in workflow order (no Submitted)
   return RiskAgreementWorkflow
-    .filter(s => !s.isInitial)
-    .map(s => {
+    .filter((s) => !s.isInitial)
+    .map((s) => {
       const b = bucket.get(s.key);
       if (!b || b.values.length === 0) return undefined;
 

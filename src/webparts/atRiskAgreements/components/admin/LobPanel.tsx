@@ -46,6 +46,7 @@ export const LobDefaultsSection: React.FC<LobDefaultsSectionProps> = ({
     const [confirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false);
     const [deleteError, setDeleteError] = React.useState("");
 
+
     const openAddDialog = (): void => {
         setDialogMode("add");
         setEditingLobId(undefined);
@@ -206,7 +207,7 @@ export const LobDefaultsSection: React.FC<LobDefaultsSectionProps> = ({
                     const errKey = `lob-${lob.Id}-coo`;
 
                     return (
-                        <Paper key={lob.Id} variant="outlined" sx={{ p: 1.5, minWidth: 0 }}>
+                        <Paper key={lob.Id} sx={{ p: 1.5, minWidth: 0 }}>
                             <Grid container spacing={2} alignItems="center" sx={{ minWidth: 0 }}>
                                 <Grid size={{ sm: 12, md: 6, lg: 4 }} sx={{ minWidth: 0 }}>
                                     <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>

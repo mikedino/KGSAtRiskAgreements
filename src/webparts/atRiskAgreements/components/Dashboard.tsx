@@ -22,23 +22,30 @@ const Dashboard: React.FC = () => {
   const theme = useTheme();
 
   // use AgreementsProvider Context
-  const { agreements, runByAgreementId, actionsByAgreementId } = useAgreements();
+  const { agreements, runByAgreementId, dashboardActions, loadDashboardActions } = useAgreements();
+
+  // load all the actions one time
+  React.useEffect(() => {
+    loadDashboardActions().catch((e) => console.error("loadDashboardActions error", e));
+  }, [loadDashboardActions]);
 
   // top cards
   const kpis = React.useMemo(
-    () => buildDashboardKpis(agreements, runByAgreementId, actionsByAgreementId),
-    [agreements, runByAgreementId, actionsByAgreementId]
+    () => buildDashboardKpis(agreements, runByAgreementId),
+    [agreements, runByAgreementId]
   );
 
   // Chart datasets
   const monthlyTrends = React.useMemo(
-    () => buildMonthlyTrends(agreements, runByAgreementId, actionsByAgreementId, 6),
-    [agreements, runByAgreementId, actionsByAgreementId]
+    () => buildMonthlyTrends(agreements, runByAgreementId, 6),
+    [agreements, runByAgreementId]
   );
+
   const statusDistribution = React.useMemo(() => buildStatusDistribution(agreements), [agreements]);
+
   const avgStageTimes = React.useMemo(
-    () => buildAvgStageTimes(agreements, runByAgreementId, actionsByAgreementId),
-    [agreements, runByAgreementId, actionsByAgreementId]
+    () => buildAvgStageTimes(agreements, runByAgreementId, dashboardActions),
+    [agreements, runByAgreementId, dashboardActions]
   );
   const riskDistribution = React.useMemo(() => buildRiskDistribution(agreements), [agreements]);
 
@@ -109,8 +116,26 @@ const Dashboard: React.FC = () => {
     </Box>
   ) : undefined;
 
-  const stageLabels = avgStageTimes.map((s) => s.stage);
-  const stageValues = avgStageTimes.map((s) => Number(s.avgDays.toFixed(2)));
+  // filter out any NaN or negative numbers
+  const safeAvgStageTimes = avgStageTimes.filter((s) => Number.isFinite(s.avgDays));
+  const stageLabels = safeAvgStageTimes.map((s) => s.stage);
+  const stageValues = safeAvgStageTimes.map((s) => {
+    const value = Number(s.avgDays);
+    return Number.isFinite(value) ? Number(value.toFixed(2)) : 0;
+  });
+
+  const safeMonthlyTrends = monthlyTrends.filter(
+    (m) => Number.isFinite(m.created) && Number.isFinite(m.approved)
+  );
+
+  const safeRiskDistribution = riskDistribution.filter((p) => Number.isFinite(p.value) && p.value > 0);
+
+  // console.log("monthlyTrends", monthlyTrends);
+  // console.log("statusDistribution", statusDistribution);
+  // console.log("avgStageTimes", avgStageTimes);
+  // console.log("riskDistribution", riskDistribution);
+  // console.log("stageLabels", stageLabels);
+  // console.log("stageValues", stageValues);
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -213,7 +238,7 @@ const Dashboard: React.FC = () => {
             {/* Monthly Line chart */}
             <ChartCard title="Monthly Agreement Trends">
               <LineChart
-                dataset={monthlyTrends} // IMonthlyTrendPoint[]
+                dataset={safeMonthlyTrends} // IMonthlyTrendPoint[]
                 xAxis={[{ dataKey: "month", scaleType: "point" }]}
                 series={[
                   { dataKey: "created", label: "Created" },
@@ -278,7 +303,7 @@ const Dashboard: React.FC = () => {
               <PieChart
                 series={[
                   {
-                    data: riskDistribution, // IDistributionPoint[]
+                    data: safeRiskDistribution, // IDistributionPoint[]
                     innerRadius: 40,
                     outerRadius: 100,
                     paddingAngle: 2,

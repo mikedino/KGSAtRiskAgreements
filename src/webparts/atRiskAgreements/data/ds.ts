@@ -162,7 +162,7 @@ export class DataSource {
         "Id", "Title", "projectName", "contractId", "invoice", "contractType", "riskStart", "riskEnd", "popEnd",
         "entity", "riskReason", "riskFundingRequested", "riskJustification", "contractName", "programName",
         "araStatus", "Created", "Modified", "og", "hasSubcontract", "Attachments",
-        "Author/Id", "Author/Title", "Author/EMail",
+        "Author/Id", "Author/Title", "Author/EMail", "Editor/Id", "Editor/Title", "Editor/EMail",
         "backupRequestor/Id", "backupRequestor/Title", "backupRequestor/EMail",
         "projectMgr/Id", "projectMgr/Title", "projectMgr/EMail",
         "entityGM/Id", "entityGM/Title", "entityGM/EMail",
@@ -170,7 +170,7 @@ export class DataSource {
         "currentRun/Id", "currentRun/Title",
         "effectiveApprovedRun/Id", "effectiveApprovedRun/Title"
     ];
-    public static agreementExpandQuery: string[] = ["Author", "backupRequestor", "projectMgr", "entityGM", "contractMgr", "currentRun", "effectiveApprovedRun"];
+    public static agreementExpandQuery: string[] = ["Author", "backupRequestor", "projectMgr", "entityGM", "contractMgr", "currentRun", "effectiveApprovedRun", "Editor"];
     // Load all the Risk Agreeements
     private static _agreements: IRiskAgreementItem[] = [];
     private static _agreementsVersion = 0; // detect refreshes
@@ -323,11 +323,11 @@ export class DataSource {
     }
 
     // get all of the WF actions by date range - can use on Dashboard later
-    static getWorkflowActionsByDateRange(startIso: string, endIso: string): Promise<IWorkflowActionItem[]> {
+    static getWorkflowActionsByDateRange(startIso: string): Promise<IWorkflowActionItem[]> {
         return new Promise<IWorkflowActionItem[]>((resolve, reject) => {
 
             const filter =
-                `actionCompletedDate ge datetime'${startIso}' and actionCompletedDate lt datetime'${endIso}'`;
+                `actionCompletedDate ne null and actionCompletedDate ge datetime'${startIso}'`;
 
             Web().Lists(Strings.Sites.main.lists.WorkflowActions).Items().query({
                 Select: this.actionsSelectQuery,

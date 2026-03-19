@@ -66,7 +66,7 @@ export interface IRiskAgreementItem {
   readonly Created: string;
   readonly Modified: string;
   readonly Author: IPeoplePicker;
-  //readonly Editor: IPeoplePicker;
+  readonly Editor: IPeoplePicker;
   Attachments: boolean;
 
   // Business fields

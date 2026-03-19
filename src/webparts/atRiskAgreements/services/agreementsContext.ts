@@ -13,6 +13,12 @@ export interface IAgreementsContext {
   loadAgreementDetail: (agreementId: number, force?: boolean) => Promise<void>;
   clearAgreementDetailCache: (agreementId?: number) => void;
 
+  // for the Dashboard
+  dashboardActions: IWorkflowActionItem[];
+  isDashboardActionsLoading: boolean;
+  loadDashboardActions: (force?: boolean) => Promise<void>;
+  clearDashboardActionsCache: () => void;
+
   // for MY WORK
   myActions: IWorkflowActionItem[];
   isMyActionsLoading: boolean;

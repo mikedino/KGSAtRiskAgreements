@@ -23,7 +23,7 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, appTitle, useDarkTheme, 
     const theme = useTheme();
 
     // App-wide data refresh trigger
-    const { refresh, isRefreshing, clearAgreementDetailCache } = useAgreements();
+    const { refresh, isRefreshing, clearAgreementDetailCache, clearDashboardActionsCache } = useAgreements();
 
     // small screens (md = ~900px), large screens (lg = ~1200px)
     const isSmall = useMediaQuery(theme.breakpoints.down("md"));
@@ -97,8 +97,9 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, appTitle, useDarkTheme, 
 
                     <IconButton
                         onClick={async () => {
-                            await refresh(true);
                             clearAgreementDetailCache();
+                            clearDashboardActionsCache();
+                            await refresh(true);
                         }}
                         disabled={isRefreshing}
                         size="medium"
