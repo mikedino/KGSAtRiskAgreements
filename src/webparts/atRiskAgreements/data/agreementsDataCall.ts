@@ -14,7 +14,13 @@ export interface IAgreementsDataState {
   lastRefreshed: string | undefined;
   refresh: (override?: boolean, mode?: RefreshMode) => Promise<void>;
   fatalError?: string;
-  appUser?: IAppUserItem;
+
+  currentUser?: IAppUserItem; // current user row
+  appUsers: IAppUserItem[];
+  appUserByUserId: Map<number, IAppUserItem>;
+  getAppUserByUserId: (userId: number) => IAppUserItem | undefined;
+  refreshCurrentUser: () => Promise<void>;
+  refreshAppUsers: () => Promise<void>;
 }
 
 /**
@@ -35,11 +41,22 @@ export const useAgreementsData = (
   const [isRefreshing, setIsRefreshing] = React.useState<boolean>(false);
   const [lastRefreshed, setLastRefreshed] = React.useState<string | undefined>(undefined);
   const [fatalError, setFatalError] = React.useState<string | undefined>(undefined);
-  const [appUser, setAppUser] = React.useState<IAppUserItem | undefined>(undefined);
+  const [currentUser, setCurrentUser] = React.useState<IAppUserItem | undefined>(undefined);
+  const [appUsers, setAppUsers] = React.useState<IAppUserItem[]>([]);
+  const [appUserByUserId, setAppUserByUserId] = React.useState<Map<number, IAppUserItem>>(new Map());
 
-  const appUserRef = React.useRef<IAppUserItem | undefined>(undefined);
+  const buildAppUserMap = React.useCallback((items: IAppUserItem[]): Map<number, IAppUserItem> => {
+    const next = new Map<number, IAppUserItem>();
 
-  React.useEffect(() => { appUserRef.current = appUser; }, [appUser]);
+    items.forEach((item) => {
+      const spUserId = item.user?.Id;
+      if (typeof spUserId === "number") {
+        next.set(spUserId, item);
+      }
+    });
+
+    return next;
+  }, []);
 
   const refresh = React.useCallback(async (override = false, mode: RefreshMode = "refresh"): Promise<void> => {
 
@@ -62,11 +79,15 @@ export const useAgreementsData = (
         setIsRefreshing(true);
       }
 
-      // load/apply user preferences early in boot (only once)
-      if (showBoot || !appUserRef.current) {
-        const appUser = await DataSource.getOrCreateCurrentUser();
-        setAppUser(appUser);
-      }
+      // Always refresh the current app user because profile-backed UI
+      // current user row
+      const currentUser = await DataSource.getOrCreateCurrentUser();
+      setCurrentUser(currentUser);
+
+      // all app users from datasource cache
+      const appUsers = [...(DataSource.AppUsers ?? [])];
+      setAppUsers(appUsers);
+      setAppUserByUserId(buildAppUserMap(appUsers));
 
       await DataSource.init(override);
 
@@ -133,7 +154,7 @@ export const useAgreementsData = (
       if (showBoot) setIsBootLoading(false);
       setIsRefreshing(false);
     }
-  }, [onError, enabled]);
+  }, [onError, enabled, buildAppUserMap]);
 
   // boot load ONLY when enabled
   React.useEffect(() => {
@@ -147,21 +168,40 @@ export const useAgreementsData = (
     });
   }, [refresh, enabled]);
 
+  const refreshAppUsers = React.useCallback(async (): Promise<void> => {
+    const nextAppUsers = await DataSource.getAppUsers(true);
+    setAppUsers(nextAppUsers);
+    setAppUserByUserId(buildAppUserMap(nextAppUsers));
+  }, [buildAppUserMap]);
+
+  const refreshCurrentUser = React.useCallback(async (): Promise<void> => {
+    const nextAppUser = await DataSource.getOrCreateCurrentUser();
+    setCurrentUser(nextAppUser);
+  }, []);
+
+  const getAppUserByUserId = React.useCallback((userId: number): IAppUserItem | undefined => {
+    return appUserByUserId.get(userId);
+  }, [appUserByUserId]);
 
   React.useEffect(() => {
     // should run once per enabled change
     console.log("boot effect fired", { enabled });
   }, [refresh, enabled]);
 
-  return {
-    agreements,
-    runByAgreementId,
-    actionsByRunId,
-    isBootLoading,
-    isRefreshing,
-    lastRefreshed,
-    refresh,
-    fatalError,
-    appUser
-  };
+return {
+  agreements,
+  runByAgreementId,
+  actionsByRunId,
+  isBootLoading,
+  isRefreshing,
+  lastRefreshed,
+  refresh,
+  fatalError,
+  currentUser,
+  appUsers,
+  appUserByUserId,
+  getAppUserByUserId,
+  refreshCurrentUser,
+  refreshAppUsers
+};
 };

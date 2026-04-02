@@ -102,18 +102,14 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
     const isCommentRequired = ui?.requiresComment ?? false;
     const isCommentValid = !isCommentRequired || comment.trim().length > 0;
 
-    // get the page content container to display the DRAWER
-    // const spChrome = React.useMemo(
-    //     () => document.getElementById("spPageChromeAppDiv"),
-    //     []
-    // );
-
     const {
         runByAgreementId,
         runsByAgreementId,
         actionsByAgreementId,
         loadAgreementDetail,
-        isAgreementDetailLoading
+        isAgreementDetailLoading,
+        currentUser,
+        getAppUserByUserId
     } = useAgreements();
 
     React.useEffect(() => {
@@ -248,7 +244,7 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                 .AttachmentFiles()
                 .executeAndWait();
 
-                //attachedFiles.results.forEach(a => a.FileName)
+            //attachedFiles.results.forEach(a => a.FileName)
 
             const baseAttachments = (attachedFiles.results ?? []) as IAttachmentInfo[];
 
@@ -326,20 +322,62 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
         return outcomeOk;
     }, [allRuns, run]);
 
+
+    /*****************************************
+    *   SET PERMISSION FLAGS
+    * 
+    * Elevated: you are Admin or CM
+    * APPROVE: run is active, you are current approver, backup to the approver, or elevated
+    * CANCEL: agreement is NOT finalized (resolved or canceled), risk start date is in the future, you are the submitter/backup or elevated
+    * EDIT: agreement is NOT finalized, you are submitter, backup submitter, backup TO the submitter, or elevated
+    * RESOLVE: run is completed, agreement is approved and you are elevated
+    * REVERT:  has multiple runs, previous run was approved and you are elevated
+    ******************************************/
+    const currentUserId = currentUser?.user?.Id ?? ContextInfo.userId;
+
     const riskStartDate = dayjs(item.riskStart);
     const today = dayjs().startOf("day");
+
     const isElevated = DataSource.isAdmin || DataSource.isCM;
-    const isSubmitter = (item.Author.Id === ContextInfo.userId) || (item.backupRequestor.Id === ContextInfo.userId);
+    const isSubmitter = item.Author.Id === currentUserId || item.backupRequestor?.Id === currentUserId;
+
     const isActive = !!run && run.runStatus === "Active";
     const isFinalStatus = item.araStatus === "Resolved" || item.araStatus === "Canceled";
     const isRiskStarted = !riskStartDate.startOf("day").isAfter(today);
     const isMod = item.araStatus === "Mod Review";
 
-    const canApprove = isActive && (run.pendingApproverId === ContextInfo.userId || isElevated);
+    const pendingApproverUser = run?.pendingApproverId
+        ? getAppUserByUserId(run.pendingApproverId)
+        : undefined;
+
+    const authorUser = item.Author?.Id
+        ? getAppUserByUserId(item.Author.Id)
+        : undefined;
+
+    const isDirectApprover = !!run && run.pendingApproverId === currentUserId;
+    const isBackupApprover = pendingApproverUser?.backups?.results?.some((backup) => backup.Id === currentUserId) === true;
+    const isAuthorBackup = authorUser?.backups?.results?.some((backup) => backup.Id === currentUserId) === true;
+
+    const canApprove = isActive && (isDirectApprover || isBackupApprover || isElevated);
     const canCancel = !isFinalStatus && !isRiskStarted && (isSubmitter || isElevated);
-    const canEdit = !isFinalStatus && (isSubmitter || isElevated);
+    const canEdit = !isFinalStatus && (isSubmitter || isAuthorBackup || isElevated);
     const canResolve = !!run && run.runStatus === "Completed" && item.araStatus === "Approved" && isElevated;
     const canRevert = isActive && isMod && previousRunIsApproved && isElevated;
+
+    // const riskStartDate = dayjs(item.riskStart);
+    // const today = dayjs().startOf("day");
+    // const isElevated = DataSource.isAdmin || DataSource.isCM;
+    // const isSubmitter = (item.Author.Id === ContextInfo.userId) || (item.backupRequestor?.Id === ContextInfo.userId);
+    // const isActive = !!run && run.runStatus === "Active";
+    // const isFinalStatus = item.araStatus === "Resolved" || item.araStatus === "Canceled";
+    // const isRiskStarted = !riskStartDate.startOf("day").isAfter(today);
+    // const isMod = item.araStatus === "Mod Review";
+
+    // const canApprove = isActive && (run.pendingApproverId === ContextInfo.userId || isElevated);
+    // const canCancel = !isFinalStatus && !isRiskStarted && (isSubmitter || isElevated);
+    // const canEdit = !isFinalStatus && (isSubmitter || isElevated);
+    // const canResolve = !!run && run.runStatus === "Completed" && item.araStatus === "Approved" && isElevated;
+    // const canRevert = isActive && isMod && previousRunIsApproved && isElevated;
 
     const openCommentModal = (type: ActionModalType): void => {
         setActionType(type);
@@ -447,6 +485,14 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
         }
     };
 
+    const handleBack = (): void => {
+        if (window.history.length > 1) {
+            history.goBack();
+        } else {
+            history.push("/my-work"); // or "/all-agreements"
+        }
+    };
+
     return (
         <Box sx={{ p: 2 }}>
             <Box sx={{ mb: 3 }}>
@@ -454,7 +500,7 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                     startIcon={<ArrowBack />}
                     color="primary"
                     variant="text"
-                    onClick={() => history.goBack()}
+                    onClick={handleBack}
                     sx={{ mb: 2 }}
                 >
                     Back

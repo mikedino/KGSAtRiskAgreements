@@ -39,7 +39,8 @@ export class DataSource {
                     this.getEntities(),
                     this.getLOBs(),
                     this.getOGs(),
-                    this.getContracts()
+                    this.getContracts(),
+                    this.getAppUsers(override)
                 ])
                     .then(() => {
                         this.initialized = true;
@@ -54,6 +55,13 @@ export class DataSource {
             }
         });
     }
+
+    public static appUserSelectQuery: string[] = [
+        "Id", "user/Id", "user/Title", "user/EMail",
+        "role", "lastVisit", "visitCount", "modePreference", "hasBackup",
+        "backups/Id", "backups/Title", "backups/EMail"
+    ];
+    public static appUserExpandQuery: string[] = ["user", "backups"];
 
     static isAdmin: boolean = false;
     static isCM: boolean = false;
@@ -74,8 +82,8 @@ export class DataSource {
         // find user by ID
         const existing = await new Promise<IAppUserItem | undefined>((resolve, reject) => {
             Web().Lists(Strings.Sites.main.lists.Users).Items().query({
-                Select: ["Id", "user/Id", "user/Title", "user/EMail", "role", "lastVisit", "visitCount", "modePreference"],
-                Expand: ["user"],
+                Select: this.appUserSelectQuery,
+                Expand: this.appUserExpandQuery,
                 Filter: `user/Id eq ${userId}`,
                 Top: 1
             }).execute(
@@ -105,15 +113,20 @@ export class DataSource {
 
     private static _users: IAppUserItem[] = [];
     static get AppUsers(): IAppUserItem[] { return this._users; }
-    static getAppUsers(): Promise<IAppUserItem[]> {
+    static async getAppUsers(force = false): Promise<IAppUserItem[]> {
+        //added force param so my context/admin page can choose whether to reuse cache or reload
+        if (!force && this._users.length > 0) {  
+            return this._users;
+        }
+
         return new Promise<IAppUserItem[]>((resolve, reject) => {
             this._users = [];
 
             Web().Lists(Strings.Sites.main.lists.Users).Items().query({
                 GetAllItems: true,
                 OrderBy: ["user"],
-                Select: ["Id", "user/Id", "user/Title", "user/EMail", "role", "lastVisit", "visitCount", "modePreference"],
-                Expand: ["user"],
+                Select: this.appUserSelectQuery,
+                Expand: this.appUserExpandQuery,
                 Top: 5000
             }).execute(
                 (items) => {

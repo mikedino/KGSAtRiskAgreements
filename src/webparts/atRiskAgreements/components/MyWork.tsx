@@ -1,11 +1,11 @@
 import * as React from "react";
 import { Box, Button, Grid, Stack, Tooltip, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
-import InfoCard from "../ui/InfoCard";
+//import InfoCard from "../ui/InfoCard";
 import { useAgreements } from "../services/agreementsContext";
 import { ContextInfo } from "gd-sprest";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import CheckCircleOutline from "@mui/icons-material/CheckCircleOutline";
-import ErrorOutline from "@mui/icons-material/ErrorOutline";
+//import AccessTimeIcon from "@mui/icons-material/AccessTime";
+//import CheckCircleOutline from "@mui/icons-material/CheckCircleOutline";
+//import ErrorOutline from "@mui/icons-material/ErrorOutline";
 import { IRiskAgreementItem, IWorkflowRunItem, ActionDecision } from "../data/props";
 import { buildWorkflowState, WorkflowStepWithStatus } from "../services/workflowState";
 import { RiskAgreementWorkflow } from "../services/workflowModel";
@@ -279,9 +279,9 @@ const MyWork: React.FC = () => {
   const myReviewedItems = workflowItems.filter(w => myReviewInfoMap.has(w.item.Id));
 
   // compute total approved for top card
-  const myApprovedTotal = myAgreements.filter(w =>
-    w.item.araStatus === "Approved" || w.item.araStatus === "Resolved"
-  );
+  // const myApprovedTotal = myAgreements.filter(w =>
+  //   w.item.araStatus === "Approved" || w.item.araStatus === "Resolved"
+  // );
 
   // wrap in useMemo to avoid recomputing viewCounts ever render when nothing changed
   const myAgreementViews = React.useMemo<MyWorkView[]>(() => [
@@ -388,6 +388,7 @@ const MyWork: React.FC = () => {
         </Typography>
       </Box>
 
+      {/* ********************************** HIDE TOP CARDS FOR NOW per Customer --4/2/26 DINO**********************
       <Grid container spacing={3}>
         <Grid size={4}>
           <InfoCard
@@ -421,7 +422,7 @@ const MyWork: React.FC = () => {
           //onClick={() => setView("myAgreements")}
           />
         </Grid>
-      </Grid>
+      </Grid> */}
 
       {/* PRE-FILTERED VIEWS */}
       <Box

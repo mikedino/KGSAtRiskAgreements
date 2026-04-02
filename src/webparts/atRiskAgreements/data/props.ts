@@ -232,6 +232,8 @@ export interface IAppUserItem {
   role: "user" | "cm" | "admin",
   lastVisit?: string;
   visitCount?: number;
+  backups: {results: IPeoplePicker[]};
+  hasBackup: boolean;
 }
 
 export interface ICounterItem {

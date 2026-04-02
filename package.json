@@ -28,7 +28,7 @@
     "@mui/x-charts": "^8.25.0",
     "@mui/x-data-grid": "^8.22.1",
     "@mui/x-date-pickers": "^8.22.1",
-    "@pnp/spfx-controls-react": "^3.23.0",
+    "@pnp/spfx-controls-react": "3.23.0",
     "dattatable": "^2.11.45",
     "dayjs": "^1.11.19",
     "gd-sprest": "^9.2.8",

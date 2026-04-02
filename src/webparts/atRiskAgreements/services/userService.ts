@@ -1,6 +1,6 @@
 import { Web } from "gd-sprest";
 import Strings from "../../../strings";
-import { IAppUserItem } from "../data/props";
+import { IAppUserItem, IPeoplePicker } from "../data/props";
 import { encodeListName, formatError } from "./utils";
 import { ContextInfo } from "gd-sprest";
 import { DataSource } from "../data/ds";
@@ -89,6 +89,22 @@ export class AppUserService {
             }).executeAndWait();
         } catch (err) {
             throw new Error(`Error updating user role: ${formatError(err)}`);
+        }
+    }
+
+    // Update the role for an existing App User list item
+    static async updateBackups(appUserItemId: number, backups: {results: IPeoplePicker[]}): Promise<void> {
+
+        const hasBackup = backups.results.length > 0;
+
+        try {
+            await Web().Lists(Strings.Sites.main.lists.Users).Items().getById(appUserItemId).update({
+                __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.Users)}ListItem` },
+                backupsId: {results: backups?.results?.map(b => b.Id)},
+                hasBackup
+            }).executeAndWait();
+        } catch (err) {
+            throw new Error(err);
         }
     }
 

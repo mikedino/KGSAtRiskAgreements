@@ -52,11 +52,11 @@ const getLatestCommentAction = (actions: IWorkflowActionItem[], stepKey: Timelin
 
 const getSubmittedActionDate = (agreement: IRiskAgreementItem, actions: IWorkflowActionItem[]): string => {
   const submitted = actions
-    .filter(a =>
-      a.actionType === "Submitted" ||
-      a.actionType === "Modified" ||   // restart/resubmission marker for new run
-      a.actionType === "Restarted"     // keep for old run end marker if needed
-    )
+    .filter(a => a.stepKey === "submit")
+      // a.actionType === "Submitted" ||
+      // a.actionType === "Modified" ||   // restart/resubmission marker for new run
+      // a.actionType === "Restarted"     // keep for old run end marker if needed
+    //)
     .sort((a, b) => new Date(b.actionCompletedDate).getTime() - new Date(a.actionCompletedDate).getTime())[0];
 
   return submitted?.actionCompletedDate ?? agreement.Created;
@@ -162,7 +162,7 @@ export function buildWorkflowState(agreement: IRiskAgreementItem, run: IWorkflow
         ...step,
         label: run.runNumber > 1 ? "Resubmitted" : step.label,
         status: "Submitted",
-        approverName: agreement.Editor?.Title,
+        approverName: agreement.Author?.Title,
         completeDate: submittedDate,
         hidden: false
       };

@@ -296,16 +296,21 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
     lastRefreshed,
     refresh,
     fatalError,
-    appUser
+    currentUser,
+    appUsers,
+    appUserByUserId,
+    getAppUserByUserId,
+    refreshCurrentUser,
+    refreshAppUsers
   } = useAgreementsData(setDialogProps, enabled);
 
   //set theme and session storage based on user preference
   useEffect(() => {
-    if (!appUser) return;
-    const isDark = appUser.modePreference === "dark";
+    if (!currentUser) return;
+    const isDark = currentUser.modePreference === "dark";
     setUseDarkTheme(isDark);
     sessionStorage.setItem("ara_theme", isDark ? "dark" : "light");
-  }, [appUser]);
+  }, [currentUser]);
 
   // ensure valid run exists
   const getCurrentRunOrThrow = (agreementId: number): IWorkflowRunItem => {
@@ -458,6 +463,13 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
     loadDashboardActions, // load on dashboard mount
     clearDashboardActionsCache,
 
+    currentUser,
+    appUsers,
+    appUserByUserId,
+    getAppUserByUserId,
+    refreshCurrentUser,
+    refreshAppUsers,
+
     myActions,
     isMyActionsLoading,
     loadMyActions, //nothing loads unless a page calls it
@@ -468,9 +480,17 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
   }), [
     agreements, runByAgreementId, runsByAgreementId, actionsByAgreementId, isAgreementDetailLoading, loadAgreementDetail,
     dashboardActions, isDashboardActionsLoading, loadDashboardActions, clearDashboardActionsCache,
-    clearAgreementDetailCache, myActions, isMyActionsLoading, loadMyActions, isRefreshing, lastRefreshed, refresh
+    clearAgreementDetailCache, currentUser, appUsers, getAppUserByUserId, appUserByUserId, refreshCurrentUser,
+    refreshAppUsers, myActions, isMyActionsLoading, loadMyActions, isRefreshing, lastRefreshed, refresh
   ]);
 
+  const handleBack = (): void => {
+    if (window.history.length > 1) {
+      history.goBack();
+    } else {
+      history.push("/my-work"); // or "/all-agreements"
+    }
+  };
 
   /**
  * PAGE CONTEXT MISSING
@@ -594,7 +614,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
         {/* HEADER WITH THEME TOGGLE - USE APPBAR and TOOLBAR to provide "sticky" appearance */}
         <AppBar position="sticky" elevation={1} sx={{ top: 0 }} >
           {/* Toolbar gives you the standard header height + padding */}
-          <Toolbar disableGutters sx={{ px: 2 }}>
+          <Toolbar disableGutters>
             <NavHeader context={context} appTitle={wpTitle} useDarkTheme={useDarkTheme} setUseDarkTheme={setUseDarkTheme} />
           </Toolbar>
         </AppBar>
@@ -662,7 +682,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
                   context={context}
                   mode="edit"
                   onSubmit={handleSubmitAgreement}
-                  onCancel={() => history.goBack()}
+                  onCancel={handleBack}
                   {...routeProps}
                 />
               );

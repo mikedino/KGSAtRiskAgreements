@@ -254,35 +254,33 @@ export const Configuration = Helper.SPConfig({
                     defaultValue: "0",
                     decimals: 0
                 } as Helper.IFieldInfoNumber,
+                {
+                    name: "backups",
+                    title: "Backups",
+                    type: Helper.SPCfgFieldType.User,
+                    multi: true
+                } as Helper.IFieldInfoUser,
+                {
+                    name: "hasBackup",
+                    title: "Has Backup",
+                    description: "Indicates whether or not this user has a backup assigned",
+                    type: Helper.SPCfgFieldType.Boolean,
+                    defaultValue: "0"
+                }
             ],
             ViewInformation: [
                 {
-                    ViewName: "All Users",
+                    ViewName: "AllItems",
                     Default: true,
-                    ViewQuery:
-                        "<Where><Eq><FieldRef Name=\"runStatus\" /><Value Type=\"Choice\">Active</Value></Eq></Where>" +
-                        "<OrderBy><FieldRef Name=\"lastVisit\" Ascending=\"FALSE\" /></OrderBy>",
+                    ViewQuery: '<OrderBy><FieldRef Name="user" /></OrderBy>',
                     ViewFields: [
                         "user",
                         "role",
                         "Created",
                         "lastVisit",
                         "visitCount",
-                        "modePreference"
-                    ]
-                },
-                {
-                    ViewName: "Admins and CMs",
-                    Default: true,
-                    ViewQuery:
-                        "<Where><Neq><FieldRef Name=\"role\" /><Value Type=\"Choice\">user</Value></Neq></Where>" +
-                        "<OrderBy><FieldRef Name=\"lastVisit\" Ascending=\"FALSE\" /></OrderBy>",
-                    ViewFields: [
-                        "user",
-                        "role",
-                        "lastVisit",
-                        "visitCount",
-                        "modePreference"
+                        "modePreference",
+                        "backups"
                     ]
                 }
             ]

@@ -1,14 +1,14 @@
 import * as React from "react";
-import { IRiskAgreementItem, IWorkflowActionItem, IWorkflowRunItem } from "../data/props";
+import { IAppUserItem, IRiskAgreementItem, IWorkflowActionItem, IWorkflowRunItem } from "../data/props";
 import { RefreshMode } from "../data/agreementsDataCall";
 
 export interface IAgreementsContext {
   agreements: IRiskAgreementItem[];
-  runByAgreementId: Map<number, IWorkflowRunItem>; //current run for agreement
+  runByAgreementId: Map<number, IWorkflowRunItem>; // current run for agreement
 
   // for the item VIEW
-  runsByAgreementId: Map<number, IWorkflowRunItem[]>; //all runs for agreement
-  actionsByAgreementId: Map<number, IWorkflowActionItem[]>; //all actions for agreement
+  runsByAgreementId: Map<number, IWorkflowRunItem[]>; // all runs for agreement
+  actionsByAgreementId: Map<number, IWorkflowActionItem[]>; // all actions for agreement
   isAgreementDetailLoading: (agreementId: number) => boolean;
   loadAgreementDetail: (agreementId: number, force?: boolean) => Promise<void>;
   clearAgreementDetailCache: (agreementId?: number) => void;
@@ -18,6 +18,14 @@ export interface IAgreementsContext {
   isDashboardActionsLoading: boolean;
   loadDashboardActions: (force?: boolean) => Promise<void>;
   clearDashboardActionsCache: () => void;
+
+  // app users / backup approval support
+  currentUser?: IAppUserItem; // current user profile row
+  appUsers: IAppUserItem[];
+  appUserByUserId: Map<number, IAppUserItem>;
+  getAppUserByUserId: (userId: number) => IAppUserItem | undefined;
+  refreshCurrentUser: () => Promise<void>;
+  refreshAppUsers: () => Promise<void>;
 
   // for MY WORK
   myActions: IWorkflowActionItem[];

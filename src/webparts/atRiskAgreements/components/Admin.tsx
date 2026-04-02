@@ -2,7 +2,7 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import { Alert, Box, Button, CircularProgress, Snackbar, Stack, Tab, Tabs, Typography } from "@mui/material";
 import { DataSource } from "../data/ds";
-import { IAppUserItem, IConfigItem, ILobItem, IOgItem, IEntityItem } from "../data/props";
+import { IConfigItem, ILobItem, IOgItem, IEntityItem } from "../data/props";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { formatError } from "../services/utils";
 import { UsersAdminPanel } from "./admin/UserPanel";
@@ -10,6 +10,7 @@ import { ApproversAdminPanel } from "./admin/ApproversPanel";
 import { WebPartContext } from "@microsoft/sp-webpart-base";
 import { useTheme } from "@mui/material/styles";
 import { AppUserService } from "../services/userService";
+import { useAgreements } from "../services/agreementsContext";
 
 type AdminTabKey = "users" | "approvers";
 
@@ -31,10 +32,8 @@ const Admin: React.FC<AdminModuleProps> = ({ context, showBusy, hideBusy }) => {
 
   const [tab, setTab] = useState<AdminTabKey>("users");
 
-  // Users are admin-only; load on Admin page
-  const [usersLoading, setUsersLoading] = useState<boolean>(false);
-  const [usersError, setUsersError] = useState<string>("");
-  const [users, setUsers] = useState<IAppUserItem[]>([]);
+  // load user context
+  const { appUsers, refreshAppUsers, isRefreshing } = useAgreements();
 
   // Approver data is already in DataSource.init(); keep a local snapshot to re-render on save/refresh
   const [config, setConfig] = useState<IConfigItem[]>([]);
@@ -64,19 +63,6 @@ const Admin: React.FC<AdminModuleProps> = ({ context, showBusy, hideBusy }) => {
     }
   }, [showBusy, hideBusy]);
 
-  const loadUsers = async (): Promise<void> => {
-    setUsersLoading(true);
-    setUsersError("");
-    try {
-      const u = await DataSource.getAppUsers();
-      setUsers(u);
-    } catch (e) {
-      setUsersError(`Failed to load users: ${formatError(e)}`);
-    } finally {
-      setUsersLoading(false);
-    }
-  };
-
   const syncLookupsFromCache = (): void => {
     setConfig(DataSource.Config ?? []);
     setLobs(DataSource.LOBs ?? []);
@@ -105,22 +91,24 @@ const Admin: React.FC<AdminModuleProps> = ({ context, showBusy, hideBusy }) => {
 
   const handleRefreshClick = async (): Promise<void> => {
     if (tab === "users") {
-      await withBusy("Refreshing users…", loadUsers);
+      await withBusy("Refreshing users…", refreshAppUsers);
     } else {
       await withBusy("Refreshing approver lookups…", refreshLookups);
     }
   };
 
   useEffect(() => {
-    (async () => {
-      await loadUsers();
-      // these should already be loaded, but syncing ensures render is correct
-      syncLookupsFromCache();
-    })().catch((e) => {
-      // This is a safety net; individual loaders already catch
-      console.error("Admin init failed", e);
-    });
+    syncLookupsFromCache();
   }, []);
+
+  useEffect(() => {
+    if (appUsers.length > 0) {
+      return;
+    }
+
+    handleRefreshClick().catch((e) =>{ console.error("Error loading users on mount", e)});
+
+  }, [appUsers.length]);
 
   return (
     <>
@@ -137,7 +125,6 @@ const Admin: React.FC<AdminModuleProps> = ({ context, showBusy, hideBusy }) => {
             variant="outlined"
             startIcon={<RefreshIcon />}
             onClick={handleRefreshClick}
-            disabled={tab === "users" ? usersLoading : false}
           >
             Refresh
           </Button>
@@ -166,16 +153,17 @@ const Admin: React.FC<AdminModuleProps> = ({ context, showBusy, hideBusy }) => {
 
         {tab === "users" && (
           <>
-            {usersError && <Alert severity="error" sx={{ mb: 2 }}>{usersError}</Alert>}
+            {/* {usersError && <Alert severity="error" sx={{ mb: 2 }}>{usersError}</Alert>} */}
 
-            {usersLoading ? (
+            {!appUsers.length && isRefreshing ? (
               <Stack direction="row" spacing={1.5} alignItems="center" sx={{ py: 4 }}>
                 <CircularProgress size={20} />
                 <Typography variant="body2">Loading users...</Typography>
               </Stack>
             ) : (
+
               <UsersAdminPanel
-                users={users}
+                users={appUsers}
                 peoplePickerContext={{
                   absoluteUrl: context.pageContext.web.absoluteUrl,
                   msGraphClientFactory: context.msGraphClientFactory,
@@ -184,13 +172,13 @@ const Admin: React.FC<AdminModuleProps> = ({ context, showBusy, hideBusy }) => {
                 onRoleChanged={async (appUserItemId, role) => {
                   await withBusy("Saving user role…", async () => {
                     await DataSource.updateAppUserRole(appUserItemId, role);
-                    await loadUsers();
+                    await refreshAppUsers();
                   });
                 }}
                 onAddUser={async (person, role, modePreference) => {
                   await withBusy("Adding user…", async () => {
                     await AppUserService.createNewUserInAdminPanel(Number(person.id), role, modePreference);
-                    await loadUsers();
+                    await refreshAppUsers();
                   });
                 }}
               />

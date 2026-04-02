@@ -83,10 +83,10 @@ const AgreementsGrid: React.FC = () => {
     {
       key: "expiring",
       label: "Expiring soon",
-      tooltip: "Approved or Resolved agreements expiring within 4 weeks",
+      tooltip: "Approved agreements expiring within 4 weeks",
       predicate: a =>
-        ["Approved", "Resolved"].includes(a.araStatus) &&
-        !!a.riskEnd &&
+        //["Approved", "Resolved"].includes(a.araStatus) &&
+        a.araStatus === "Approved" && !!a.riskEnd &&
         dayjs(a.riskEnd).isAfter(today, "day") &&
         dayjs(a.riskEnd).isBefore(today.add(4, "week"), "day")
     },
@@ -95,7 +95,7 @@ const AgreementsGrid: React.FC = () => {
       label: "Expired",
       tooltip: "Approved agreements with a past Risk End date",
       predicate: a =>
-        a.araStatus==="Approved" &&
+        a.araStatus === "Approved" &&
         !!a.riskEnd &&
         dayjs(a.riskEnd).isBefore(today, "day")
     }
@@ -177,14 +177,6 @@ const AgreementsGrid: React.FC = () => {
     return Array.from(new Set(agreements.map(a => a.contractType).filter(Boolean))).sort();
   }, [agreements]);
 
-  // compute view counts for each chip
-  const viewCounts = React.useMemo(() => {
-    return agreementViews.reduce<Record<AgreementViewKey, number>>((acc, view) => {
-      acc[view.key] = agreements.filter(a => a.araStatus !== "Draft" && view.predicate(a)).length;
-      return acc;
-    }, {} as Record<AgreementViewKey, number>);
-  }, [agreements, agreementViews]);
-
   const filterAgreements = (
     items: IRiskAgreementItem[],
     search: string,
@@ -202,10 +194,13 @@ const AgreementsGrid: React.FC = () => {
       .filter((item) => {
         const matchesSearch =
           !term ||
+          item.Title.toLowerCase().includes(term) ||
           item.projectName?.toLowerCase().includes(term) ||
           item.invoice?.toLowerCase().includes(term) ||
           item.projectMgr?.Title.toLowerCase().includes(term) ||
-          item.contractMgr?.Title.toLowerCase().includes(term);
+          item.contractMgr?.Title.toLowerCase().includes(term) ||
+          item.og?.toLowerCase().includes(term) ||
+          item.riskJustification.toLowerCase().includes(term);
 
         const matchesEntity = !entity || item.entity === entity;
         const matchesContract = !contractType || item.contractType === contractType;
@@ -260,12 +255,20 @@ const AgreementsGrid: React.FC = () => {
     );
   }, [agreements, search, entityFilter, contractTypeFilter, selectedView]);
 
+  // compute view counts for each chip
+  const viewCounts = React.useMemo(() => {
+    return agreementViews.reduce<Record<AgreementViewKey, number>>((acc, view) => {
+      acc[view.key] = rows.filter(a => a.araStatus !== "Draft" && view.predicate(a)).length;
+      return acc;
+    }, {} as Record<AgreementViewKey, number>);
+  }, [rows, agreementViews]);
+
   const columns: GridColDef[] = [
     {
       field: "Title",
       headerName: "ATR Title",
       width: 150,
-      minWidth: 120
+      minWidth: 130
     },
     {
       field: "projectName",
@@ -361,7 +364,7 @@ const AgreementsGrid: React.FC = () => {
           title: "No canceled agreements",
           description: "There are no canceled agreements in this view."
         };
-              case "resolved":
+      case "resolved":
         return {
           title: "No resolved agreements",
           description: "There are no Resolved agreements in this view."
