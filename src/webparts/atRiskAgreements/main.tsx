@@ -323,7 +323,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
 
   /////////////////// SUBMIT FORM HANDLER ///////////////////////
   type SubmitMode = "new" | "edit";
-  const handleSubmitAgreement = async (item: IRiskAgreementItem, submitMode: SubmitMode, modMeta: formModMeta): Promise<void> => {
+  const handleSubmitAgreement = async (item: IRiskAgreementItem, submitMode: SubmitMode, modMeta?: formModMeta): Promise<void> => {
 
     setBackdropMessage("Saving agreement…");
     setShowBackdrop(true);

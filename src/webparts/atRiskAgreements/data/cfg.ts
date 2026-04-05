@@ -34,6 +34,18 @@ export const Configuration = Helper.SPConfig({
                     type: Helper.SPCfgFieldType.Text
                 },
                 {
+                    name: "contractName",
+                    title: "Contract Name",
+                    defaultValue: "New Award",
+                    readOnly: true,
+                    type: Helper.SPCfgFieldType.Text
+                },
+                {
+                    name: "programName",
+                    title: "Program Name",
+                    type: Helper.SPCfgFieldType.Text
+                },
+                {
                     name: "contractType",
                     title: "Conract Type",
                     type: Helper.SPCfgFieldType.Choice,
@@ -81,6 +93,16 @@ export const Configuration = Helper.SPConfig({
                     type: Helper.SPCfgFieldType.User
                 } as Helper.IFieldInfoUser,
                 {
+                    name: "contractMgr",
+                    title: "Contract Manager",
+                    type: Helper.SPCfgFieldType.User
+                } as Helper.IFieldInfoUser,
+                {
+                    name: "subContractMgr",
+                    title: "Subcontract Manager",
+                    type: Helper.SPCfgFieldType.User
+                } as Helper.IFieldInfoUser,
+                {
                     name: "riskReason",
                     title: "At-Risk Reason",
                     description: "Reason for being At-Risk",
@@ -99,18 +121,6 @@ export const Configuration = Helper.SPConfig({
                     type: Helper.SPCfgFieldType.Note,
                     noteType: SPTypes.FieldNoteType.RichText
                 } as Helper.IFieldInfoNote,
-                {
-                    name: "contractName",
-                    title: "Contract Name",
-                    defaultValue: "New Award",
-                    readOnly: true,
-                    type: Helper.SPCfgFieldType.Text
-                },
-                {
-                    name: "programName",
-                    title: "Program Name",
-                    type: Helper.SPCfgFieldType.Text
-                },
                 {
                     name: "araStatus",
                     title: "Status",

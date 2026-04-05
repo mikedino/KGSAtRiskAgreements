@@ -1,13 +1,19 @@
 import { Web } from "gd-sprest";
 import Strings from "../../../strings";
 import { encodeListName, formatError } from "./utils";
+import { IOgItem } from "../data/props";
 
 export interface IOgPayload {
     Id: number;
     Title: string;
-    presidentId: number | undefined;
-    lobId: number | undefined;
-    CMId: number | undefined;
+    presidentId: number;
+    lobId: number;
+    ogType: IOgItem["ogType"];
+    parentOgId?: number;
+    isActive: boolean;
+    isSelectable: boolean;
+    CMId?: number;
+    SCMId?: number;
 }
 
 export class OgService {
@@ -23,7 +29,12 @@ export class OgService {
                     Title: item.Title,
                     presidentId: item.presidentId,
                     lobId: item.lobId,
-                    CMId: item.CMId
+                    CMId: item.CMId,
+                    SCMId: item.SCMId,
+                    ogType: item.ogType,
+                    parentOgId: item.parentOgId,
+                    isActive: item.isActive,
+                    isSelectable: item.isSelectable
                 })
                 .execute(
                     () => resolve(),
@@ -61,7 +72,12 @@ export class OgService {
                     Title: item.Title,
                     presidentId: item.presidentId,
                     lobId: item.lobId,
-                    CMId: item.CMId
+                    CMId: item.CMId,
+                    SCMId: item.SCMId,
+                    ogType: item.ogType,
+                    parentOgId: item.parentOgId,
+                    isActive: item.isActive,
+                    isSelectable: item.isSelectable
                 })
                 .execute(
                     () => resolve(),

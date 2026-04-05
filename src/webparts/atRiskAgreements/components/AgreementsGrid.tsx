@@ -268,6 +268,7 @@ const AgreementsGrid: React.FC = () => {
       field: "Title",
       headerName: "ATR Title",
       width: 150,
+      flex: 1,
       minWidth: 130
     },
     {

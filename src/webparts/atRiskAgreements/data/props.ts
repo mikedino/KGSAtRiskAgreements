@@ -84,6 +84,7 @@ export interface IRiskAgreementItem {
   og: string;
   projectMgr?: IPeoplePicker;
   contractMgr?: IPeoplePicker;
+  subContractMgr?: IPeoplePicker;
   riskReason: "Lack of Funding" | "PoP End";
   riskFundingRequested?: number;
   riskJustification: string;
@@ -202,6 +203,11 @@ export interface IOgItem {
   lob: ILookupItem;
   CM: IPeoplePicker;
   SCM?: IPeoplePicker;
+  // Hierarchy
+  ogType: "OG" | "SrOG";
+  parentOg?: ILookupItem;   // set on child OGs; lookup resolves to the SrOG row (and its president)
+  isActive: boolean;
+  isSelectable: boolean;
 }
 
 export interface ILobItem {

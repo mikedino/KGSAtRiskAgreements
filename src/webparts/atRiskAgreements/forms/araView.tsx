@@ -335,8 +335,8 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
     ******************************************/
     const currentUserId = currentUser?.user?.Id ?? ContextInfo.userId;
 
-    const riskStartDate = dayjs(item.riskStart);
-    const today = dayjs().startOf("day");
+    const riskStartDate = dayjs.utc(item.riskStart);
+    const today = dayjs.utc().startOf("day");
 
     const isElevated = DataSource.isAdmin || DataSource.isCM;
     const isSubmitter = item.Author.Id === currentUserId || item.backupRequestor?.Id === currentUserId;

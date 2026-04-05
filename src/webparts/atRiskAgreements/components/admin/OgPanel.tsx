@@ -44,6 +44,11 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
     const [lobId, setLobId] = React.useState<number | "">("");
     const [ogPresident, setOgPresident] = React.useState<IPersonaProps | undefined>(undefined);
     const [ogCm, setOgCm] = React.useState<IPersonaProps | undefined>(undefined);
+    const [ogType, setOgType] = React.useState<"OG" | "SrOG">("OG");
+    const [parentOgId, setParentOgId] = React.useState<number | "">("");
+    const [isActive, setIsActive] = React.useState(true);
+    const [isSelectable, setIsSelectable] = React.useState(true);
+    const [ogScm, setOgScm] = React.useState<IPersonaProps | undefined>(undefined);
 
     const [dialogError, setDialogError] = React.useState("");
     const [confirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false);
@@ -79,13 +84,52 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
             : undefined
     }
 
+    const handleOgTypeChange = (value: "OG" | "SrOG"): void => {
+        setOgType(value);
+
+        // SrOGs cannot have parent or CM/SCM requirements in the current model
+        if (value === "SrOG") {
+            setParentOgId("");
+            setOgCm(undefined);
+            setOgScm(undefined);
+            setIsSelectable(false);
+        }
+
+        if (dialogError) setDialogError("");
+    };
+
+    const handleParentOgChange = (value: number | ""): void => {
+        setParentOgId(value);
+        if (dialogError) setDialogError("");
+    };
+
+    const handleIsActiveChange = (value: boolean): void => {
+        setIsActive(value);
+        if (dialogError) setDialogError("");
+    };
+
+    const handleIsSelectableChange = (value: boolean): void => {
+        setIsSelectable(value);
+        if (dialogError) setDialogError("");
+    };
+
+    const handleScmChange = (person: IPersonaProps | undefined): void => {
+        setOgScm(person);
+        if (dialogError) setDialogError("");
+    };
+
     const openAddDialog = (): void => {
         setDialogMode("add");
         setEditingOg(undefined);
         setOgTitle("");
         setLobId("");
+        setOgType("OG");
+        setParentOgId("");
+        setIsActive(true);
+        setIsSelectable(true);
         setOgPresident(undefined);
         setOgCm(undefined);
+        setOgScm(undefined);
         setDialogError("");
         setDialogOpen(true);
     };
@@ -95,8 +139,13 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
         setEditingOg(og);
         setOgTitle(og.Title ?? "");
         setLobId(og.lob?.Id ?? "");
+        setOgType(og.ogType);
+        setParentOgId(og.parentOg?.Id ?? "");
+        setIsActive(og.isActive);
+        setIsSelectable(og.isSelectable);
         setOgPresident(convertPickerToPersona(og.president));
         setOgCm(convertPickerToPersona(og.CM));
+        setOgScm(convertPickerToPersona(og.SCM));
         setDialogError("");
         setDialogOpen(true);
     };
@@ -108,7 +157,12 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
         setEditingOg(undefined);
         setOgTitle("");
         setLobId("");
+        setOgType("OG");
+        setParentOgId("");
+        setIsActive(true);
+        setIsSelectable(true);
         setOgCm(undefined);
+        setOgScm(undefined);
         setOgPresident(undefined);
         setDialogError("");
     };
@@ -124,6 +178,12 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
         setDeleteError("");
     };
 
+    const srOgOptions = React.useMemo<IOgItem[]>(() => {
+        return ogs.filter((og) => og.ogType === "SrOG" && og.isActive);
+    }, [ogs]);
+
+    const isSrOg = ogType === "SrOG";
+
     const handleDialogSave = async (): Promise<void> => {
         const trimmedTitle = ogTitle.trim();
 
@@ -132,7 +192,7 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
             return;
         }
 
-        const duplicate = ogs.some(e =>
+        const duplicate = ogs.some((e) =>
             e.Title.trim().toLowerCase() === trimmedTitle.toLowerCase() &&
             e.Id !== editingOg?.Id
         );
@@ -144,13 +204,7 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
 
         const presidentId = ogPresident?.id ? Number(ogPresident.id) : undefined;
         if (!presidentId || Number.isNaN(presidentId)) {
-            setDialogError("President is required.");
-            return;
-        }
-
-        const cmId = ogCm?.id ? Number(ogCm.id) : undefined;
-        if (!cmId || Number.isNaN(cmId)) {
-            setDialogError("CM is required.");
+            setDialogError(isSrOg ? "SrOG President is required." : "OG President is required.");
             return;
         }
 
@@ -160,13 +214,37 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
             return;
         }
 
+        const thisParentOgId = parentOgId ? Number(parentOgId) : undefined;
+        if (thisParentOgId && editingOg?.Id === thisParentOgId) {
+            setDialogError("An OG cannot be its own parent.");
+            return;
+        }
+
+        let cmId: number | undefined = undefined;
+        let scmId: number | undefined = undefined;
+
+        if (!isSrOg) {
+            cmId = ogCm?.id ? Number(ogCm.id) : undefined;
+            if (!cmId || Number.isNaN(cmId)) {
+                setDialogError("CM is required.");
+                return;
+            }
+
+            scmId = ogScm?.id ? Number(ogScm.id) : undefined;
+        }
+
         // preserve state in case save fails
         const mode = dialogMode;
         const og = editingOg;
-        const lob = thisLobId;
         const title = ogTitle;
+        const lob = thisLobId;
+        const type = ogType;
+        const parentId = parentOgId;
+        const active = isActive;
+        const selectable = isSelectable;
         const president = ogPresident;
         const cm = ogCm;
+        const scm = ogScm;
 
         // close first so backdrop is top layer
         setDialogOpen(false);
@@ -175,10 +253,15 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
         const fullItem: IOgPayload = {
             Id: og?.Id ?? 0,
             Title: trimmedTitle,
-            presidentId: presidentId,
+            presidentId,
             lobId: thisLobId,
-            CMId: cmId
-        }
+            ogType,
+            parentOgId: isSrOg ? undefined : thisParentOgId,
+            isActive,
+            isSelectable: isSrOg ? false : isSelectable,
+            CMId: isSrOg ? undefined : cmId,
+            SCMId: isSrOg ? undefined : scmId
+        };
 
         try {
             if (mode === "add") {
@@ -191,7 +274,12 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
             setEditingOg(undefined);
             setOgTitle("");
             setLobId("");
+            setOgType("OG");
+            setParentOgId("");
+            setIsActive(true);
+            setIsSelectable(true);
             setOgCm(undefined);
+            setOgScm(undefined);
             setOgPresident(undefined);
         } catch (e) {
             // reopen and restore values if save fails
@@ -199,8 +287,13 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
             setEditingOg(og);
             setOgTitle(title);
             setLobId(lob);
+            setOgType(type);
+            setParentOgId(parentId);
+            setIsActive(active);
+            setIsSelectable(selectable);
             setOgPresident(president);
             setOgCm(cm);
+            setOgScm(scm);
             setDialogError(formatError(e));
             setDialogOpen(true);
         }
@@ -234,7 +327,6 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
         }
     };
 
-
     return (
         <Stack spacing={2} sx={{ minWidth: 0 }}>
             <Box
@@ -266,7 +358,7 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
                     const cmKey = `og-${og.Id}-cm`;
 
                     return (
-                        <Paper key={og.Id} sx={{ p: 1.5, minWidth: 0}}>
+                        <Paper key={og.Id} sx={{ p: 1.5, minWidth: 0 }}>
                             <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
                                 <Typography fontWeight={700} sx={{ mb: 1 }} noWrap>
                                     {og.Title}
@@ -399,29 +491,17 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
                             autoFocus
                         />
 
-                        <MuiPeoplePicker
-                            label="OG President"
-                            context={peoplePickerContext}
-                            value={toPickerValue(editingOg?.president)}
+                        <TextField
+                            select
+                            label="Type"
                             required
-                            selectionLimit={1}
-                            onChange={(items: IPersonaProps[]) => {
-                                const selected = firstOrUndefined(items, 1);
-                                handlePresidentChange(selected);
-                            }}
-                        />
-
-                        <MuiPeoplePicker
-                            label="Contract Manager"
-                            context={peoplePickerContext}
-                            value={toPickerValue(editingOg?.CM)}
-                            required
-                            selectionLimit={1}
-                            onChange={(items: IPersonaProps[]) => {
-                                const selected = firstOrUndefined(items, 1);
-                                handleCmChange(selected);
-                            }}
-                        />
+                            fullWidth
+                            value={ogType}
+                            onChange={(e) => handleOgTypeChange(e.target.value as "OG" | "SrOG")}
+                        >
+                            <MenuItem value="OG">OG</MenuItem>
+                            <MenuItem value="SrOG">SrOG</MenuItem>
+                        </TextField>
 
                         <TextField
                             select
@@ -441,6 +521,88 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
                             ))}
                         </TextField>
 
+                        <MuiPeoplePicker
+                            label={isSrOg ? "SrOG President" : "OG President"}
+                            context={peoplePickerContext}
+                            value={ogPresident?.secondaryText ? [ogPresident.secondaryText] : []}
+                            required
+                            selectionLimit={1}
+                            onChange={(items: IPersonaProps[]) => {
+                                const selected = firstOrUndefined(items, 1);
+                                handlePresidentChange(selected);
+                            }}
+                        />
+
+                        {!isSrOg && (
+                            <>
+                                <TextField
+                                    select
+                                    label="Parent SrOG"
+                                    fullWidth
+                                    value={parentOgId}
+                                    onChange={(e) => {
+                                        const selected = e.target.value;
+                                        handleParentOgChange(selected === "" ? "" : Number(selected));
+                                    }}
+                                >
+                                    <MenuItem value="">None</MenuItem>
+                                    {srOgOptions
+                                        .filter((e) => e.Id !== editingOg?.Id)
+                                        .map((e) => (
+                                            <MenuItem key={e.Id} value={e.Id}>
+                                                {e.Title}
+                                            </MenuItem>
+                                        ))}
+                                </TextField>
+
+                                <MuiPeoplePicker
+                                    label="Contract Manager"
+                                    context={peoplePickerContext}
+                                    value={ogCm?.secondaryText ? [ogCm.secondaryText] : []}
+                                    required
+                                    selectionLimit={1}
+                                    onChange={(items: IPersonaProps[]) => {
+                                        const selected = firstOrUndefined(items, 1);
+                                        handleCmChange(selected);
+                                    }}
+                                />
+
+                                <MuiPeoplePicker
+                                    label="Subcontract Manager"
+                                    context={peoplePickerContext}
+                                    value={ogScm?.secondaryText ? [ogScm.secondaryText] : []}
+                                    selectionLimit={1}
+                                    onChange={(items: IPersonaProps[]) => {
+                                        const selected = firstOrUndefined(items, 1);
+                                        handleScmChange(selected);
+                                    }}
+                                />
+                            </>
+                        )}
+
+                        <TextField
+                            select
+                            label="Active"
+                            fullWidth
+                            value={isActive ? "true" : "false"}
+                            onChange={(e) => handleIsActiveChange(e.target.value === "true")}
+                        >
+                            <MenuItem value="true">Active</MenuItem>
+                            <MenuItem value="false">Inactive</MenuItem>
+                        </TextField>
+
+                        <TextField
+                            select
+                            label="Selectable in Forms"
+                            fullWidth
+                            value={isSelectable ? "true" : "false"}
+                            disabled={isSrOg}
+                            onChange={(e) => handleIsSelectableChange(e.target.value === "true")}
+                            helperText={isSrOg ? "SrOG rows should not be selectable in agreement forms." : undefined}
+                        >
+                            <MenuItem value="true">Yes</MenuItem>
+                            <MenuItem value="false">No</MenuItem>
+                        </TextField>
                     </Stack>
                 </DialogContent>
 

@@ -2,9 +2,11 @@
 import dayjs from "dayjs";
 import isToday from "dayjs/plugin/isToday";
 import isYesterday from "dayjs/plugin/isYesterday";
+import utc from "dayjs/plugin/utc";
 
 dayjs.extend(isToday);
 dayjs.extend(isYesterday);
+dayjs.extend(utc);
 
 // format a number into a $0.00 USD display string
 export const formatCurrency = (value: number | undefined): string => {
@@ -97,7 +99,7 @@ export const encodeListName = (
  * @returns date value in M/D/YYYY or "-"
  */
 export const formatDate = (value?: string): string => {
-    return value ? dayjs(value).format("M/D/YYYY") : "—";
+    return value ? dayjs.utc(value).format("M/D/YYYY") : "—";
 }
 
 
@@ -113,13 +115,8 @@ export const formatSinceDate = (date?: string | Date): string => {
     const d = dayjs(date);
     const now = dayjs();
 
-    if (d.isToday()) {
-        return "today";
-    }
-
-    if (d.isYesterday()) {
-        return "yesterday";
-    }
+    if (d.isToday()) return "today"; 
+    if (d.isYesterday()) return "yesterday";
 
     // Previous year → numeric date
     if (d.year() !== now.year()) {

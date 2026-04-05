@@ -180,10 +180,11 @@ export class DataSource {
         "projectMgr/Id", "projectMgr/Title", "projectMgr/EMail",
         "entityGM/Id", "entityGM/Title", "entityGM/EMail",
         "contractMgr/Id", "contractMgr/Title", "contractMgr/EMail",
+        "subContractMgr/Id", "subContractMgr/Title", "subContractMgr/EMail",
         "currentRun/Id", "currentRun/Title",
         "effectiveApprovedRun/Id", "effectiveApprovedRun/Title"
     ];
-    public static agreementExpandQuery: string[] = ["Author", "backupRequestor", "projectMgr", "entityGM", "contractMgr", "currentRun", "effectiveApprovedRun", "Editor"];
+    public static agreementExpandQuery: string[] = ["Author", "backupRequestor", "projectMgr", "entityGM", "contractMgr", "currentRun", "effectiveApprovedRun", "Editor", "subContractMgr"];
     // Load all the Risk Agreeements
     private static _agreements: IRiskAgreementItem[] = [];
     private static _agreementsVersion = 0; // detect refreshes
@@ -512,9 +513,11 @@ export class DataSource {
                         "Id", "Title", "lob/Id", "lob/Title",
                         "president/EMail", "president/Title", "president/Id",
                         "SCM/EMail", "SCM/Title", "SCM/Id",
-                        "CM/EMail", "CM/Title", "CM/Id"
+                        "CM/EMail", "CM/Title", "CM/Id",
+                        "parentOg/Title", "parentOg/Id",
+                        "isActive", "isSelectable", "ogType"
                     ],
-                    Expand: ["president", "lob", "CM", "SCM"],
+                    Expand: ["president", "lob", "CM", "SCM", "parentOg"],
                     Top: 5000
                 })
                 .execute(

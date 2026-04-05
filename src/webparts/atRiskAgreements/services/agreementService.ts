@@ -135,6 +135,7 @@ export class RiskAgreementService {
         og: item.og,
         projectMgrId: item.projectMgr?.Id,
         contractMgrId: item.contractMgr?.Id,
+        subContractMgrId: item.subContractMgr?.Id,
         backupRequestorId: item.backupRequestor?.Id,
         riskReason: item.riskReason,
         riskFundingRequested: item.riskFundingRequested ?? 0,

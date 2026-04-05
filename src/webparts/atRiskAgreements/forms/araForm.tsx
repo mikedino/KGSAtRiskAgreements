@@ -12,7 +12,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { Dayjs } from 'dayjs';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
-import { ContractType, IAttachmentInfo, IContractItem, IPeoplePicker, IRiskAgreementItem } from "../data/props";
+import { ContractType, IAttachmentInfo, IContractItem, IInvoiceItem, IOgItem, IPeoplePicker, IRiskAgreementItem } from "../data/props";
 import { IPersonaProps } from "@fluentui/react";
 import CurrencyField from "../ui/CurrencyField";
 import { DataSource } from "../data/ds";
@@ -56,6 +56,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
   const [attachments, setAttachments] = useState<IAttachmentInfo[]>([]);
   const [cmTouched, setCmTouched] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [contractOgWarning, setContractOgWarning] = React.useState<string>("");
   const [form, setForm] = useState<IRiskAgreementItem>({
     ...item,
     riskFundingRequested: item?.riskFundingRequested
@@ -70,6 +71,21 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
   const hideDialog = (): void => {
     setShowDialog(false);
   };
+
+  // create valid OG list
+  const availableOgs = React.useMemo<IOgItem[]>(() => {
+    return (DataSource.OGs ?? []).filter((og) =>
+      og.isActive === true && og.isSelectable === true
+    );
+  }, [DataSource.OGs]);
+
+  // centralized map to use in helpers
+  const availableOgByTitle = React.useMemo<Map<string, IOgItem>>(() => {
+    return new Map<string, IOgItem>(
+      availableOgs.map((og) => [og.Title, og])
+    );
+  }, [availableOgs]);
+
 
   useEffect(() => {
     if (mode === "new") {
@@ -147,14 +163,41 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
   }
 
   // helper for contract onChange to find OG and set, then find CM and set
-  const applyOgAndCmFromContract = (contract: IContractItem | null): void => {
-    const ogTitle = contract?.field_75 ?? "";
-    const ogRec = DataSource.OGs.find(o => o.Title === ogTitle);
+  // helper for contract onChange to find OG and set, then find CM and set
+  const applyOgAndCmFromContract = (contract: IContractItem | null): undefined => {
+    const ogTitle = (contract?.field_75 ?? "").trim();
 
-    updateField("og", ogTitle ?? ""); //maybe no match
-    updateField("contractMgr", ogRec?.CM);
+    // no default OG on the contract
+    if (!ogTitle) {
+      updateField("og", "");
+      updateField("contractMgr", undefined);
+      updateField("subContractMgr", undefined);
+      setContractOgWarning("");
+      setCmTouched(false);
+      return undefined;
+    }
 
+    const ogRec = availableOgByTitle.get(ogTitle);
+
+    // contract OG exists and is valid/selectable
+    if (ogRec) {
+      updateField("og", ogRec.Title);
+      updateField("contractMgr", ogRec.CM);
+      updateField("subContractMgr", ogRec.SCM);
+      setContractOgWarning("");
+      setCmTouched(false);
+      return undefined;
+    }
+
+    // contract OG points to an inactive / non-selectable / invalid OG
+    updateField("og", "");
+    updateField("contractMgr", undefined);
+    updateField("subContractMgr", undefined);
+    setContractOgWarning(
+      `The contract's default OG "${ogTitle}" is inactive or no longer selectable. Please choose an Operating Group manually.`
+    );
     setCmTouched(false);
+    return undefined;
   };
 
   // watch submission type and if NEW OPP, update the form projectName to "New Award"
@@ -170,13 +213,18 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
   }, [submissionType]);
 
   // memoized list so we don’t re-filter 2700+ invoices on every keystroke.
-  const filteredInvoices = useMemo(() => DataSource.Invoices, [DataSource.Invoices]);
+  // guard against empty contract ID
+  const filteredInvoices = useMemo<IInvoiceItem[]>(() => {
+    if (!form.contractId) return [];
+    return DataSource.Invoices;
+  }, [form.contractId, DataSource.Invoices]);
 
   // memoize the selected invoice so that it will render after async update of the Invoices DataSource
-  const selectedInvoice = useMemo(() => {
-    if (!form.invoice) return null;
-    return DataSource.Invoices.find(i => i.InvoiceID1 === form.invoice) ?? null;
-  }, [DataSource.Invoices, form.invoice]);
+  // respect missing contract
+  const selectedInvoice = useMemo<IInvoiceItem | null>(() => {
+    if (!form.contractId || !form.invoice) return null;
+    return DataSource.Invoices.find((i) => i.InvoiceID1 === form.invoice) ?? null;
+  }, [form.contractId, DataSource.Invoices, form.invoice]);
 
   // ContractType options array
   const contractTypeOptions: ContractType[] = ["FFP/LOE", "T&M", "LH", "Hybrid", "Cost Plus/Reimbursable"];
@@ -215,6 +263,10 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
     !form.riskJustification ||
     !attachments.length ||
     (submissionType === "existing" && (!form.contractId || !form.invoice || !form.popEnd || !form.riskReason));
+
+  // OG custom validation/helper
+  const ogRequiredError = submitted && isRequiredError(form.og);
+  const ogWarningMessage = !ogRequiredError ? contractOgWarning : "";
 
   const uploadAttachment = async (file: File): Promise<void> => {
     if (!draftItemId) return;
@@ -666,21 +718,25 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                 required
                 fullWidth
                 value={form.og ?? ""}
-                error={submitted && isRequiredError(form.og)}
-                helperText={submitted && !form.og ? "OG is required" : undefined}
+                error={ogRequiredError || !!ogWarningMessage}
+                helperText={ogRequiredError ? "OG is required" : ogWarningMessage || undefined}
                 onChange={(e) => {
                   // on change, default CM only if not touched (or CM empty)
                   const newOg = e.target.value;
                   updateField("og", newOg);
 
+                  // user manually fixed the OG, so clear the warning
+                  setContractOgWarning("");
+
                   if (!cmTouched || !form.contractMgr?.Id) {
-                    const ogRec = DataSource.OGs.find(o => o.Title === newOg);
+                    const ogRec = availableOgByTitle.get(newOg);
                     updateField("contractMgr", ogRec?.CM);
+                    updateField("subContractMgr", ogRec?.SCM);
                   }
                 }}
               >
                 <MenuItem value="">Select OG</MenuItem>
-                {DataSource.OGs.map((e) => (
+                {availableOgs.map((e) => (
                   <MenuItem key={e.Id} value={e.Title}>
                     {e.Title}
                   </MenuItem>
