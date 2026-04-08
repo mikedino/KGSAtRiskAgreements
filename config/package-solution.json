@@ -36,6 +36,6 @@
     ]
   },
   "paths": {
-    "zippedPackage": "solution/kgs-at-risk-agreements.sppkg"
+    "zippedPackage": "solution/kgs-at-risk-agreements_dev.sppkg"
   }
 }
