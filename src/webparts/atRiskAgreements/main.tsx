@@ -41,7 +41,7 @@ type InstallState = "checking" | "ready" | "blocked" | "error";
 
 export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
 
-  /*
+  /**************** comment out on DEV side ************************
   React.useEffect(() => {
     //////////////// inject global CSS to hide the OOB page EDIT button /////////////////////////
     loadStyles(`
