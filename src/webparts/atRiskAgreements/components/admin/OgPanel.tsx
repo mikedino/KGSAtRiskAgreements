@@ -1,15 +1,16 @@
 import * as React from "react";
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
 import { MuiPeoplePicker } from "../../ui/CustomPeoplePicker";
 import { ILobItem, IOgItem, IPeoplePicker } from "../../data/props";
 import { IPersonaProps } from "@fluentui/react/lib/Persona";
 import { PeoplePickerContext } from "./ApproversPanel";
-import { toPickerValue, firstOrUndefined, run, OgField } from "./ApproversPanel";
+import { firstOrUndefined, OgField } from "./ApproversPanel";
 import { IOgPayload } from "../../services/ogService";
 import { formatError } from "../../services/utils";
 import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import SubdirectoryArrowRightIcon from "@mui/icons-material/SubdirectoryArrowRight";
 
 interface OgDefaultsSectionProps {
     ogs: IOgItem[];
@@ -88,11 +89,12 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
         setOgType(value);
 
         // SrOGs cannot have parent or CM/SCM requirements in the current model
+        // for now, just clear parent OG 
         if (value === "SrOG") {
             setParentOgId("");
-            setOgCm(undefined);
-            setOgScm(undefined);
-            setIsSelectable(false);
+            //setOgCm(undefined);
+            //setOgScm(undefined);
+            //setIsSelectable(false);
         }
 
         if (dialogError) setDialogError("");
@@ -258,9 +260,9 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
             ogType,
             parentOgId: isSrOg ? undefined : thisParentOgId,
             isActive,
-            isSelectable: isSrOg ? false : isSelectable,
-            CMId: isSrOg ? undefined : cmId,
-            SCMId: isSrOg ? undefined : scmId
+            isSelectable: isSelectable,
+            CMId: cmId,
+            SCMId: scmId
         };
 
         try {
@@ -327,6 +329,35 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
         }
     };
 
+    // simulate a grouped list of sr og's and children og's
+    const sortedOgs = React.useMemo<IOgItem[]>(() => {
+        if (!ogs?.length) return [];
+
+        // top-level items = SrOGs + OGs without a parent
+        const topLevelOgs = ogs
+            .filter((og) => og.ogType === "SrOG" || !og.parentOg?.Id)
+            .sort((a, b) => a.Title.localeCompare(b.Title));
+
+        const childOgs = ogs.filter((og) => og.ogType === "OG" && !!og.parentOg?.Id);
+
+        const result: IOgItem[] = [];
+
+        topLevelOgs.forEach((topOg) => {
+            result.push(topOg);
+
+            // only SrOGs should have children shown beneath them
+            if (topOg.ogType === "SrOG") {
+                const children = childOgs
+                    .filter((child) => child.parentOg?.Id === topOg.Id)
+                    .sort((a, b) => a.Title.localeCompare(b.Title));
+
+                result.push(...children);
+            }
+        });
+
+        return result;
+    }, [ogs]);
+
     return (
         <Stack spacing={2} sx={{ minWidth: 0 }}>
             <Box
@@ -351,121 +382,98 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
                 </Button>
             </Box>
 
-            <Stack spacing={1.5} sx={{ minWidth: 0 }}>
-                {ogs.map((og) => {
+            <Stack spacing={1.25} sx={{ minWidth: 0 }}>
+                {sortedOgs.map((og) => {
                     const rowKey = `og-${og.Id}`;
-                    const presKey = `og-${og.Id}-president`;
-                    const cmKey = `og-${og.Id}-cm`;
+                    const isSrOg = og.ogType === "SrOG";
+                    const isChildOg = og.ogType === "OG" && !!og.parentOg?.Id;
 
                     return (
-                        <Paper key={og.Id} sx={{ p: 1.5, minWidth: 0 }}>
-                            <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
-                                <Typography fontWeight={700} sx={{ mb: 1 }} noWrap>
-                                    {og.Title}
-                                </Typography>
-
-                                <IconButton
-                                    size="small"
-                                    aria-label={`Edit ${og.Title}`}
-                                    onClick={() => openEditDialog(og)}
-                                    disabled={savingKey === rowKey || !!savingKey}
-                                >
-                                    <EditOutlinedIcon fontSize="small" />
-                                </IconButton>
-                            </Stack>
-
-                            <Grid container spacing={2} sx={{ minWidth: 0 }}>
-
-                                <Grid size={{ sm: 12, md: 4 }} sx={{ minWidth: 0 }}>
-                                    <Typography variant="caption" color="text.secondary">
-                                        LOB
-                                    </Typography>
-
-                                    <Box
-                                        sx={(theme) => ({
-                                            minWidth: 0,
-                                            minHeight: "41.33px",
-                                            px: 1.75,
-                                            py: 1,
-                                            border: `1px solid ${theme.palette.secondary.light}`,
-                                            borderRadius: "4px",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            backgroundColor: theme.palette.background.paper
-                                        })}
+                        <Paper
+                            key={og.Id}
+                            sx={{
+                                p: 1.5,
+                                minWidth: 0,
+                                pl: isChildOg ? 3 : 1.5
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    minWidth: 0,
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "flex-start",
+                                    gap: 2,
+                                    flexWrap: "wrap"
+                                }}
+                            >
+                                <Stack spacing={0.35} sx={{ minWidth: 0, flex: 1 }}>
+                                    <Stack
+                                        direction="row"
+                                        spacing={1}
+                                        alignItems="center"
+                                        sx={{ minWidth: 0, flexWrap: "wrap" }}
                                     >
-                                        <Typography variant="body2" noWrap>
-                                            {og.lob?.Title ?? "—"}
+                                        {isChildOg && (
+                                            <SubdirectoryArrowRightIcon
+                                                fontSize="small"
+                                                sx={{ opacity: 0.6 }}
+                                            />
+                                        )}
+
+                                        <Typography fontWeight={isChildOg ? 500 : 700} noWrap>
+                                            {og.Title}
                                         </Typography>
-                                    </Box>
-                                </Grid>
 
-                                <Grid size={{ sm: 12, md: 4 }} sx={{ minWidth: 0 }}>
-                                    <Typography variant="caption" color="text.secondary">
-                                        OG President
-                                    </Typography>
-                                    <Box sx={{ minWidth: 0 }}>
-                                        <MuiPeoplePicker
-                                            label=""
-                                            context={peoplePickerContext}
-                                            value={toPickerValue(og.president)}
-                                            selectionLimit={1}
-                                            error={!!errors[presKey]}
-                                            helperText={errors[presKey]}
-                                            onChange={(items: IPersonaProps[]) => {
-                                                const selected = firstOrUndefined(items, 1);
-                                                const newPresId = Number(selected?.id);
-                                                const existingCmId = og.CM?.Id;
-
-                                                if (selected?.id) clearError(presKey);
-
-                                                run(onChangeOg(
-                                                    og.Id,
-                                                    og.Title,
-                                                    `${og.Title} President`,
-                                                    "president",
-                                                    newPresId,
-                                                    existingCmId
-                                                ));
-                                            }}
-                                            disabled={savingKey === rowKey || !!savingKey}
+                                        <Chip
+                                            size="small"
+                                            label={isSrOg ? "SrOG" : "OG"}
+                                            color={isSrOg ? "secondary" : "default"}
+                                            variant={isSrOg ? "filled" : "outlined"}
                                         />
-                                    </Box>
-                                </Grid>
+                                    </Stack>
 
-                                <Grid size={{ sm: 12, md: 4 }} sx={{ minWidth: 0 }}>
-                                    <Typography variant="caption" color="text.secondary">
-                                        Contract Manager
+                                    <Typography variant="body2" color="text.secondary" noWrap>
+                                        LOB: {og.lob?.Title ?? "—"}
                                     </Typography>
-                                    <Box sx={{ minWidth: 0 }}>
-                                        <MuiPeoplePicker
-                                            label=""
-                                            context={peoplePickerContext}
-                                            value={toPickerValue(og.CM)}
-                                            selectionLimit={1}
-                                            error={!!errors[cmKey]}
-                                            helperText={errors[cmKey]}
-                                            onChange={(items: IPersonaProps[]) => {
-                                                const selected = firstOrUndefined(items, 1);
-                                                const newCmId = Number(selected?.id);
-                                                const existingPresId = og.president?.Id;
 
-                                                if (selected?.id) clearError(cmKey);
+                                    {isChildOg && (
+                                        <Typography variant="body2" color="text.secondary" noWrap>
+                                            Parent SrOG: {og.parentOg?.Title}
+                                        </Typography>
+                                    )}
+                                </Stack>
 
-                                                run(onChangeOg(
-                                                    og.Id,
-                                                    og.Title,
-                                                    `${og.Title} CM`,
-                                                    "cm",
-                                                    existingPresId,
-                                                    newCmId
-                                                ));
-                                            }}
-                                            disabled={savingKey === rowKey || !!savingKey}
-                                        />
-                                    </Box>
-                                </Grid>
-                            </Grid>
+                                <Stack
+                                    direction="row"
+                                    spacing={1}
+                                    alignItems="center"
+                                    sx={{ flexWrap: "wrap", justifyContent: "flex-end" }}
+                                >
+                                    <Chip
+                                        size="small"
+                                        label={og.isActive ? "Active" : "Inactive"}
+                                        color={og.isActive ? "success" : "default"}
+                                        variant={og.isActive ? "filled" : "outlined"}
+                                    />
+
+                                    <Chip
+                                        size="small"
+                                        label={og.isSelectable ? "Selectable" : "Hidden"}
+                                        color={og.isSelectable ? "info" : "default"}
+                                        variant={og.isSelectable ? "filled" : "outlined"}
+                                    />
+
+                                    <IconButton
+                                        size="small"
+                                        aria-label={`Edit ${og.Title}`}
+                                        onClick={() => openEditDialog(og)}
+                                        disabled={savingKey === rowKey || !!savingKey}
+                                    >
+                                        <EditOutlinedIcon fontSize="small" />
+                                    </IconButton>
+                                </Stack>
+                            </Box>
                         </Paper>
                     );
                 })}
@@ -533,51 +541,49 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
                             }}
                         />
 
+                        <MuiPeoplePicker
+                            label="Contract Manager"
+                            context={peoplePickerContext}
+                            value={ogCm?.secondaryText ? [ogCm.secondaryText] : []}
+                            required
+                            selectionLimit={1}
+                            onChange={(items: IPersonaProps[]) => {
+                                const selected = firstOrUndefined(items, 1);
+                                handleCmChange(selected);
+                            }}
+                        />
+
+                        <MuiPeoplePicker
+                            label="Subcontract Manager"
+                            context={peoplePickerContext}
+                            value={ogScm?.secondaryText ? [ogScm.secondaryText] : []}
+                            selectionLimit={1}
+                            onChange={(items: IPersonaProps[]) => {
+                                const selected = firstOrUndefined(items, 1);
+                                handleScmChange(selected);
+                            }}
+                        />
+
                         {!isSrOg && (
-                            <>
-                                <TextField
-                                    select
-                                    label="Parent SrOG"
-                                    fullWidth
-                                    value={parentOgId}
-                                    onChange={(e) => {
-                                        const selected = e.target.value;
-                                        handleParentOgChange(selected === "" ? "" : Number(selected));
-                                    }}
-                                >
-                                    <MenuItem value="">None</MenuItem>
-                                    {srOgOptions
-                                        .filter((e) => e.Id !== editingOg?.Id)
-                                        .map((e) => (
-                                            <MenuItem key={e.Id} value={e.Id}>
-                                                {e.Title}
-                                            </MenuItem>
-                                        ))}
-                                </TextField>
-
-                                <MuiPeoplePicker
-                                    label="Contract Manager"
-                                    context={peoplePickerContext}
-                                    value={ogCm?.secondaryText ? [ogCm.secondaryText] : []}
-                                    required
-                                    selectionLimit={1}
-                                    onChange={(items: IPersonaProps[]) => {
-                                        const selected = firstOrUndefined(items, 1);
-                                        handleCmChange(selected);
-                                    }}
-                                />
-
-                                <MuiPeoplePicker
-                                    label="Subcontract Manager"
-                                    context={peoplePickerContext}
-                                    value={ogScm?.secondaryText ? [ogScm.secondaryText] : []}
-                                    selectionLimit={1}
-                                    onChange={(items: IPersonaProps[]) => {
-                                        const selected = firstOrUndefined(items, 1);
-                                        handleScmChange(selected);
-                                    }}
-                                />
-                            </>
+                            <TextField
+                                select
+                                label="Parent SrOG"
+                                fullWidth
+                                value={parentOgId}
+                                onChange={(e) => {
+                                    const selected = e.target.value;
+                                    handleParentOgChange(selected === "" ? "" : Number(selected));
+                                }}
+                            >
+                                <MenuItem value="">None</MenuItem>
+                                {srOgOptions
+                                    .filter((e) => e.Id !== editingOg?.Id)
+                                    .map((e) => (
+                                        <MenuItem key={e.Id} value={e.Id}>
+                                            {e.Title}
+                                        </MenuItem>
+                                    ))}
+                            </TextField>
                         )}
 
                         <TextField
@@ -595,8 +601,9 @@ export const OgDefaultsSection: React.FC<OgDefaultsSectionProps> = ({
                             select
                             label="Selectable in Forms"
                             fullWidth
-                            value={isSelectable ? "true" : "false"}
-                            disabled={isSrOg}
+                            value={isSelectable}
+                            error={isSrOg && isSelectable}
+                            //disabled={isSrOg}
                             onChange={(e) => handleIsSelectableChange(e.target.value === "true")}
                             helperText={isSrOg ? "SrOG rows should not be selectable in agreement forms." : undefined}
                         >
