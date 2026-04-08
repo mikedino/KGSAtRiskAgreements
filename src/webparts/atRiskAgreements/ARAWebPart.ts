@@ -10,7 +10,7 @@ import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
 import * as strings from 'AtRiskAgreementsWebPartStrings';
 import { IAppProps } from './data/props';
 import Strings, { setContext } from '../../strings';
-import { App } from './main';
+import { App } from './App';
 
 export interface IAtRiskAgreementsWebPartProps {
   description: string;

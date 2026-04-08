@@ -57,7 +57,7 @@ const isSuccessComplete = (status: AraStatus): boolean =>
 
 export const getRiskLevel = (amount: number): RiskLevel => {
     if (amount < 50000) return "Low";
-    if (amount <= 100000) return "Medium";
+    if (amount < 100000) return "Medium";
     return "High";
 };
 
