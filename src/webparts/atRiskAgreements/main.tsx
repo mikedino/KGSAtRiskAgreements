@@ -28,7 +28,7 @@ import styles from "./styles/styles.module.scss";
 import { formatError } from "./services/utils";
 import Strings from "../../strings";
 import { ContextInfo } from "gd-sprest";
-//import { loadStyles } from "@microsoft/load-themed-styles";
+import { loadStyles } from "@microsoft/load-themed-styles";
 
 import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
@@ -41,16 +41,14 @@ type InstallState = "checking" | "ready" | "blocked" | "error";
 
 export const App: React.FC<IAppProps> = ({ wpTitle, context }) => {
 
-  /*
   React.useEffect(() => {
-    //////////////// inject global CSS to hide the OOB page EDIT button /////////////////////////
+    //////////////// inject global CSS to hide the OOB page EDIT button - ONLY IN PROD /////////////////////////
     loadStyles(`
       #spCommandBar button[name="Edit"] {
         display: none !important;
       }
     `);
   }, []);
-  */
 
   const [installState, setInstallState] = React.useState<InstallState>("checking");
   const [useDarkTheme, setUseDarkTheme] = useState<boolean>(() => {
