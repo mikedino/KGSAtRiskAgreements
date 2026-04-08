@@ -536,7 +536,7 @@ export const Configuration = Helper.SPConfig({
                     title: "Workflow Run",
                     type: Helper.SPCfgFieldType.Lookup,
                     listName: Strings.Sites.main.lists.WorkflowRuns,
-                    showField: "Id",
+                    showField: "ID",
                     multi: false,
                     indexed: true
                 } as Helper.IFieldInfoLookup,

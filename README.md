@@ -5,6 +5,7 @@
 **KGS At-Risk Agreements** is a SharePoint Framework (SPFx) application that manages the full lifecycle of *At-Risk Agreements*, including submission, multi-step approval workflows, modification handling, and complete historical audit visibility.
 
 The solution supports:
+
 - Guided, role-based approval workflows
 - Agreement modifications that automatically restart approvals when required
 - Full workflow history with multiple runs, actions, comments, and change summaries
@@ -45,7 +46,7 @@ This solution is designed for environments where governance, traceability, and a
 ## Solution
 
 | Solution | Author |
-|--------|--------|
+| -------- | -------- |
 | KGS At-Risk Agreements | Mike Landino (Koniag Government Solutions) |
 
 ---
@@ -53,8 +54,8 @@ This solution is designed for environments where governance, traceability, and a
 ## Version History
 
 | Version | Date | Comments |
-|-------|------|----------|
-| 1.2.0.4 | February 9, 2026 | Initial production release |
+| ------- | ------ | ---------- |
+| 2.0.0.6 | April 8, 2026 | Initial production release |
 
 ---
 
@@ -70,7 +71,6 @@ This solution is designed for environments where governance, traceability, and a
 - cd kgs-at-risk-agreements
 - npm install
 - gulp serve
-
 
 ## Key Features
 
