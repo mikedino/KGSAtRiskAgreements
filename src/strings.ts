@@ -37,7 +37,7 @@ const Strings = {
             }
         },
         lookups: {
-            url: "/sites/Dev-Sandbox",
+            url: "/sites/ContractsProcurementSite",
             lists: {
                 Entities: "Entities",
                 OGs: "OGPresidents",
