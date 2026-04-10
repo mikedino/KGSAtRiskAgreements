@@ -321,7 +321,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
       const changeSummary = formatDeltaSummary(formDelta);
       const changePayloadJson = JSON.stringify(formDelta);
 
-      onSubmit(form, mode, { changeSummary, changePayloadJson, comment: "insert comment" });
+      onSubmit(form, mode, { changeSummary, changePayloadJson });
       return;
     }
 

@@ -44,6 +44,9 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, appTitle, useDarkTheme, 
     const [backupAnchorEl, setBackupAnchorEl] = React.useState<HTMLElement | null>(null);
     const [backupSaving, setBackupSaving] = React.useState<boolean>(false);
 
+    //set user guide URL
+    const userGuideUrl = DataSource.UserGuide;
+
     const backupOpen = Boolean(backupAnchorEl);
 
     // small screens (md = ~900px), large screens (lg = ~1200px)
@@ -178,11 +181,17 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, appTitle, useDarkTheme, 
                         "& .MuiIconButton-root": { color: navIconColor },
                         //"& .MuiSvgIcon-root": { color: navIconColor }
                     }}>
+                        
                     <IconButton
-                        onClick={() => alert("help link TBD")}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (!userGuideUrl) return;
+                            window.open(userGuideUrl, "_blank", "noopener,noreferrer");
+                        }}
+                        disabled={!userGuideUrl}
                         size="medium"
                         aria-label="User Guide"
-                        title="User Guide"
+                        title={userGuideUrl ? "User Guide" : "User Guide not available"}
                     >
                         <HelpOutlineOutlined />
                     </IconButton>

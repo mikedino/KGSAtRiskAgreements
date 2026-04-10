@@ -366,6 +366,10 @@ export class DataSource {
         const svpc = this._config.find((c) => c.IsFor === "SVPContracts")?.User;
         return svpc;
     }
+    static get UserGuide(): string | undefined {
+        const guide = this._config.find((c) => c.IsFor === "UserGuide")?.Title;
+        return guide;
+    }
     static get Config(): IConfigItem[] { return this._config; }
     static getConfig(): Promise<IConfigItem[]> {
         return new Promise<IConfigItem[]>((resolve, reject) => {
@@ -378,7 +382,7 @@ export class DataSource {
                 .Items()
                 .query({
                     Select: ["Id", "Title", "User/Id", "User/EMail", "User/Title", "IsFor"],
-                    Filter: `IsFor eq 'CEO' or IsFor eq 'SVPContracts'`,
+                    Filter: `IsFor eq 'CEO' or IsFor eq 'SVPContracts' or IsFor eq 'UserGuide'`,
                     Expand: ["User"]
                 })
                 .execute(

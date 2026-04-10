@@ -9,16 +9,20 @@ export type FieldDelta = {
 
 export type AgreementDelta = Record<string, FieldDelta>;
 
-// const fmtDate = (value?: string): string => {
-//     if (!value) return "";
-//     const d = new Date(value);
-//     if (Number.isNaN(d.getTime())) return value; // fallback
-//     return d.toLocaleDateString();
-// };
+const sameNumber = (a?: number, b?: number): boolean => {
+    const left = typeof a === "number" ? a : 0;
+    const right = typeof b === "number" ? b : 0;
+    return left === right;
+};
 
-const fmtCurrency0 = (n?: number): string => {
-    const num = typeof n === "number" ? n : 0;
-    return num.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+const fmtCurrency = (n?: number): string => {
+    const num = typeof n === "number" ? n : 0; // always ensure a number even for null/undefined
+    return num.toLocaleString("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
 };
 
 const fmtText = (s?: string): string => (s ?? "").trim();
@@ -51,7 +55,15 @@ export const buildAgreementDelta = (before: IRiskAgreementItem, after: IRiskAgre
     add("projectMgr", "Project Manager", fmtPerson(before.projectMgr), fmtPerson(after.projectMgr));
     add("contractMgr", "Contract Manager", fmtPerson(before.contractMgr), fmtPerson(after.contractMgr));
     add("riskReason", "Risk Reason", fmtText(before.riskReason), fmtText(after.riskReason));
-    add("riskFundingRequested", "Funding Requested", fmtCurrency0(before.riskFundingRequested), fmtCurrency0(after.riskFundingRequested));
+
+    if (!sameNumber(before.riskFundingRequested, after.riskFundingRequested)) {
+        delta.riskFundingRequested = {
+            label: "Funding Requested",
+            from: fmtCurrency(before.riskFundingRequested),
+            to: fmtCurrency(after.riskFundingRequested)
+        };
+    }
+
     add("riskJustification", "Risk Justification", fmtText(before.riskJustification), fmtText(after.riskJustification));
     add("contractName", "Contract Name", fmtText(before.contractName), fmtText(after.contractName));
     add("programName", "Program Name", fmtText(before.programName), fmtText(after.programName));

@@ -328,7 +328,7 @@ export const AppInner: React.FC<IReadyAppProps> = ({
                     // 2) Save edits
                     const agreement = await RiskAgreementService.edit({ ...item, ...approvers }, "Mod Review");
 
-                    // 3) Incement run number & create new run
+                    // 3) Increment run number & create new run
                     setBackdropMessage("Creating New Approval Workflow Run…");
                     const newRunNumber = (oldRun.runNumber ?? 0) + 1;
                     const newRun = await WorkflowRunService.createRestartRun(
@@ -340,7 +340,7 @@ export const AppInner: React.FC<IReadyAppProps> = ({
                         approvers.CEOId,
                         approvers.SVPContractsId,
                         "Mod",
-                        "test restart comment"
+                        "Restart Run due to Mod"
                     );
 
                     // 4) Flip agreement pointer (UPDATE) asap
@@ -356,7 +356,7 @@ export const AppInner: React.FC<IReadyAppProps> = ({
                         run: oldRun,
                         stepKey: oldRun.currentStepKey,
                         actionType: "Restarted",
-                        comment: modMeta?.comment ? `Restarted due to modification. ${modMeta.comment}` : "Restarted due to modification."
+                        comment: modMeta?.comment ? `Restarted Workflow due to Agreement modification. ${modMeta.comment}` : "Restarted Workflow due to Agreement modification."
                     });
 
                     // 7) Action 2 - CREATE INITIAL ACTION ROW FOR NEW RUN
