@@ -67,32 +67,30 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }): JSX.Element => {
     }, []);
 
     React.useEffect(() => {
-        const checkInstall = async (): Promise<boolean> => {
+        const checkInstall = async (): Promise<void> => {
             try {
+                // if not admin/owner, proceed normally
+                if (!ContextInfo.isSiteOwner && !ContextInfo.isSiteAdmin && !ContextInfo.hasManageWebPermissions) {
+                    setInstallState("ready");
+                    return;
+                }
+
                 Configuration.setWebUrl(ContextInfo.webServerRelativeUrl);
 
+                // use await so try/catch catches failures
                 const needsInstall = await InstallationRequired.requiresInstall({ cfg: Configuration });
 
                 if (needsInstall) {
-                    if (ContextInfo.isSiteOwner || ContextInfo.isSiteAdmin || ContextInfo.hasManageWebPermissions) {
-                        InstallationRequired.showDialog();
-                    } else {
-                        setDialogProps(
-                            "App setup is required",
-                            "This app has not been installed or configured on this site yet. Please contact your site administrator."
-                        );
-                    }
-
+                    InstallationRequired.showDialog();
                     setInstallState("blocked");
-                    return true;
+                    return;
                 }
 
                 setInstallState("ready");
-                return true;
+
             } catch (err) {
                 setDialogProps("Error checking App configuration", formatError(err));
                 setInstallState("error");
-                return false;
             }
         };
 
@@ -101,7 +99,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }): JSX.Element => {
             setDialogProps("Error checking App configuration", formatError(e));
             setInstallState("error");
         });
-    }, [setDialogProps]);
+    }, []);
 
     if (!context || !context.pageContext || !context.pageContext.web) {
         return (
@@ -144,7 +142,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }): JSX.Element => {
                 <CssBaseline />
                 <Box sx={{ p: 3, color: "text.primary", mx: "auto", maxWidth: "900px" }}>
                     <Alert severity="info" variant="outlined">
-                        You do not have permission to access the data required to configure this application.  
+                        You do not have permission to access the data required to configure this application.
                         Please contact your site administrator.
                     </Alert>
 
