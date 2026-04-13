@@ -573,11 +573,12 @@ export class DataSource {
                     // Success
                     (items) => {
                         if (items?.results?.length) {
-                            const allContracts = items.results as unknown as IContractItem[];
+                            this._contracts = items.results as unknown as IContractItem[]; 
 
-                            this._contracts = allContracts.filter((c) => new Date(c.field_16) >= today)
+                            // REMOVE EXPIRED FILTER --MDL 4/13/26
+                            // this._contracts = allContracts.filter((c) => new Date(c.field_16) >= today)
 
-                            // resolve with filtered items
+                            // resolve with filtered items                            
                             resolve(this._contracts);
 
                             //console.log("All Contracts", this._contracts);
