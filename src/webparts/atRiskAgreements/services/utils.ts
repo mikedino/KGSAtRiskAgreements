@@ -127,6 +127,14 @@ export const formatSinceDate = (date?: string | Date): string => {
     return d.format("MMMM D");
 };
 
+
+export const decodeHtml = (value?: string): string => {
+    if (!value) return "";
+    const txt = document.createElement("textarea");
+    txt.innerHTML = value;
+    return txt.value;
+};
+
 /**
  * 
  * @param fileType send in the file extension as a string (e.g. "docx" or "ppt")

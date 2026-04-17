@@ -3,7 +3,7 @@ import { Typography, Card, CardContent, Grid, Box } from "@mui/material";
 import { IRiskAgreementItem, IAttachmentInfo } from "../data/props";
 import AttachmentsList from "./viewAttachmentsList";
 import AttachFileIcon from '@mui/icons-material/AttachFile';
-import { formatCurrency, formatDate } from "../services/utils";
+import { decodeHtml, formatCurrency, formatDate } from "../services/utils";
 
 type ReadOnlyProps = {
     label: string;
@@ -55,7 +55,22 @@ const AgreementInfoCard = ({
             </Grid>
 
             <Grid container sx={{ mt: 2 }}>
-                <ReadOnly label="Justification" value={item.riskJustification} xs={12} md={12} />
+                <Grid size={{ xs: 12, md: 12 }}>
+                    <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: "block" }}
+                    >
+                        Justification
+                    </Typography>
+                    <Typography
+                        variant="body1"
+                        fontSize="14px"
+                        sx={{ whiteSpace: "pre-line" }}
+                    >
+                        {decodeHtml(item.riskJustification) || "—"}
+                    </Typography>
+                </Grid>
             </Grid>
 
             <Box sx={{ mt: 3 }}>
