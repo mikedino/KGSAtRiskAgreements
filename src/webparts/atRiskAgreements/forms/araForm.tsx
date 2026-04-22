@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from "react";
 import {
   Box, Grid, Typography, TextField, MenuItem, Button, Divider, Autocomplete,
   Skeleton, List, ListItem, ListItemText, CircularProgress,
-  FormLabel, RadioGroup, FormControlLabel, Radio, Stack,
+  FormLabel, RadioGroup, FormControlLabel, Radio, Stack, Alert,
   ListItemIcon, IconButton, Link
 } from "@mui/material";
 import { AttachFileOutlined, Close } from "@mui/icons-material";
@@ -53,6 +53,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
   const [dialogTitle, setDialogTitle] = useState<string>("");
   const [dialogMessage, setDialogMessage] = useState<string>("");
   const [draftItemId, setDraftItemId] = useState<number | undefined>(undefined);
+  const [draftCreationFailed, setDraftCreationFailed] = useState(false);
   const [attachments, setAttachments] = useState<IAttachmentInfo[]>([]);
   const [cmTouched, setCmTouched] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -90,14 +91,23 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
   useEffect(() => {
     if (mode === "new") {
       RiskAgreementService.createDraft()
-        .then(setDraftItemId)
+        .then((id) => {
+          if (!id) {
+            throw new Error("Draft agreement was not created.");
+          }
+
+          setDraftItemId(id);
+          setDraftCreationFailed(false);
+        })
         .catch((error) => {
           console.error("Error creating temp draft", error)
+          setDraftCreationFailed(true);
           setDialogProps("Error creating temporary draft", "Refresh and try again. If this continues to happen, please contact IT Support.")
         });
     } else if (item) {
       //set draftItemId to current ID
       setDraftItemId(item.Id);
+      setDraftCreationFailed(false);
       //get item attachments on load for edit item
       const files = Web().Lists(Strings.Sites.main.lists.Agreements).Items()
         .getById(item.Id).AttachmentFiles().executeAndWait();
@@ -434,6 +444,12 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
           "& .MuiAutocomplete-root .MuiOutlinedInput-root.MuiOutlinedInput-root": { padding: 0, minHeight: minHeight },
           "& .MuiAutocomplete-root .MuiOutlinedInput-root.MuiInputBase-sizeSmall .MuiAutocomplete-input": { padding: "10px 14px" }
         }}>
+
+        {mode === "new" && draftCreationFailed && !draftItemId && (
+          <Alert severity="info" sx={{ mb: 3 }}>
+            There was a problem creating the draft agreement. This could be due to an expired session or stale cache. Please refresh the entire page and try again.
+          </Alert>
+        )}
 
         <Typography variant="h5" sx={{ mb: 4 }}>
           {mode === "new" ? "New At-Risk Agreement" : `Edit At-Risk Agreement - ${form.Title}`}

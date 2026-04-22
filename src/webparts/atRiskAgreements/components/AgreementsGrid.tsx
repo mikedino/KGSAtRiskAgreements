@@ -317,17 +317,22 @@ const AgreementsGrid: React.FC = () => {
       field: "contractId",
       headerName: "Contract / Invoice",
       flex: 1,
-      minWidth: 160,
-      valueGetter: (_value, row) => row.contractId ?? row.invoice ?? "",
+      minWidth: 150,
+      valueGetter: (_value, row) =>
+        row.contractId
+          ? row.contractId
+          : row.projectName === "New Award"
+            ? "New Award"
+            : (row.invoice ?? ""),
       renderCell: (params) => (
         <Box sx={{ minWidth: 0 }}>
           <Typography
             variant="body2"
             fontWeight={500}
             noWrap
-            title={params.row.contractId ?? "No contract"}
+            title={params.row.contractId ?? (params.row.projectName === "New Award" ? "New Award" : "No contract")}
           >
-            {params.row.contractId ?? "-"}
+            {params.row.contractId ?? (params.row.projectName === "New Award" ? "New Award" : "-")}
           </Typography>
           <Typography
             variant="caption"
@@ -342,14 +347,22 @@ const AgreementsGrid: React.FC = () => {
     },
     {
       field: "projectName",
-      headerName: "Project",
+      headerName: "Project/Program",
       flex: 1.4,
-      minWidth: 200
-    },
-    {
-      field: "contractType",
-      headerName: "Contract Type",
-      minWidth: 80
+      minWidth: 210,
+      valueGetter: (_value, row) =>
+        row.projectName === "New Award"
+          ? (row.programName ?? row.projectName ?? "")
+          : (row.projectName ?? ""),
+      renderCell: (params) => (
+        <Typography
+          variant="body2"
+          sx={{ whiteSpace: "normal", lineHeight: 1.35, py: 0.25 }}
+          title={params.value ?? ""}
+        >
+          {params.value}
+        </Typography>
+      )
     },
     {
       field: "araStatus",
@@ -367,24 +380,24 @@ const AgreementsGrid: React.FC = () => {
     {
       field: "riskStart",
       headerName: "Risk Start",
-      minWidth: 110,
+      minWidth: 120,
       renderCell: (params) => formatDate(params.row.riskStart)
     },
     {
       field: "riskEnd",
       headerName: "Risk End",
-      minWidth: 110,
+      minWidth: 120,
       renderCell: (params) => formatDate(params.row.riskEnd)
     },
     {
       field: "popEnd",
       headerName: "PoP End",
-      minWidth: 110,
+      minWidth: 120,
       renderCell: (params) => formatDate(params.row.popEnd)
     },
     {
       field: "riskFundingRequested",
-      headerName: "Funding Requested",
+      headerName: "Funding Req",
       minWidth: 130,
       flex: 1,
       align: "right",
