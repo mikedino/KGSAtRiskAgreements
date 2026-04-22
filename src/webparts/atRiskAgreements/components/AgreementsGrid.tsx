@@ -28,9 +28,13 @@ interface AgreementView {
   predicate: (item: IRiskAgreementItem) => boolean;
 }
 
+type AgreementGridRow = IRiskAgreementItem & {
+  pendingWorkflowRole: string;
+};
+
 const AgreementsGrid: React.FC = () => {
 
-  const { agreements } = useAgreements();
+  const { agreements, runByAgreementId } = useAgreements();
   const theme = useTheme();
   const today = useMemo(() => dayjs(), []); // compute once per mount
   const history = useHistory();
@@ -109,9 +113,10 @@ const AgreementsGrid: React.FC = () => {
       backgroundColor: theme.custom?.cardBg
     },
 
-    // "& .MuiDataGrid-cell": {
-    //   backgroundColor: theme.custom?.cardBg
-    // },
+    "& .MuiDataGrid-cell": {
+      alignItems: "flex-start",
+      py: 1
+    },
 
     "& .MuiDataGrid-columnHeaders": {
       borderBottom: "1px solid",
@@ -244,53 +249,107 @@ const AgreementsGrid: React.FC = () => {
     Boolean(entityFilter) ||
     Boolean(contractTypeFilter);
 
-  // final data grid rows/items
-  const rows = React.useMemo(() => {
+  // Apply search/entity/contract filters without locking counts to the selected view.
+  const baseFilteredAgreements = React.useMemo(() => {
     return filterAgreements(
       agreements,
       search,
       entityFilter,
       contractTypeFilter,
-      selectedView
+      "all"
     );
-  }, [agreements, search, entityFilter, contractTypeFilter, selectedView]);
+  }, [agreements, search, entityFilter, contractTypeFilter, agreementViews]);
+
+  // final data grid rows/items
+  const rows = React.useMemo<AgreementGridRow[]>(() => {
+    return filterAgreements(
+      baseFilteredAgreements,
+      "",
+      "",
+      "",
+      selectedView
+    ).map((agreement) => {
+      const currentRun = runByAgreementId.get(agreement.Id);
+      const hasPendingWorkflow =
+        agreement.araStatus === "Submitted" ||
+        agreement.araStatus === "Under Review" ||
+        agreement.araStatus === "Mod Review";
+
+      return {
+        ...agreement,
+        pendingWorkflowRole: currentRun?.pendingRole ?? (hasPendingWorkflow ? "-" : "Workflow Complete")
+      };
+    });
+  }, [baseFilteredAgreements, selectedView, runByAgreementId]);
 
   // compute view counts for each chip
   const viewCounts = React.useMemo(() => {
     return agreementViews.reduce<Record<AgreementViewKey, number>>((acc, view) => {
-      acc[view.key] = rows.filter(a => a.araStatus !== "Draft" && view.predicate(a)).length;
+      acc[view.key] = baseFilteredAgreements.filter(a => a.araStatus !== "Draft" && view.predicate(a)).length;
       return acc;
     }, {} as Record<AgreementViewKey, number>);
-  }, [rows, agreementViews]);
+  }, [baseFilteredAgreements, agreementViews]);
 
-  const columns: GridColDef[] = [
+  const columns = React.useMemo<GridColDef<AgreementGridRow>[]>(() => {
+    const baseColumns: GridColDef<AgreementGridRow>[] = [
     {
       field: "Title",
-      headerName: "ATR Title",
-      width: 150,
+      headerName: "Agreement",
       flex: 1,
-      minWidth: 130
+      minWidth: 200,
+      renderCell: (params) => (
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="body2" fontWeight={500} noWrap title={params.row.Title}>
+            {params.row.Title}
+          </Typography>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            noWrap
+            title={entityMap.get(params.row.entity) ?? params.row.entity}
+          >
+            {entityMap.get(params.row.entity) ?? params.row.entity}
+          </Typography>
+        </Box>
+      )
+    },
+    {
+      field: "contractId",
+      headerName: "Contract / Invoice",
+      flex: 1,
+      minWidth: 160,
+      valueGetter: (_value, row) => row.contractId ?? row.invoice ?? "",
+      renderCell: (params) => (
+        <Box sx={{ minWidth: 0 }}>
+          <Typography
+            variant="body2"
+            fontWeight={500}
+            noWrap
+            title={params.row.contractId ?? "No contract"}
+          >
+            {params.row.contractId ?? "-"}
+          </Typography>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            noWrap
+            title={params.row.invoice ?? "No invoice"}
+          >
+            {params.row.invoice ?? "-"}
+          </Typography>
+        </Box>
+      )
     },
     {
       field: "projectName",
       headerName: "Project",
-      flex: 1.6,
+      flex: 1.4,
       minWidth: 200
-    },
-    {
-      field: "invoice",
-      headerName: "Invoice",
-      width: 80
     },
     {
       field: "contractType",
       headerName: "Contract Type",
       minWidth: 80
-    },
-    {
-      field: "entity",
-      headerName: "Entity",
-      width: 80
     },
     {
       field: "araStatus",
@@ -299,21 +358,28 @@ const AgreementsGrid: React.FC = () => {
       renderCell: (params) => getStatusChip(params.value)
     },
     {
+      field: "pendingWorkflowRole",
+      headerName: "Pending",
+      minWidth: 180,
+      flex: 1,
+      sortable: false
+    },
+    {
       field: "riskStart",
       headerName: "Risk Start",
-      minWidth: 120,
+      minWidth: 110,
       renderCell: (params) => formatDate(params.row.riskStart)
     },
     {
       field: "riskEnd",
       headerName: "Risk End",
-      minWidth: 120,
+      minWidth: 110,
       renderCell: (params) => formatDate(params.row.riskEnd)
     },
     {
       field: "popEnd",
       headerName: "PoP End",
-      minWidth: 120,
+      minWidth: 110,
       renderCell: (params) => formatDate(params.row.popEnd)
     },
     {
@@ -335,13 +401,20 @@ const AgreementsGrid: React.FC = () => {
     {
       field: "Created",
       headerName: "Created",
-      minWidth: 120,
+      minWidth: 110,
       renderCell: (params) =>
         params.row.Created
           ? dayjs(params.row.Created).format("M/D/YYYY")
           : ""
     }
   ];
+
+    if (selectedView === "all" || selectedView === "pending") {
+      return baseColumns;
+    }
+
+    return baseColumns.filter((column) => column.field !== "pendingWorkflowRole");
+  }, [selectedView, entityMap]);
 
   const getAgreementsEmptyState = (viewKey: string): EmptyStateProps => {
     switch (viewKey) {
@@ -547,6 +620,7 @@ const AgreementsGrid: React.FC = () => {
             density="compact"
             rows={rows}
             columns={columns}
+            getRowHeight={() => "auto"}
             getRowId={(row) => row.Id}
             disableRowSelectionOnClick
             pageSizeOptions={[10, 25, 50]}
