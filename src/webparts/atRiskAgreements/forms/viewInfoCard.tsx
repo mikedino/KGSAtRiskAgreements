@@ -34,7 +34,7 @@ const AgreementInfoCard = ({
             <Typography variant="h6" gutterBottom>Agreement Information</Typography>
 
             <Grid container spacing={2}>
-                <ReadOnly label="Project / Contract" value={item.projectName} />
+                <ReadOnly label="Project / Contract" value={item.contractId ? item.projectName : item.programName} />
                 {item.contractId ? (
                     <>
                         <ReadOnly label="JAMIS Invoice No." value={item.invoice} />
