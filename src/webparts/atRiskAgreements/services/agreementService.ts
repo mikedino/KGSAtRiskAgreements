@@ -208,7 +208,7 @@ export class RiskAgreementService {
   // Only used for draft (when creating new > then click cancel)
   static delete(itemId: number): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      Web().Lists(Strings.Sites.main.lists.Agreements).Items(itemId).delete().execute(
+      Web().Lists(Strings.Sites.main.lists.Agreements).Items(itemId).recycle().execute(
         //success
         () => {
           console.info(`Deleted Agreement ${itemId} !`)
