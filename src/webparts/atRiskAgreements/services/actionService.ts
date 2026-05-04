@@ -14,6 +14,12 @@ type CreateActionArgs = {
     changePayloadJson?: string;
 };
 
+const toSharePointText = (value?: string, maxLength = 255): string | undefined => {
+    const compact = value?.replace(/\s+/g, " ").trim();
+    if (!compact) return undefined;
+    return compact.length <= maxLength ? compact : `${compact.slice(0, maxLength - 3).trim()}...`;
+};
+
 export class WorkflowActionService {
 
     static createSubmitted(agreement: IRiskAgreementItem, runId: number): Promise<void> {
@@ -46,6 +52,7 @@ export class WorkflowActionService {
         const now = new Date().toISOString();
 
         const title = `${args.agreement?.Title}-Run${args.run?.runNumber}-${args.stepKey}-${args.actionType}`;
+        const changeSummary = toSharePointText(args.changeSummary);
 
         return new Promise<void>((resolve, reject) => {
             Web()
@@ -61,7 +68,7 @@ export class WorkflowActionService {
                     actorId: ContextInfo.userId,
                     actionCompletedDate: now,
                     comment: args.comment ?? "",
-                    ...(args.changeSummary ? { changeSummary: args.changeSummary } : {}),
+                    ...(changeSummary ? { changeSummary } : {}),
                     ...(args.changePayloadJson ? { changePayloadJson: args.changePayloadJson } : {})
                 })
                 .execute(
