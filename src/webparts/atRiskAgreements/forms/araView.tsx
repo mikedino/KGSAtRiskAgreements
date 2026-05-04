@@ -15,6 +15,7 @@ import { useAgreements } from "../services/agreementsContext";
 import { DataSource } from "../data/ds";
 import { AgreementDelta } from "../services/agreementDiff";
 import { useTheme } from "@mui/material/styles";
+import { decodeHtml } from "../services/utils";
 
 interface RiskAgreementViewProps {
     item: IRiskAgreementItem;
@@ -77,6 +78,71 @@ const ACTION_UI: Record<ActionModalType, {
         requiresComment: true
     },
 };
+
+const CHANGE_PREVIEW_LINES = 10;
+
+const isLongChangeText = (value: string): boolean =>
+    value.split(/\r\n|\r|\n/).length > CHANGE_PREVIEW_LINES || value.length > 900;
+
+const ChangeText = ({ value }: { value?: string }): JSX.Element => {
+    const text = decodeHtml(value || "—");
+    const canExpand = isLongChangeText(text);
+    const [expanded, setExpanded] = React.useState(false);
+
+    return (
+        <Box>
+            <Typography
+                variant="body2"
+                sx={{
+                    whiteSpace: "pre-line",
+                    overflowWrap: "anywhere",
+                    ...(!expanded && canExpand
+                        ? {
+                            display: "-webkit-box",
+                            WebkitBoxOrient: "vertical",
+                            WebkitLineClamp: CHANGE_PREVIEW_LINES,
+                            overflow: "hidden"
+                        }
+                        : {})
+                }}
+            >
+                {text}
+            </Typography>
+
+            {canExpand && (
+                <Button
+                    size="small"
+                    onClick={() => setExpanded(prev => !prev)}
+                    sx={{ mt: 0.5, p: 0, minWidth: 0, textTransform: "none" }}
+                >
+                    {expanded ? "Show less" : "Show more"}
+                </Button>
+            )}
+        </Box>
+    );
+};
+
+const ChangeDeltaDisplay = ({ delta }: { delta: AgreementDelta }): JSX.Element => (
+    <Stack spacing={1.5}>
+        {Object.values(delta).map((d, i) => (
+            <Box key={i}>
+                <Typography variant="subtitle2" fontWeight={600}>
+                    {d.label}
+                </Typography>
+
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                    Before
+                </Typography>
+                <ChangeText value={d.from} />
+
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                    After
+                </Typography>
+                <ChangeText value={d.to} />
+            </Box>
+        ))}
+    </Stack>
+);
 
 const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUserEmail, onApprove, onReject, onCancel, onResolve, onRevert }) => {
 
@@ -776,18 +842,7 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                                     <Divider sx={{ my: 1.25 }} />
 
                                     {summary ? (
-                                        <Stack spacing={1}>
-                                            {Object.values(summary).map((d, i) => (
-                                                <Box key={i}>
-                                                    <Typography variant="caption" color="text.secondary">
-                                                        {d.label}
-                                                    </Typography>
-                                                    <Typography variant="body2">
-                                                        {d.from || "—"} → {d.to || "—"}
-                                                    </Typography>
-                                                </Box>
-                                            ))}
-                                        </Stack>
+                                        <ChangeDeltaDisplay delta={summary} />
                                     ) : (
                                         <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
                                             No change summary provided.
@@ -893,18 +948,7 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                             <Divider sx={{ mb: 2 }} />
 
                             {runChangesDelta ? (
-                                <Stack spacing={1}>
-                                    {Object.values(runChangesDelta).map((d, i) => (
-                                        <Box key={i}>
-                                            <Typography variant="subtitle2" fontWeight={600}>
-                                                {d.label}
-                                            </Typography>
-                                            <Typography variant="body2">
-                                                {d.from || "—"} → {d.to || "—"}
-                                            </Typography>
-                                        </Box>
-                                    ))}
-                                </Stack>
+                                <ChangeDeltaDisplay delta={runChangesDelta} />
                             ) : (
                                 <Typography variant="body2" color="text.secondary">
                                     No summary recorded.

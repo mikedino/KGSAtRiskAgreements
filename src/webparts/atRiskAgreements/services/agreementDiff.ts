@@ -36,6 +36,12 @@ const fmtPerson = (p?: IPeoplePicker): string => {
 
 const same = (a: string, b: string): boolean => a.trim() === b.trim();
 
+const compactSummaryValue = (value: string, maxLength = 80): string => {
+    const compact = value.replace(/\s+/g, " ").trim();
+    if (compact.length <= maxLength) return compact;
+    return `${compact.slice(0, maxLength - 3).trim()}...`;
+};
+
 export const buildAgreementDelta = (before: IRiskAgreementItem, after: IRiskAgreementItem): AgreementDelta => {
     const delta: AgreementDelta = {};
 
@@ -77,7 +83,7 @@ export const formatDeltaSummary = (delta: AgreementDelta, max = 4): string => {
     const entries = Object.values(delta);
     if (entries.length === 0) return "No business field changes detected.";
 
-    const parts = entries.slice(0, max).map(d => `${d.label}: ${d.from || "—"} → ${d.to || "—"}`);
+    const parts = entries.slice(0, max).map(d => `${d.label}: ${compactSummaryValue(d.from || "-")} -> ${compactSummaryValue(d.to || "-")}`);
     const extra = entries.length > max ? ` (+${entries.length - max} more)` : "";
     return parts.join("; ") + extra;
 };

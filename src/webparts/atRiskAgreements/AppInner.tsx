@@ -66,6 +66,10 @@ export const AppInner: React.FC<IReadyAppProps> = ({
     const [backdropMessage, setBackdropMessage] = useState<string>("");
     const [showSuccess, setShowSuccess] = useState<boolean>(false);
     const [successMessage, setSuccessMessage] = useState<string>("");
+    const submitInProgressRef = React.useRef(false);
+    const setSubmitInProgress = React.useCallback((value: boolean): void => {
+        submitInProgressRef.current = value;
+    }, []);
 
     //my actions - only loaded for MyWork
     const [myActions, setMyActions] = React.useState<IWorkflowActionItem[]>([]);
@@ -276,6 +280,9 @@ export const AppInner: React.FC<IReadyAppProps> = ({
     type SubmitMode = "new" | "edit";
     const handleSubmitAgreement = async (item: IRiskAgreementItem, submitMode: SubmitMode, modMeta?: formModMeta): Promise<void> => {
 
+        if (submitInProgressRef.current) return;
+        setSubmitInProgress(true);
+
         setBackdropMessage("Saving agreement…");
         setShowBackdrop(true);
         setShowProgress(true);
@@ -314,12 +321,21 @@ export const AppInner: React.FC<IReadyAppProps> = ({
 
                 // Get old/current run
                 const oldRun = getCurrentRunOrThrow(item.Id);
+                const freshRuns = await DataSource.getWorkflowRunsByAgreement(item.Id);
+                const latestActiveRun = freshRuns
+                    .filter(r => r.runStatus === "Active")
+                    .sort((a, b) => (b.runNumber ?? 0) - (a.runNumber ?? 0) || b.Id - a.Id)[0];
+                const currentRun = latestActiveRun ?? oldRun;
 
                 // check to see if any approval decision has been made
-                if (!oldRun.hasDecision) {
+                if (!currentRun.hasDecision) {
                     // save only — NO WF restart
                     await RiskAgreementService.edit({ ...item, ...approvers }, item.araStatus);
                 } else {
+                    if (!latestActiveRun?.Id || latestActiveRun.Id !== oldRun.Id) {
+                        throw new Error("This agreement's workflow was already restarted or changed by another save. Refresh the agreement and try again.");
+                    }
+
                     // CREATE A NEW WF RUN
 
                     // 1) set flag for proper message
@@ -330,7 +346,8 @@ export const AppInner: React.FC<IReadyAppProps> = ({
 
                     // 3) Increment run number & create new run
                     setBackdropMessage("Creating New Approval Workflow Run…");
-                    const newRunNumber = (oldRun.runNumber ?? 0) + 1;
+                    const maxRunNumber = freshRuns.reduce((max, r) => Math.max(max, r.runNumber ?? 0), 0);
+                    const newRunNumber = maxRunNumber + 1;
                     const newRun = await WorkflowRunService.createRestartRun(
                         item.Id,
                         agreement,
@@ -347,14 +364,14 @@ export const AppInner: React.FC<IReadyAppProps> = ({
                     await RiskAgreementService.updateRunId(item.Id, newRun.Id);
 
                     // 5) Supercede old run
-                    await WorkflowRunService.supercedeOldRun(oldRun.Id, "Mod", modMeta?.comment);
+                    await WorkflowRunService.supercedeOldRun(currentRun.Id, "Mod", modMeta?.comment);
 
                     // 6) Action 1 - stop old run
                     setBackdropMessage("Stopping Prior Workflow Run…");
                     await WorkflowActionService.createAction({
                         agreement: agreement,
-                        run: oldRun,
-                        stepKey: oldRun.currentStepKey,
+                        run: currentRun,
+                        stepKey: currentRun.currentStepKey,
                         actionType: "Restarted",
                         comment: modMeta?.comment ? `Restarted Workflow due to Agreement modification. ${modMeta.comment}` : "Restarted Workflow due to Agreement modification."
                     });
@@ -395,6 +412,8 @@ export const AppInner: React.FC<IReadyAppProps> = ({
             setShowBackdrop(false);
             setBackdropMessage("");
             setDialogProps("Error saving Risk Agreement", formatError(error));
+        } finally {
+            setSubmitInProgress(false);
         }
     };
 

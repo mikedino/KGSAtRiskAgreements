@@ -88,6 +88,7 @@ export function buildWorkflowState(agreement: IRiskAgreementItem, run: IWorkflow
 
   // is run completed (including canceled)
   const runIsCompleted = run.runStatus === "Completed";
+  const runIsSuperseded = run.runStatus === "Superseded";
 
   // CANCEL DETECTION action for this run (if any)
   const cancelAction = actions
@@ -248,8 +249,20 @@ export function buildWorkflowState(agreement: IRiskAgreementItem, run: IWorkflow
       };
     }
 
-    // Current step is based on run state (not canceled , not completed)
-    if (!isCanceled && !runIsCompleted && !currentFound && step.key === effectiveCurrentKey) {
+    if (runIsSuperseded && step.key === effectiveCurrentKey) {
+      const bestComment = getLatestCommentAction(actions, step.key)?.comment ?? "";
+
+      return {
+        ...step,
+        status: "Skipped",
+        approverName: approver?.Title,
+        sentDate: run.stepAssignedDate ?? lastCompletedDate,
+        comment: bestComment
+      };
+    }
+
+    // Current step is based on run state (not canceled, completed, or superseded)
+    if (!isCanceled && !runIsCompleted && !runIsSuperseded && !currentFound && step.key === effectiveCurrentKey) {
       currentFound = true;
 
       const bestComment = getLatestCommentAction(actions, step.key)?.comment ?? "";
@@ -303,8 +316,8 @@ export function buildWorkflowState(agreement: IRiskAgreementItem, run: IWorkflow
     });
   }
 
-  // If reverted, this run ended early -> hide remaining pending steps
-  if (isReverted || isCanceled) {
+  // If this run ended early, show remaining incomplete steps as skipped.
+  if (isReverted || isCanceled || runIsSuperseded) {
     for (const s of steps) {
       if (s.status === "Current" || s.status === "Queued") {
         s.status = "Skipped";
