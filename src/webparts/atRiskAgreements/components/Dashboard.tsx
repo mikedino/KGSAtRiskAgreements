@@ -2,7 +2,7 @@ import * as React from "react";
 import { Grid, Box, Link, Typography, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import InfoCard from "../ui/InfoCard";
 import { ChartCard } from "../ui/ChartCard";
-import { buildDashboardKpis } from "../services/dashboardHelpers";
+import { buildDashboardKpis, isActiveByRiskEnd } from "../services/dashboardHelpers";
 import { buildMonthlyTrends, buildStatusDistribution, buildAvgStageTimes, buildRiskDistribution, buildLobValueDistribution } from "../services/dashboardCharts";
 import { Link as RouterLink } from "react-router-dom";
 import { LineChart } from "@mui/x-charts/LineChart";
@@ -18,8 +18,6 @@ import { ChartsReferenceLine } from "@mui/x-charts/ChartsReferenceLine";
 import { useTheme } from "@mui/material/styles";
 
 type LobValueScope = "active" | "all";
-
-const ACTIVE_PIPELINE_STATUSES = new Set(["Submitted", "Under Review", "Mod Review"]);
 
 const LOB_COLORS = ["#005c6c", "#f2c744", "#4b82ff", "#7b61ff"];
 
@@ -55,13 +53,13 @@ const Dashboard: React.FC = () => {
     [agreements, runByAgreementId, dashboardActions]
   );
   const riskDistribution = React.useMemo(() => buildRiskDistribution(agreements), [agreements]);
-  const activePipelineAgreements = React.useMemo(
-    () => agreements.filter((agreement) => ACTIVE_PIPELINE_STATUSES.has(agreement.araStatus)),
+  const activeAgreements = React.useMemo(
+    () => agreements.filter((agreement) => isActiveByRiskEnd(agreement)),
     [agreements]
   );
   const lobValueDistribution = React.useMemo(
-    () => buildLobValueDistribution(lobValueScope === "active" ? activePipelineAgreements : agreements),
-    [activePipelineAgreements, agreements, lobValueScope]
+    () => buildLobValueDistribution(lobValueScope === "active" ? activeAgreements : agreements),
+    [activeAgreements, agreements, lobValueScope]
   );
 
   // Avg resp time bar chart SLA
@@ -181,6 +179,9 @@ const Dashboard: React.FC = () => {
     ...safeLobValueDistribution.map((point) => point.totalRiskFundingRequested)
   );
   const lobYAxisMax = lobMaxValue > 0 ? lobMaxValue * 1.18 : undefined;
+  const lobChartTitle = lobValueScope === "active"
+    ? "Active Total At-Risk Value by LOB"
+    : "Grand Total At-Risk Value by LOB";
 
   // console.log("monthlyTrends", monthlyTrends);
   // console.log("statusDistribution", statusDistribution);
@@ -278,7 +279,7 @@ const Dashboard: React.FC = () => {
           <InfoCard
             title="At-Risk Value"
             value={fmtMoney(kpis.atRiskValue)}
-            subtitle="Active pipeline"
+            subtitle="Risk End today or later"
             icon={<MonetizationOnIcon />}
             iconColor="warning"
           />
@@ -289,7 +290,7 @@ const Dashboard: React.FC = () => {
           <Grid size={{ lg: 6, md: 12, xs: 12 }}>
             {/* LOB value bar */}
             <ChartCard
-              title="Total At-Risk Value by LOB"
+              title={lobChartTitle}
               contentHeight={380}
               action={
                 <ToggleButtonGroup
@@ -305,7 +306,16 @@ const Dashboard: React.FC = () => {
                       px: 1.25,
                       py: 0.25,
                       fontSize: 12,
-                      textTransform: "none"
+                      textTransform: "none",
+                      borderColor: "divider",
+                      "&.Mui-selected": {
+                        bgcolor: "primary.main",
+                        color: "primary.contrastText",
+                        fontWeight: 700,
+                        "&:hover": {
+                          bgcolor: "primary.dark"
+                        }
+                      }
                     }
                   }}
                 >
