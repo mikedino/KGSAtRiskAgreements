@@ -61,6 +61,9 @@ export interface IDashboardKpis {
 export const isValidDate = (value?: string): boolean =>
     value !== undefined && dayjs(value).isValid();
 
+export const isActiveByRiskEnd = (item: IRiskAgreementItem, asOf = dayjs()): boolean =>
+    isValidDate(item.riskEnd) && !dayjs(item.riskEnd).isBefore(asOf, "day");
+
 const isInFlight = (item: IRiskAgreementItem): boolean =>
     item.araStatus === "Under Review" || item.araStatus === "Mod Review";
 
@@ -175,7 +178,7 @@ const getApprovalCycleDays = (
  * - overdueSummary: based on run.stepAssignedDate
  * - approvedThisMonth: success-complete + final approval date in this month
  * - expiringSoon: riskEnd within next 30 days (excluding canceled)
- * - atRiskValue: sum riskFundingRequested for in-flight only
+ * - atRiskValue: sum riskFundingRequested for agreements with Risk End today or later
  * - avgApprovalDays + delta: cycle days for success-complete, grouped by approval month
  */
 export const buildDashboardKpis = (
@@ -212,7 +215,7 @@ export const buildDashboardKpis = (
     }).length;
 
     const atRiskValue = items
-        .filter((i) => isInFlight(i))
+        .filter((i) => isActiveByRiskEnd(i, now))
         .reduce((sum, i) => sum + (i.riskFundingRequested ?? 0), 0);
 
     const successItems = items.filter((i) => isSuccessComplete(i.araStatus));

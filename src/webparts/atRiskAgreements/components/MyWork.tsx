@@ -483,12 +483,26 @@ const MyWork: React.FC = () => {
             exclusive
             size="small"
             onChange={(_, val) => val && handleDisplayModeChange(val)}
-            sx={{ ml: "auto" }}
+            sx={{
+              ml: "auto",
+              "& .MuiToggleButton-root": {
+                textTransform: "none",
+                borderColor: "divider",
+                "&.Mui-selected": {
+                  bgcolor: "primary.main",
+                  color: "primary.contrastText",
+                  fontWeight: 700,
+                  "&:hover": {
+                    bgcolor: "primary.dark"
+                  }
+                }
+              }
+            }}
           >
-            <ToggleButton value="full" sx={{ textTransform: "none" }}>
+            <ToggleButton value="full">
               Full
             </ToggleButton>
-            <ToggleButton value="compact" sx={{ textTransform: "none" }}>
+            <ToggleButton value="compact">
               Compact
             </ToggleButton>
           </ToggleButtonGroup>
