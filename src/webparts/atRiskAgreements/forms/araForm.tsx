@@ -9,7 +9,6 @@ import {
 import { AttachFileOutlined, Close } from "@mui/icons-material";
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { Dayjs } from 'dayjs';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { ContractType, IAttachmentInfo, IContractItem, IInvoiceItem, IOgItem, IPeoplePicker, IRiskAgreementItem } from "../data/props";
@@ -24,6 +23,7 @@ import { RiskAgreementService } from "../services/agreementService";
 import { buildAgreementDelta, formatDeltaSummary } from "../services/agreementDiff";
 import { useTheme } from "@mui/material/styles";
 import { formatError } from "../services/utils";
+import { CompactDateField } from "../ui/CompactDateField";
 
 export type CancelReason = { type: "draft"; draftId: number } | { type: "normal" };
 
@@ -86,6 +86,11 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
       availableOgs.map((og) => [og.Title, og])
     );
   }, [availableOgs]);
+
+  const getLobTitleForOg = React.useCallback((ogTitle: string): string => {
+    const ogRec = availableOgByTitle.get(ogTitle);
+    return ogRec?.lob?.Title ?? "";
+  }, [availableOgByTitle]);
 
 
   useEffect(() => {
@@ -152,6 +157,14 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  useEffect(() => {
+    const expectedLob = form.og ? getLobTitleForOg(form.og) : "";
+
+    if ((form.lob ?? "") !== expectedLob) {
+      setForm((prev) => ({ ...prev, lob: expectedLob }));
+    }
+  }, [form.og, form.lob, getLobTitleForOg]);
+
   const handlePeoplePicker = (items: IPersonaProps[], field: keyof IRiskAgreementItem): void => {
     if (!items.length) {
       updateField(field, undefined); // allow undefined if clearing field
@@ -180,6 +193,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
     // no default OG on the contract
     if (!ogTitle) {
       updateField("og", "");
+      updateField("lob", "");
       updateField("contractMgr", undefined);
       updateField("subContractMgr", undefined);
       setContractOgWarning("");
@@ -192,6 +206,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
     // contract OG exists and is valid/selectable
     if (ogRec) {
       updateField("og", ogRec.Title);
+      updateField("lob", ogRec.lob?.Title ?? "");
       updateField("contractMgr", ogRec.CM);
       updateField("subContractMgr", ogRec.SCM);
       setContractOgWarning("");
@@ -201,6 +216,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
 
     // contract OG points to an inactive / non-selectable / invalid OG
     updateField("og", "");
+    updateField("lob", "");
     updateField("contractMgr", undefined);
     updateField("subContractMgr", undefined);
     setContractOgWarning(
@@ -689,20 +705,15 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
 
             {submissionType === "existing" && (
               <Grid size={{ xs: 12, md: 6, xl: 4 }}>
-                <DatePicker
+                <CompactDateField
                   label="Contractual PoP End Date"
-                  value={form.popEnd ? dayjs(form.popEnd) : null}
-                  onChange={(value: Dayjs | null) =>
+                  value={form.popEnd ? dayjs(form.popEnd) : undefined}
+                  onChange={(value: Dayjs | undefined) =>
                     updateField("popEnd", value ? value.format("MM/DD/YYYY") : "")
                   }
-                  slotProps={{
-                    textField: {
-                      fullWidth: true,
-                      required: submissionType === "existing",
-                      error: submitted && isRequiredError(form.popEnd),
-                      helperText: submitted && !form.popEnd ? "PoP End Date is required" : undefined
-                    }
-                  }}
+                  error={submitted && isRequiredError(form.popEnd)}
+                  helperText={submitted && !form.popEnd ? "PoP End Date is required" : undefined}
+                  required={submissionType === "existing"}
                 />
               </Grid>
             )}
@@ -740,6 +751,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                   // on change, default CM only if not touched (or CM empty)
                   const newOg = e.target.value;
                   updateField("og", newOg);
+                  updateField("lob", getLobTitleForOg(newOg));
 
                   // user manually fixed the OG, so clear the warning
                   setContractOgWarning("");
@@ -798,39 +810,28 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
             </Grid>
 
             <Grid size={{ xs: 12, md: 6, lg: 3 }}>
-              <DatePicker
+              <CompactDateField
                 label="Risk Start Date"
-                value={form.riskStart ? dayjs(form.riskStart) : null}
-                onChange={(value: Dayjs | null) =>
+                value={form.riskStart ? dayjs(form.riskStart) : undefined}
+                onChange={(value: Dayjs | undefined) =>
                   updateField("riskStart", value ? value.format("MM/DD/YYYY") : "")
                 }
-                slotProps={{
-                  textField: {
-                    fullWidth: true,
-                    required: true,
-                    error: submitted && isRequiredError(form.riskStart),
-                    helperText: submitted && !form.riskStart ? "Risk Start Date is required" : undefined
-                  }
-                }}
+                error={submitted && isRequiredError(form.riskStart)}
+                helperText={submitted && !form.riskStart ? "Risk Start Date is required" : undefined}
+                required
               />
             </Grid>
 
             <Grid size={{ xs: 12, md: 6, lg: 3 }}>
-              <DatePicker
+              <CompactDateField
                 label="Risk End Date"
-                value={riskEndDay}
-                minDate={riskEndMin}
-                onChange={(value: Dayjs | null) =>
+                value={form.riskEnd ? dayjs(form.riskEnd) : undefined}
+                onChange={(value: Dayjs | undefined) =>
                   updateField("riskEnd", value ? value.format("MM/DD/YYYY") : "")
                 }
-                slotProps={{
-                  textField: {
-                    fullWidth: true,
-                    required: true,
-                    error: riskEndShowError,
-                    helperText: riskEndHelperText
-                  }
-                }}
+                error={riskEndShowError}
+                helperText={riskEndHelperText}
+                required
               />
             </Grid>
 

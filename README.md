@@ -56,12 +56,20 @@ This solution is designed for environments where governance, traceability, and a
 | Version | Date | Comments |
 | ------- | ------ | ---------- |
 | 2.0.0.6 | April 8, 2026 | Initial production release |
+| 2.0.0.7 | April 8, 2026 | split app into inner/outer for boot loading logic, other minor bug fixes |
+| 2.0.0.8 | April 10, 2026 | add user guide link, fix boot issue for non-admins, fix prod config |
+| 2.0.0.9 | April 13, 2026 | REMOVE CONTRACTS FILTER per Justin |
+| 2.0.0.10 | April 17, 2026 | fix Justification render for rich text |
+| 2.0.0.11 | April 22, 2026 | Add pending column to Agreements Grid, stack columns to make double rows |
+| 2.0.0.12 | April 22, 2026 | Adjust views for Project when new award to show Program Name. Add gate/error for issue creating Draft ATR |
+| 2.0.0.14 | May 4, 2026 | Adjust the change summary and payload summary for Mods due to char limits |
+| 2.0.1.0 | May 7, 2026 | Logo for boot load, kebab menu in header, Export function, User requested Dashboard changes |
 
 ---
 
 ## Disclaimer
 
-**THIS CODE IS PROVIDED _AS IS_ WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT.**
+**THIS CODE IS PROVIDED *AS IS* WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT.**
 
 ---
 

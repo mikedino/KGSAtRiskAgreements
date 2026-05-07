@@ -58,6 +58,7 @@ export const buildAgreementDelta = (before: IRiskAgreementItem, after: IRiskAgre
     add("popEnd", "PoP End", formatDate(before.popEnd), formatDate(after.popEnd));
     add("entity", "Entity", fmtText(before.entity), fmtText(after.entity));
     add("og", "Operating Group", fmtText(before.og), fmtText(after.og));
+    add("lob", "Line of Business", fmtText(before.lob), fmtText(after.lob));
     add("projectMgr", "Project Manager", fmtPerson(before.projectMgr), fmtPerson(after.projectMgr));
     add("contractMgr", "Contract Manager", fmtPerson(before.contractMgr), fmtPerson(after.contractMgr));
     add("riskReason", "Risk Reason", fmtText(before.riskReason), fmtText(after.riskReason));

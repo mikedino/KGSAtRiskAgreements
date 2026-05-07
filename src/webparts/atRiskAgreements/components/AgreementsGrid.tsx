@@ -2,6 +2,7 @@ import * as React from "react";
 import { useMemo, useState } from "react";
 import dayjs from "dayjs";
 import { Box, Typography, TextField, MenuItem, Stack, Chip, Tooltip, Button } from "@mui/material";
+import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { useHistory } from "react-router-dom";
 import { DataSource } from "../data/ds";
@@ -10,6 +11,7 @@ import { useTheme } from "@mui/material/styles";
 import EmptyState, { EmptyStateProps } from "../ui/EmptyStateBox";
 import { useAgreements } from "../services/agreementsContext";
 import { formatDate } from "../services/utils";
+import { exportAgreementRows } from "../services/exportAgreements";
 
 type AgreementViewKey =
   | "all"
@@ -28,7 +30,7 @@ interface AgreementView {
   predicate: (item: IRiskAgreementItem) => boolean;
 }
 
-type AgreementGridRow = IRiskAgreementItem & {
+export type AgreementGridRow = IRiskAgreementItem & {
   pendingWorkflowRole: string;
 };
 
@@ -40,6 +42,7 @@ const AgreementsGrid: React.FC = () => {
   const history = useHistory();
   const [search, setSearch] = useState("");
   const [entityFilter, setEntityFilter] = useState("");
+  const [lobFilter, setLobFilter] = useState("");
   const [contractTypeFilter, setContractTypeFilter] = useState("");
   const [selectedView, setSelectedView] = useState<AgreementViewKey>("all");
 
@@ -182,10 +185,15 @@ const AgreementsGrid: React.FC = () => {
     return Array.from(new Set(agreements.map(a => a.contractType).filter(Boolean))).sort();
   }, [agreements]);
 
+  const lobs = React.useMemo(() => {
+    return Array.from(new Set(agreements.map(a => a.lob).filter(Boolean))).sort();
+  }, [agreements]);
+
   const filterAgreements = (
     items: IRiskAgreementItem[],
     search: string,
     entity: string,
+    lob: string,
     contractType: string,
     view: AgreementViewKey
   ): IRiskAgreementItem[] => {
@@ -205,12 +213,14 @@ const AgreementsGrid: React.FC = () => {
           item.projectMgr?.Title.toLowerCase().includes(term) ||
           item.contractMgr?.Title.toLowerCase().includes(term) ||
           item.og?.toLowerCase().includes(term) ||
+          item.lob?.toLowerCase().includes(term) ||
           item.riskJustification.toLowerCase().includes(term);
 
         const matchesEntity = !entity || item.entity === entity;
+        const matchesLob = !lob || item.lob === lob;
         const matchesContract = !contractType || item.contractType === contractType;
 
-        return (matchesSearch && matchesEntity && matchesContract);
+        return (matchesSearch && matchesEntity && matchesLob && matchesContract);
       });
   };
 
@@ -241,12 +251,14 @@ const AgreementsGrid: React.FC = () => {
   const resetFilters = (): void => {
     setSearch("");
     setEntityFilter("");
+    setLobFilter("");
     setContractTypeFilter("");
   };
 
   const hasActiveFilters =
     Boolean(search?.trim()) ||
     Boolean(entityFilter) ||
+    Boolean(lobFilter) ||
     Boolean(contractTypeFilter);
 
   // Apply search/entity/contract filters without locking counts to the selected view.
@@ -255,15 +267,17 @@ const AgreementsGrid: React.FC = () => {
       agreements,
       search,
       entityFilter,
+      lobFilter,
       contractTypeFilter,
       "all"
     );
-  }, [agreements, search, entityFilter, contractTypeFilter, agreementViews]);
+  }, [agreements, search, entityFilter, lobFilter, contractTypeFilter, agreementViews]);
 
   // final data grid rows/items
   const rows = React.useMemo<AgreementGridRow[]>(() => {
     return filterAgreements(
       baseFilteredAgreements,
+      "",
       "",
       "",
       "",
@@ -282,6 +296,10 @@ const AgreementsGrid: React.FC = () => {
     });
   }, [baseFilteredAgreements, selectedView, runByAgreementId]);
 
+  const handleExport = React.useCallback((): void => {
+    exportAgreementRows(rows, `atr-export_${today.format('YYYY-MM-DD')}.csv`);
+  }, [rows]);
+
   // compute view counts for each chip
   const viewCounts = React.useMemo(() => {
     return agreementViews.reduce<Record<AgreementViewKey, number>>((acc, view) => {
@@ -292,135 +310,135 @@ const AgreementsGrid: React.FC = () => {
 
   const columns = React.useMemo<GridColDef<AgreementGridRow>[]>(() => {
     const baseColumns: GridColDef<AgreementGridRow>[] = [
-    {
-      field: "Title",
-      headerName: "Agreement",
-      flex: 1,
-      minWidth: 200,
-      renderCell: (params) => (
-        <Box sx={{ minWidth: 0 }}>
-          <Typography variant="body2" fontWeight={500} noWrap title={params.row.Title}>
-            {params.row.Title}
-          </Typography>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            noWrap
-            title={entityMap.get(params.row.entity) ?? params.row.entity}
-          >
-            {entityMap.get(params.row.entity) ?? params.row.entity}
-          </Typography>
-        </Box>
-      )
-    },
-    {
-      field: "contractId",
-      headerName: "Contract / Invoice",
-      flex: 1,
-      minWidth: 150,
-      valueGetter: (_value, row) =>
-        row.contractId
-          ? row.contractId
-          : row.projectName === "New Award"
-            ? "New Award"
-            : (row.invoice ?? ""),
-      renderCell: (params) => (
-        <Box sx={{ minWidth: 0 }}>
+      {
+        field: "Title",
+        headerName: "Agreement",
+        flex: 1,
+        minWidth: 200,
+        renderCell: (params) => (
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="body2" fontWeight={500} noWrap title={params.row.Title}>
+              {params.row.Title}
+            </Typography>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              noWrap
+              title={entityMap.get(params.row.entity) ?? params.row.entity}
+            >
+              {entityMap.get(params.row.entity) ?? params.row.entity}
+            </Typography>
+          </Box>
+        )
+      },
+      {
+        field: "contractId",
+        headerName: "Contract / Invoice",
+        flex: 1,
+        minWidth: 150,
+        valueGetter: (_value, row) =>
+          row.contractId
+            ? row.contractId
+            : row.projectName === "New Award"
+              ? "New Award"
+              : (row.invoice ?? ""),
+        renderCell: (params) => (
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
+              variant="body2"
+              fontWeight={500}
+              noWrap
+              title={params.row.contractId ?? (params.row.projectName === "New Award" ? "New Award" : "No contract")}
+            >
+              {params.row.contractId ?? (params.row.projectName === "New Award" ? "New Award" : "-")}
+            </Typography>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              noWrap
+              title={params.row.invoice ?? "No invoice"}
+            >
+              {params.row.invoice ?? "-"}
+            </Typography>
+          </Box>
+        )
+      },
+      {
+        field: "projectName",
+        headerName: "Project/Program",
+        flex: 1.4,
+        minWidth: 210,
+        valueGetter: (_value, row) =>
+          row.projectName === "New Award"
+            ? (row.programName ?? row.projectName ?? "")
+            : (row.projectName ?? ""),
+        renderCell: (params) => (
           <Typography
             variant="body2"
-            fontWeight={500}
-            noWrap
-            title={params.row.contractId ?? (params.row.projectName === "New Award" ? "New Award" : "No contract")}
+            sx={{ whiteSpace: "normal", lineHeight: 1.35, py: 0.25 }}
+            title={params.value ?? ""}
           >
-            {params.row.contractId ?? (params.row.projectName === "New Award" ? "New Award" : "-")}
+            {params.value}
           </Typography>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            noWrap
-            title={params.row.invoice ?? "No invoice"}
-          >
-            {params.row.invoice ?? "-"}
-          </Typography>
-        </Box>
-      )
-    },
-    {
-      field: "projectName",
-      headerName: "Project/Program",
-      flex: 1.4,
-      minWidth: 210,
-      valueGetter: (_value, row) =>
-        row.projectName === "New Award"
-          ? (row.programName ?? row.projectName ?? "")
-          : (row.projectName ?? ""),
-      renderCell: (params) => (
-        <Typography
-          variant="body2"
-          sx={{ whiteSpace: "normal", lineHeight: 1.35, py: 0.25 }}
-          title={params.value ?? ""}
-        >
-          {params.value}
-        </Typography>
-      )
-    },
-    {
-      field: "araStatus",
-      headerName: "Status",
-      minWidth: 130,
-      renderCell: (params) => getStatusChip(params.value)
-    },
-    {
-      field: "pendingWorkflowRole",
-      headerName: "Pending",
-      minWidth: 180,
-      flex: 1,
-      sortable: false
-    },
-    {
-      field: "riskStart",
-      headerName: "Risk Start",
-      minWidth: 120,
-      renderCell: (params) => formatDate(params.row.riskStart)
-    },
-    {
-      field: "riskEnd",
-      headerName: "Risk End",
-      minWidth: 120,
-      renderCell: (params) => formatDate(params.row.riskEnd)
-    },
-    {
-      field: "popEnd",
-      headerName: "PoP End",
-      minWidth: 120,
-      renderCell: (params) => formatDate(params.row.popEnd)
-    },
-    {
-      field: "riskFundingRequested",
-      headerName: "Funding Req",
-      minWidth: 130,
-      flex: 1,
-      align: "right",
-      headerAlign: "right",
-      renderCell: (params) => {
-        const value = params.row.riskFundingRequested ?? 0;
-        return value.toLocaleString("en-US", {
-          style: "currency",
-          currency: "USD",
-          maximumFractionDigits: 0
-        })
+        )
+      },
+      {
+        field: "araStatus",
+        headerName: "Status",
+        minWidth: 130,
+        renderCell: (params) => getStatusChip(params.value)
+      },
+      {
+        field: "pendingWorkflowRole",
+        headerName: "Pending",
+        minWidth: 180,
+        flex: 1,
+        sortable: false
+      },
+      {
+        field: "riskStart",
+        headerName: "Risk Start",
+        minWidth: 120,
+        renderCell: (params) => formatDate(params.row.riskStart)
+      },
+      {
+        field: "riskEnd",
+        headerName: "Risk End",
+        minWidth: 120,
+        renderCell: (params) => formatDate(params.row.riskEnd)
+      },
+      {
+        field: "popEnd",
+        headerName: "PoP End",
+        minWidth: 120,
+        renderCell: (params) => formatDate(params.row.popEnd)
+      },
+      {
+        field: "riskFundingRequested",
+        headerName: "Funding Req",
+        minWidth: 130,
+        flex: 1,
+        align: "right",
+        headerAlign: "right",
+        renderCell: (params) => {
+          const value = params.row.riskFundingRequested ?? 0;
+          return value.toLocaleString("en-US", {
+            style: "currency",
+            currency: "USD",
+            maximumFractionDigits: 0
+          })
+        }
+      },
+      {
+        field: "Created",
+        headerName: "Created",
+        minWidth: 110,
+        renderCell: (params) =>
+          params.row.Created
+            ? dayjs(params.row.Created).format("M/D/YYYY")
+            : ""
       }
-    },
-    {
-      field: "Created",
-      headerName: "Created",
-      minWidth: 110,
-      renderCell: (params) =>
-        params.row.Created
-          ? dayjs(params.row.Created).format("M/D/YYYY")
-          : ""
-    }
-  ];
+    ];
 
     if (selectedView === "all" || selectedView === "pending") {
       return baseColumns;
@@ -477,12 +495,31 @@ const AgreementsGrid: React.FC = () => {
 
   return (
     <Box sx={{ width: "100%" }}>
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="h4" fontWeight={700}>All Agreements</Typography>
-        <Typography variant="body2" color="text.secondary">
-          View and find all Agreements
-        </Typography>
-      </Box>
+
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        spacing={2}
+        justifyContent="space-between"
+        alignItems={{ xs: "flex-start", md: "flex-start" }}
+      >
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h4" fontWeight={700}>All Agreements</Typography>
+          <Typography variant="body2" color="text.secondary">
+            View and find all Agreements
+          </Typography>
+        </Box>
+
+        <Button
+          variant="contained"
+          color="secondary"
+          startIcon={<DownloadOutlinedIcon />}
+          onClick={handleExport}
+          disabled={rows.length === 0}
+          sx={{ alignSelf: { xs: "stretch", md: "flex-start" } }}
+        >
+          Export
+        </Button>
+      </Stack>
 
       {/* SEARCH + FILTER BAR */}
       <Box
@@ -492,70 +529,148 @@ const AgreementsGrid: React.FC = () => {
           bgcolor: theme.custom?.cardBg,
           border: "1px solid",
           borderColor: theme.custom?.cardBorder,
-          borderRadius: 3
+          borderRadius: 3,
+          display: "grid",
+          gap: 1.5,
+          alignItems: "center",
+          gridTemplateColumns: {
+            xs: "1fr",
+            md: "minmax(0, 1.25fr) minmax(0, 1fr) minmax(120px, auto)",
+            lg: "minmax(280px, 1.35fr) minmax(190px, 1fr) minmax(210px, 1fr) minmax(165px, 0.85fr) auto"
+          }
         }}
       >
-        <Stack
+        {/* <Stack
           direction={{ xs: "column", md: "row" }}
           spacing={2}
           alignContent="center"
           alignItems={{ md: "flex-end" }}
-        >
-          <TextField
-            label="Search Agreements"
-            placeholder="Search by Project, Invoice, Contract Mgr, Project Mgr"
-            size="small"
-            fullWidth
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        > */}
+        <TextField
+          label="Search Agreements"
+          placeholder="Search by Project, Invoice, Contract Mgr, Project Mgr"
+          size="small"
+          sx={{
+            minWidth: 0,
+            gridColumn: {
+              xs: "1",
+              md: "1 / span 2",
+              lg: "auto"
+            },
+            "& .MuiInputBase-root": { minWidth: 0 }
+          }}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
 
-          <TextField
-            label="Entity"
-            size="small"
-            select
-            sx={{ minWidth: 160 }}
-            value={entityFilter}
-            onChange={(e) => setEntityFilter(e.target.value)}
-          >
-            <MenuItem value="">All</MenuItem>
-            {entities.map(e => (
-              <MenuItem key={e.abbr} value={e.abbr}>
-                {e.label}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          <TextField
-            label="Contract Type"
-            size="small"
-            select
-            sx={{ minWidth: 180 }}
-            value={contractTypeFilter}
-            onChange={(e) => setContractTypeFilter(e.target.value)}
-          >
-            <MenuItem value="">All</MenuItem>
-            {contractTypes.map(type => (
-              <MenuItem key={type} value={type}>
-                {type}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          {/* RESET FILTERS */}
-          <Button
-            size="small"
-            variant="text"
-            disabled={!hasActiveFilters}
-            onClick={resetFilters}
-            sx={{
-              px: 1,
+        <TextField
+          label="Entity"
+          size="small"
+          select
+          sx={{
+            minWidth: 0,
+            gridColumn: {
+              xs: "1",
+              md: "3",
+              lg: "auto"
+            },
+            "& .MuiSelect-select": {
+              overflow: "hidden",
+              textOverflow: "ellipsis",
               whiteSpace: "nowrap"
-            }}
-          >
-            Clear filters
-          </Button>
-        </Stack>
+            }
+          }}
+          value={entityFilter}
+          onChange={(e) => setEntityFilter(e.target.value)}
+        >
+          <MenuItem value="">All</MenuItem>
+          {entities.map(e => (
+            <MenuItem key={e.abbr} value={e.abbr}>
+              {e.label}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        <TextField
+          label="LOB"
+          size="small"
+          select
+          sx={{
+            minWidth: 0,
+            gridColumn: {
+              xs: "1",
+              md: "1",
+              lg: "auto"
+            },
+            "& .MuiSelect-select": {
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap"
+            }
+          }}
+          value={lobFilter}
+          onChange={(e) => setLobFilter(e.target.value)}
+        >
+          <MenuItem value="">All</MenuItem>
+          {lobs.map(lob => (
+            <MenuItem key={lob} value={lob}>
+              {lob}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        <TextField
+          label="Contract Type"
+          size="small"
+          select
+          sx={{
+            minWidth: 0,
+            gridColumn: {
+              xs: "1",
+              md: "2",
+              lg: "auto"
+            },
+            "& .MuiSelect-select": {
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap"
+            }
+          }}
+          value={contractTypeFilter}
+          onChange={(e) => setContractTypeFilter(e.target.value)}
+        >
+          <MenuItem value="">All</MenuItem>
+          {contractTypes.map(type => (
+            <MenuItem key={type} value={type}>
+              {type}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        {/* RESET FILTERS */}
+        <Button
+          size="small"
+          variant="text"
+          disabled={!hasActiveFilters}
+          onClick={resetFilters}
+          sx={{
+            px: 1,
+            whiteSpace: "nowrap",
+            justifySelf: {
+              xs: "stretch",
+              md: "end",
+              lg: "start"
+            },
+            gridColumn: {
+              xs: "1",
+              md: "3",
+              lg: "auto"
+            }
+          }}
+        >
+          Clear filters
+        </Button>
+        {/* </Stack> */}
       </Box>
 
       {/* PRE-FILTERED VIEWS */}

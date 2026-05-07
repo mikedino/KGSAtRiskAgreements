@@ -36,6 +36,7 @@ export class WorkflowDecisionService {
       popEnd: agreement.popEnd,
       entity: agreement.entity,
       og: agreement.og,
+      lob: agreement.lob,
       projectMgrId: agreement.projectMgr?.Id ?? null,
       contractMgrId: agreement.contractMgr?.Id ?? null,
       riskReason: agreement.riskReason,

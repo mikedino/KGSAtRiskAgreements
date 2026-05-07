@@ -7,11 +7,11 @@ export const darkTheme = createTheme(baseTheme, {
   palette: { 
     mode: "dark",
 
-    primary: { light: "#a2e0ee", dark: "#003057", main: "#2499C2" },     // KGS Navy
+    primary: { light: "#a2e0ee", dark: "#003057", main: "#00B7FF" },     // KGS Navy
     secondary: { main: "#005C6C", light: "#ffffff3b"  },   // light = input borders!
     error: { main: "#fd3030", contrastText: "#000000de" },
     warning: { main: "#F4B740", contrastText: "#003057" },
-    info: { main: "#2499C2", contrastText: "#000000de",  },
+    info: { main: "#ec66ff", contrastText: "#000000de",  },
     success: { main: "#3BA55C", contrastText: "#000000de" },
 
     background: {
@@ -92,10 +92,10 @@ export const darkTheme = createTheme(baseTheme, {
 
         // SECONDARY button: TEAL
         containedSecondary: {
-          backgroundColor: "#005C6C",
-          color: "#ffffff",
+          backgroundColor: "#00B7FF",
+          color: "#000000de",
           "&:hover": {
-            backgroundColor: "#00788A",
+            backgroundColor: "#a2e0ee",
           }
         },
 

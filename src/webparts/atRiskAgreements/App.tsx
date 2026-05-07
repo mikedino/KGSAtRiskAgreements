@@ -11,13 +11,13 @@ import { IAppProps } from "./data/props";
 import AlertDialog from "./ui/Alert";
 import { Configuration } from "./data/cfg";
 import { InstallationRequired } from "dattatable";
-import { ThemeProvider, CssBaseline, Box, Stack, Typography, Alert } from "@mui/material";
-import CircularProgress from '@mui/material/CircularProgress';
+import { ThemeProvider, CssBaseline, Box, Alert } from "@mui/material";
 
 import { darkTheme } from "./styles/darkTheme";
 import { lightTheme } from "./styles/lightTheme";
 import styles from "./styles/styles.module.scss";
 import { formatError } from "./services/utils";
+import { BrandedLoadingState } from "./ui/BrandedLoadingState";
 
 import { ContextInfo } from "gd-sprest";
 import { loadStyles } from "@microsoft/load-themed-styles";
@@ -115,23 +115,7 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }): JSX.Element => {
         return (
             <ThemeProvider theme={useDarkTheme ? darkTheme : lightTheme}>
                 <CssBaseline />
-                <Box
-                    sx={{
-                        height: "70vh",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        bgcolor: "background.default",
-                        color: "text.primary"
-                    }}
-                >
-                    <Stack spacing={3} alignItems="center">
-                        <CircularProgress size={80} thickness={4} enableTrackSlot color="info" />
-                        <Typography variant="h5" fontWeight={500}>
-                            Verifying App Configuration...
-                        </Typography>
-                    </Stack>
-                </Box>
+                <BrandedLoadingState message="Verifying App Configuration..." useDarkTheme={useDarkTheme} />
             </ThemeProvider>
         );
     }

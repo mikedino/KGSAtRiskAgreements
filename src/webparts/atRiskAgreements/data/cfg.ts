@@ -88,6 +88,12 @@ export const Configuration = Helper.SPConfig({
                     indexed: true
                 },
                 {
+                    name: "lob",
+                    title: "Line of Business (LOB)",
+                    type: Helper.SPCfgFieldType.Text,
+                    indexed: false
+                },
+                {
                     name: "projectMgr",
                     title: "Project Manager",
                     type: Helper.SPCfgFieldType.User
