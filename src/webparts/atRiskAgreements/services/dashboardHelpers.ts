@@ -13,6 +13,18 @@ export interface IDistributionPoint {
     id: number;
     value: number;
     label: string;
+    color?: string;
+}
+
+export interface IValueDistributionPoint extends IDistributionPoint {
+    totalRiskFundingRequested: number;
+}
+
+export interface ILobValuePoint extends Record<string, string | number> {
+    id: number;
+    lob: string;
+    count: number;
+    totalRiskFundingRequested: number;
 }
 
 export interface IStageAvgPoint {

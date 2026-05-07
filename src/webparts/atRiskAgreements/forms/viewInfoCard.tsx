@@ -48,8 +48,9 @@ const AgreementInfoCard = ({
                 <ReadOnly label="Risk Start" value={formatDate(item.riskStart)} />
                 <ReadOnly label="Risk End" value={formatDate(item.riskEnd)} />
                 {item.contractId && (<ReadOnly label="Contractual PoP End" value={formatDate(item.popEnd)} />)}
-                <ReadOnly label="Risk Funding Requested" value={formatCurrency(item.riskFundingRequested)} />
                 <ReadOnly label="Operating Group" value={item.og} />
+                <ReadOnly label="Line of Business" value={item.lob} />
+                <ReadOnly label="Risk Funding Requested" value={formatCurrency(item.riskFundingRequested)} md={12} />
                 <ReadOnly label="Project Manager" value={item.projectMgr?.Title} />
                 <ReadOnly label="Contract Manager" value={item.contractMgr?.Title} />
             </Grid>

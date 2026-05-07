@@ -82,6 +82,7 @@ export interface IRiskAgreementItem {
   popEnd: string;
   entity: string;
   og: string;
+  lob: string;
   projectMgr?: IPeoplePicker;
   contractMgr?: IPeoplePicker;
   subContractMgr?: IPeoplePicker;

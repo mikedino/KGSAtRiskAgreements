@@ -1,8 +1,8 @@
 import dayjs from "dayjs";
 import { IRiskAgreementItem, IWorkflowActionItem, IWorkflowRunItem } from "../data/props";
 import {
-  IMonthlyTrendPoint, isValidDate, IDistributionPoint, getFinalApprovalDate,
-  IStageAvgPoint, RiskLevel, getRiskLevel
+  IMonthlyTrendPoint, isValidDate, getFinalApprovalDate,
+  IStageAvgPoint, RiskLevel, getRiskLevel, IValueDistributionPoint, ILobValuePoint
 } from "./dashboardHelpers";
 import { buildWorkflowState } from "./workflowState";
 import { RiskAgreementWorkflow } from "./workflowModel";
@@ -38,6 +38,20 @@ const STATUS_COLORS: Record<AraStatus, string> = {
   Resolved: "#2CB1A1",   // tealish green
   Rejected: "#fd3030",         // red
   Canceled: "#9e9e9e"         // neutral
+};
+
+const RISK_ORDER: RiskLevel[] = ["Low", "Medium", "High"];
+
+const RISK_LABELS: Record<RiskLevel, string> = {
+  Low: "Low (< 50k)",
+  Medium: "Medium (50k-100k)",
+  High: "High (> 100k)"
+};
+
+const RISK_COLORS: Record<RiskLevel, string> = {
+  Low: "#3BA55C",
+  Medium: "#F4B740",
+  High: "#fd3030"
 };
 
 /*
@@ -86,21 +100,29 @@ export const buildMonthlyTrends = (
 
 
 // Status distribution (donut)
-export const buildStatusDistribution = (items: IRiskAgreementItem[]): IDistributionPoint[] => {
-  const counts = new Map<AraStatus, number>();
+export const buildStatusDistribution = (items: IRiskAgreementItem[]): IValueDistributionPoint[] => {
+  const buckets = new Map<AraStatus, { count: number; totalRiskFundingRequested: number }>();
 
   items.forEach(i => {
     const status = i.araStatus;
-    counts.set(status, (counts.get(status) ?? 0) + 1);
+    const existing = buckets.get(status) ?? { count: 0, totalRiskFundingRequested: 0 };
+    existing.count++;
+    existing.totalRiskFundingRequested += i.riskFundingRequested ?? 0;
+    buckets.set(status, existing);
   });
 
   return STATUS_ORDER
-    .map((status, index) => ({
+    .map((status, index): IValueDistributionPoint => {
+      const bucket = buckets.get(status) ?? { count: 0, totalRiskFundingRequested: 0 };
+
+      return {
       id: index + 1,
-      value: counts.get(status) ?? 0,
+      value: bucket.count,
       label: STATUS_LABELS[status],
-      color: STATUS_COLORS[status]
-    }))
+      color: STATUS_COLORS[status],
+      totalRiskFundingRequested: bucket.totalRiskFundingRequested
+      };
+    })
     .filter(p => p.value > 0); // remove empty slices
 };
 
@@ -178,17 +200,46 @@ export const buildAvgStageTimes = (
 
 
 // Risk distribution (pie)
-export const buildRiskDistribution = (items: IRiskAgreementItem[]): IDistributionPoint[] => {
-  const counts: Record<RiskLevel, number> = { Low: 0, Medium: 0, High: 0 };
+export const buildRiskDistribution = (items: IRiskAgreementItem[]): IValueDistributionPoint[] => {
+  const buckets: Record<RiskLevel, { count: number; totalRiskFundingRequested: number }> = {
+    Low: { count: 0, totalRiskFundingRequested: 0 },
+    Medium: { count: 0, totalRiskFundingRequested: 0 },
+    High: { count: 0, totalRiskFundingRequested: 0 }
+  };
 
   items.forEach(i => {
     const amt = i.riskFundingRequested ?? 0;
-    counts[getRiskLevel(amt)]++;
+    const riskLevel = getRiskLevel(amt);
+    buckets[riskLevel].count++;
+    buckets[riskLevel].totalRiskFundingRequested += amt;
   });
 
-  return [
-    { id: 1, value: counts.Low, label: "Low (< 50k)" },
-    { id: 2, value: counts.Medium, label: "Medium (50k-100k)" },
-    { id: 3, value: counts.High, label: "High (> 100k)" }
-  ];
+  return RISK_ORDER.map((level, index) => ({
+    id: index + 1,
+    value: buckets[level].count,
+    label: RISK_LABELS[level],
+    color: RISK_COLORS[level],
+    totalRiskFundingRequested: buckets[level].totalRiskFundingRequested
+  }));
+};
+
+export const buildLobValueDistribution = (items: IRiskAgreementItem[]): ILobValuePoint[] => {
+  const buckets = new Map<string, { count: number; totalRiskFundingRequested: number }>();
+
+  items.forEach((item) => {
+    const lob = item.lob?.trim() || "Unassigned";
+    const existing = buckets.get(lob) ?? { count: 0, totalRiskFundingRequested: 0 };
+    existing.count++;
+    existing.totalRiskFundingRequested += item.riskFundingRequested ?? 0;
+    buckets.set(lob, existing);
+  });
+
+  return Array.from(buckets.entries())
+    .map(([lob, bucket], index) => ({
+      id: index + 1,
+      lob,
+      count: bucket.count,
+      totalRiskFundingRequested: bucket.totalRiskFundingRequested
+    }))
+    .sort((a, b) => b.totalRiskFundingRequested - a.totalRiskFundingRequested || a.lob.localeCompare(b.lob));
 };

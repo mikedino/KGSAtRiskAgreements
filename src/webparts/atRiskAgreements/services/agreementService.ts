@@ -133,6 +133,7 @@ export class RiskAgreementService {
         popEnd: item.popEnd || null,
         entity: item.entity,
         og: item.og,
+        lob: item.lob,
         projectMgrId: item.projectMgr?.Id,
         contractMgrId: item.contractMgr?.Id,
         subContractMgrId: item.subContractMgr?.Id,

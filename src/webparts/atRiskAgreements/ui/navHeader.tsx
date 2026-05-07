@@ -1,14 +1,13 @@
 import * as React from "react";
-import { AppBar, Toolbar, Typography, Button, useMediaQuery, Box, Stack, Avatar, Popover } from "@mui/material";
+import { AppBar, Toolbar, Typography, Button, useMediaQuery, Box, Stack, Avatar, Popover, Menu, MenuItem } from "@mui/material";
 import { useAgreements } from "../services/agreementsContext";
 import { useTheme } from "@mui/material/styles";
 import {
     Handshake, Add, Dashboard, Work, ListAlt, AdminPanelSettings,
-    Refresh, HelpOutlineOutlined, People, PeopleOutline
+    Refresh, HelpOutlineOutlined, People, PeopleOutline, MoreVert, DarkMode, LightMode, PersonOutline
 } from "@mui/icons-material";
 import IconButton from '@mui/material/IconButton';
 import { Link, NavLink } from "react-router-dom";
-import ThemeSwitcher from "./ThemeSwitcher";
 import { WebPartContext } from "@microsoft/sp-webpart-base";
 import { formatError, stringAvatar } from "../services/utils";
 import { DataSource } from "../data/ds";
@@ -42,18 +41,32 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, appTitle, useDarkTheme, 
     //const [user, setUser] = React.useState<IAppUserItem | undefined>(DataSource.CurrentUser);
     const [backups, setBackups] = React.useState<IBackups>({ results: [] });
     const [backupAnchorEl, setBackupAnchorEl] = React.useState<HTMLElement | null>(null);
+    const [menuAnchorEl, setMenuAnchorEl] = React.useState<HTMLElement | null>(null);
     const [backupSaving, setBackupSaving] = React.useState<boolean>(false);
 
     //set user guide URL
     const userGuideUrl = DataSource.UserGuide;
 
     const backupOpen = Boolean(backupAnchorEl);
+    const menuOpen = Boolean(menuAnchorEl);
 
     // small screens (md = ~900px), large screens (lg = ~1200px)
     const isSmall = useMediaQuery(theme.breakpoints.down("md"));
     const isLarge = useMediaQuery(theme.breakpoints.down("lg"));
 
     const showAdmin = DataSource.isAdmin
+    const displayName = context.pageContext.user.displayName;
+    const currentRoleLabel = DataSource.isAdmin ? "Administrator" : DataSource.isCM ? "Contract Manager" : "User";
+    const avatarProps = stringAvatar(displayName);
+    const userPhotoUrl = React.useMemo((): string | undefined => {
+        const email = currentUser?.user?.EMail || context.pageContext.user.email;
+
+        if (!email) {
+            return undefined;
+        }
+
+        return `${context.pageContext.web.absoluteUrl}/_layouts/15/userphoto.aspx?size=M&accountname=${encodeURIComponent(email)}`;
+    }, [context.pageContext.user.email, context.pageContext.web.absoluteUrl, currentUser?.user?.EMail]);
 
     const peoplePickerContext = {
         absoluteUrl: context.pageContext.web.absoluteUrl,
@@ -77,12 +90,41 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, appTitle, useDarkTheme, 
         setBackups(bUps);
     }, [currentUser]);
 
-    const handleBackupOpen = (event: React.MouseEvent<HTMLElement>): void => {
-        setBackupAnchorEl(event.currentTarget);
-    };
-
     const handleBackupClose = (): void => {
         setBackupAnchorEl(null);
+    };
+
+    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>): void => {
+        setMenuAnchorEl(event.currentTarget);
+    };
+
+    const handleMenuClose = (): void => {
+        setMenuAnchorEl(null);
+    };
+
+    const handleBackupMenuOpen = (event: React.MouseEvent<HTMLElement>): void => {
+        const anchorEl = menuAnchorEl ?? event.currentTarget;
+        handleMenuClose();
+        setBackupAnchorEl(anchorEl);
+    };
+
+    const handleToggleTheme = async (): Promise<void> => {
+        handleMenuClose();
+        const next = !useDarkTheme;
+
+        // update state immediately
+        setUseDarkTheme(next);
+
+        // update session storage (prevents flicker on refresh)
+        sessionStorage.setItem("ara_theme", next ? "dark" : "light");
+
+        // persist to profile
+        try {
+            await AppUserService.updateMyModePreference(next ? "dark" : "light");
+        } catch (e) {
+            console.error("failed to save theme preference", e);
+            setDialogProps("Error saving theme preference", formatError(e))
+        }
     };
 
     const handleBackups = async (items: IPersonaProps[]): Promise<void> => {
@@ -222,63 +264,64 @@ const NavHeader: React.FC<NavHeaderProps> = ({ context, appTitle, useDarkTheme, 
                     </Button>
 
 
-                    {/* USER DISPLAY */}
-                    <Stack direction="column" alignItems="flex-end" sx={{ mx: 1 }}>
-                        {isSmall ? (
-                            <Avatar alt={context.pageContext.user.displayName} {...stringAvatar(context.pageContext.user.displayName)} />
-                        ) : (
-                            <>
-                                <Typography sx={{ fontWeight: 500, fontSize: 14 }}>
-                                    {context.pageContext.user.displayName}
-                                </Typography>
-                                <Typography sx={{ fontWeight: 400, fontSize: 12 }}>
-                                    {DataSource.isAdmin ? "Administrator" : DataSource.isCM ? "Contract Manager" : "User"}
-                                </Typography>
-                            </>
-                        )}
-                    </Stack>
-
-
-                    {/* BACKUPS ICON */}
-                    <Box>
-                        <IconButton
-                            onClick={handleBackupOpen}
-                            size="medium"
-                            aria-label="Add/Manage Backup(s)"
-                            title={currentUser?.hasBackup ? "Manage Backups" : "Add Backup(s)"}
+                    {/* USER DISPLAY + ACTION MENU */}
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ ml: 1, minWidth: 0 }}>
+                        <Avatar
+                            src={userPhotoUrl}
+                            alt={displayName}
+                            slotProps={{ img: { referrerPolicy: "no-referrer" } }}
+                            sx={{ ...avatarProps.sx, width: 40, height: 40, flexShrink: 0 }}
                         >
-                            {currentUser?.hasBackup ? <People /> : <PeopleOutline />}
+                            {userPhotoUrl ? <PersonOutline fontSize="small" /> : avatarProps.children}
+                        </Avatar>
+                        {!isSmall && (
+                            <Stack direction="column" alignItems="flex-end" sx={{ minWidth: 0, maxWidth: 220 }}>
+                                <Typography sx={{ fontWeight: 500, fontSize: 14 }} noWrap>
+                                    {displayName}
+                                </Typography>
+                                <Typography sx={{ fontWeight: 400, fontSize: 12 }} noWrap>
+                                    {currentRoleLabel}
+                                </Typography>
+                            </Stack>
+                        )}
+                        <IconButton
+                            onClick={handleMenuOpen}
+                            size="medium"
+                            aria-label="Header Actions"
+                            title="Header Actions"
+                        >
+                            <MoreVert />
                         </IconButton>
-                    </Box>
-
-                    {/* THEME SWITCHER ICON */}
-                    <Box>
-
-                        <ThemeSwitcher
-                            useDarkTheme={useDarkTheme}
-                            onToggle={async () => {
-                                const next = !useDarkTheme;
-
-                                //update state immediately
-                                setUseDarkTheme(next);
-
-                                // update session storage (prevents flicker on refresh)
-                                sessionStorage.setItem("ara_theme", next ? "dark" : "light");
-
-                                // persist to profile
-                                try {
-                                    await AppUserService.updateMyModePreference(next ? "dark" : "light");
-                                } catch (e) {
-                                    console.error("failed to save theme preference", e);
-                                    setDialogProps("Error saving theme preference", formatError(e))
-                                }
-                            }}
-                        />
-                    </Box>
+                    </Stack>
 
                 </Stack>
 
             </Toolbar>
+
+            <Menu
+                anchorEl={menuAnchorEl}
+                open={menuOpen}
+                onClose={handleMenuClose}
+                anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                transformOrigin={{ vertical: "top", horizontal: "right" }}
+            >
+                <MenuItem onClick={handleBackupMenuOpen}>
+                    {currentUser?.hasBackup ? (
+                        <People fontSize="small" sx={{ mr: 1.25 }} />
+                    ) : (
+                        <PeopleOutline fontSize="small" sx={{ mr: 1.25 }} />
+                    )}
+                    Backups
+                </MenuItem>
+                <MenuItem onClick={handleToggleTheme}>
+                    {useDarkTheme ? (
+                        <LightMode fontSize="small" sx={{ mr: 1.25 }} />
+                    ) : (
+                        <DarkMode fontSize="small" sx={{ mr: 1.25 }} />
+                    )}
+                    {useDarkTheme ? "Light Mode" : "Dark Mode"}
+                </MenuItem>
+            </Menu>
 
             <Popover
                 open={backupOpen}

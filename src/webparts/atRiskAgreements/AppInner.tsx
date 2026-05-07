@@ -32,6 +32,7 @@ import { darkTheme } from "./styles/darkTheme";
 import { lightTheme } from "./styles/lightTheme";
 import { formatError } from "./services/utils";
 import Strings from "../../strings";
+import { BrandedLoadingState } from "./ui/BrandedLoadingState";
 
 import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
@@ -486,23 +487,7 @@ export const AppInner: React.FC<IReadyAppProps> = ({
         return (
             <ThemeProvider theme={useDarkTheme ? darkTheme : lightTheme}>
                 <CssBaseline />
-                <Box
-                    sx={{
-                        height: "70vh",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        bgcolor: "background.default",
-                        color: "text.primary"
-                    }}
-                >
-                    <Stack spacing={3} alignItems="center">
-                        <CircularProgress size={80} thickness={4} enableTrackSlot color="info" />
-                        <Typography variant="h5" fontWeight={500}>
-                            Loading At-Risk Agreement Application…
-                        </Typography>
-                    </Stack>
-                </Box>
+                <BrandedLoadingState message="Loading At-Risk Agreement Application..." useDarkTheme={useDarkTheme} />
 
                 <AlertDialog
                     open={showDialog}

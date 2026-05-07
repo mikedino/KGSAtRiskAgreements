@@ -174,7 +174,7 @@ export class DataSource {
     public static agreementSelectQuery: string[] = [
         "Id", "Title", "projectName", "contractId", "invoice", "contractType", "riskStart", "riskEnd", "popEnd",
         "entity", "riskReason", "riskFundingRequested", "riskJustification", "contractName", "programName",
-        "araStatus", "Created", "Modified", "og", "hasSubcontract", "Attachments",
+        "araStatus", "Created", "Modified", "og", "lob", "hasSubcontract", "Attachments",
         "Author/Id", "Author/Title", "Author/EMail", "Editor/Id", "Editor/Title", "Editor/EMail",
         "backupRequestor/Id", "backupRequestor/Title", "backupRequestor/EMail",
         "projectMgr/Id", "projectMgr/Title", "projectMgr/EMail",

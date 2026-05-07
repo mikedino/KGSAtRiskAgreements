@@ -1,9 +1,9 @@
 import * as React from "react";
-import { Grid, Box, Link, Typography } from "@mui/material";
+import { Grid, Box, Link, Typography, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import InfoCard from "../ui/InfoCard";
 import { ChartCard } from "../ui/ChartCard";
 import { buildDashboardKpis } from "../services/dashboardHelpers";
-import { buildMonthlyTrends, buildStatusDistribution, buildAvgStageTimes, buildRiskDistribution } from "../services/dashboardCharts";
+import { buildMonthlyTrends, buildStatusDistribution, buildAvgStageTimes, buildRiskDistribution, buildLobValueDistribution } from "../services/dashboardCharts";
 import { Link as RouterLink } from "react-router-dom";
 import { LineChart } from "@mui/x-charts/LineChart";
 import { PieChart } from "@mui/x-charts/PieChart";
@@ -17,9 +17,16 @@ import { useAgreements } from "../services/agreementsContext";
 import { ChartsReferenceLine } from "@mui/x-charts/ChartsReferenceLine";
 import { useTheme } from "@mui/material/styles";
 
+type LobValueScope = "active" | "all";
+
+const ACTIVE_PIPELINE_STATUSES = new Set(["Submitted", "Under Review", "Mod Review"]);
+
+const LOB_COLORS = ["#005c6c", "#f2c744", "#4b82ff", "#7b61ff"];
+
 const Dashboard: React.FC = () => {
 
   const theme = useTheme();
+  const [lobValueScope, setLobValueScope] = React.useState<LobValueScope>("active");
 
   // use AgreementsProvider Context
   const { agreements, runByAgreementId, dashboardActions, loadDashboardActions } = useAgreements();
@@ -48,6 +55,14 @@ const Dashboard: React.FC = () => {
     [agreements, runByAgreementId, dashboardActions]
   );
   const riskDistribution = React.useMemo(() => buildRiskDistribution(agreements), [agreements]);
+  const activePipelineAgreements = React.useMemo(
+    () => agreements.filter((agreement) => ACTIVE_PIPELINE_STATUSES.has(agreement.araStatus)),
+    [agreements]
+  );
+  const lobValueDistribution = React.useMemo(
+    () => buildLobValueDistribution(lobValueScope === "active" ? activePipelineAgreements : agreements),
+    [activePipelineAgreements, agreements, lobValueScope]
+  );
 
   // Avg resp time bar chart SLA
   // const goodValues = avgStageTimes.map(s => (s.avgDays <= 5 ? s.avgDays : 0));
@@ -57,6 +72,24 @@ const Dashboard: React.FC = () => {
   // formatting helpers
   const fmtMoney = (n: number): string =>
     n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
+  const fmtCompactMoney = (n: number): string => {
+    const abs = Math.abs(n);
+
+    if (abs >= 1000000) {
+      const value = n / 1000000;
+      const digits = abs >= 10000000 ? 0 : 1;
+      return `$${value.toFixed(digits)}M`;
+    }
+
+    if (abs >= 1000) {
+      const value = n / 1000;
+      const digits = abs >= 100000 ? 0 : 1;
+      return `$${value.toFixed(digits)}K`;
+    }
+
+    return fmtMoney(n);
+  };
 
   // wrap bar chart long labels
   const wrapLabel = (label: string, maxCharsPerLine = 14, maxLines = 2): string => {
@@ -129,6 +162,25 @@ const Dashboard: React.FC = () => {
   );
 
   const safeRiskDistribution = riskDistribution.filter((p) => Number.isFinite(p.value) && p.value > 0);
+  const statusRiskFundingById = new Map(
+    statusDistribution.map((point) => [String(point.id), point.totalRiskFundingRequested])
+  );
+  const riskFundingById = new Map(
+    safeRiskDistribution.map((point) => [String(point.id), point.totalRiskFundingRequested])
+  );
+  const safeLobValueDistribution = lobValueDistribution.filter((p) =>
+    Number.isFinite(p.count) && Number.isFinite(p.totalRiskFundingRequested)
+  );
+  const lobLabels = safeLobValueDistribution.map((point) => point.lob);
+  const lobLegendItems = safeLobValueDistribution.map((point, seriesIndex) => ({
+    color: LOB_COLORS[seriesIndex % LOB_COLORS.length],
+    label: point.lob
+  }));
+  const lobMaxValue = Math.max(
+    0,
+    ...safeLobValueDistribution.map((point) => point.totalRiskFundingRequested)
+  );
+  const lobYAxisMax = lobMaxValue > 0 ? lobMaxValue * 1.18 : undefined;
 
   // console.log("monthlyTrends", monthlyTrends);
   // console.log("statusDistribution", statusDistribution);
@@ -235,6 +287,146 @@ const Dashboard: React.FC = () => {
         {/* CHARTS GRID */}
         <Grid container spacing={3} sx={{ mt: 0 }}>
           <Grid size={{ lg: 6, md: 12, xs: 12 }}>
+            {/* LOB value bar */}
+            <ChartCard
+              title="Total At-Risk Value by LOB"
+              contentHeight={380}
+              action={
+                <ToggleButtonGroup
+                  exclusive
+                  size="small"
+                  value={lobValueScope}
+                  onChange={(_, value: LobValueScope | null) => {
+                    if (value) setLobValueScope(value);
+                  }}
+                  aria-label="LOB value scope"
+                  sx={{
+                    "& .MuiToggleButton-root": {
+                      px: 1.25,
+                      py: 0.25,
+                      fontSize: 12,
+                      textTransform: "none"
+                    }
+                  }}
+                >
+                  <ToggleButton value="active" aria-label="Active pipeline">
+                    Active
+                  </ToggleButton>
+                  <ToggleButton value="all" aria-label="All agreements">
+                    All
+                  </ToggleButton>
+                </ToggleButtonGroup>
+              }
+            >
+              <BarChart
+                dataset={safeLobValueDistribution}
+                xAxis={[{
+                  scaleType: "band",
+                  dataKey: "lob",
+                  categoryGapRatio: 0.35,
+                  colorMap: {
+                    type: "ordinal",
+                    values: lobLabels,
+                    colors: lobLegendItems.map((item) => item.color)
+                  },
+                  valueFormatter: (v) => wrapLabel(String(v), 14, 2),
+                  tickLabelStyle: { whiteSpace: "pre-line", fontSize: 12 }
+                }]}
+                yAxis={[{
+                  min: 0,
+                  max: lobYAxisMax,
+                  valueFormatter: (value: number) => fmtCompactMoney(Number(value)),
+                  tickLabelStyle: { fontSize: 11 }
+                }]}
+                series={[
+                  {
+                    dataKey: "totalRiskFundingRequested",
+                    label: "At-Risk Value",
+                    valueFormatter: (value) => fmtCompactMoney(Number(value)),
+                    barLabel: (item: { value: number | null }) => (item.value ? fmtCompactMoney(item.value) : ""),
+                    barLabelPlacement: "outside"
+                  }
+                ]}
+                height={380}
+                hideLegend
+                borderRadius={5}
+                margin={{ left: 44, right: 36, top: 34, bottom: 58 }}
+                slotProps={{
+                  barLabel: { style: { fontSize: 12, fontWeight: 600 } }
+                }}
+              />
+            </ChartCard>
+          </Grid>
+
+          <Grid size={{ lg: 6, md: 12, xs: 12 }}>
+            {/* Status donut */}
+            <ChartCard title="Agreement Status Distribution" contentHeight={380}>
+              <PieChart
+                series={[
+                  {
+                    data: statusDistribution, // IDistributionPoint[]
+                    innerRadius: 40,
+                    outerRadius: 100,
+                    arcLabel: (item) => fmtCompactMoney(statusRiskFundingById.get(String(item.id)) ?? 0),
+                    arcLabelMinAngle: 12,
+                    arcLabelRadius: "78%",
+                    paddingAngle: 2,
+                    cornerRadius: 5
+                  }
+                ]}
+                height={300}
+                margin={{ left: 10, right: 20, top: 10, bottom: 10 }}
+                slotProps={{
+                  pieArcLabel: {
+                    style: {
+                      fontSize: 15,
+                      fontWeight: 700,
+                      fill: theme.palette.text.primary,
+                      paintOrder: "stroke",
+                      stroke: theme.custom?.cardBg ?? theme.palette.background.paper,
+                      strokeWidth: 3
+                    }
+                  }
+                }}
+              />
+            </ChartCard>
+          </Grid>
+
+          <Grid size={{ lg: 6, md: 12, xs: 12 }}>
+            {/* Risk donut */}
+            <ChartCard title="Risk Level Distribution" contentHeight={380}>
+              <PieChart
+                series={[
+                  {
+                    data: safeRiskDistribution, // IDistributionPoint[]
+                    innerRadius: 40,
+                    outerRadius: 100,
+                    arcLabel: (item) => fmtCompactMoney(riskFundingById.get(String(item.id)) ?? 0),
+                    arcLabelMinAngle: 12,
+                    arcLabelRadius: "78%",
+                    paddingAngle: 2,
+                    cornerRadius: 5
+                  }
+                ]}
+                height={300}
+                margin={{ left: 10, right: 20, top: 10, bottom: 10 }}
+                slotProps={{
+                  pieArcLabel: {
+                    style: {
+                      fontSize: 15,
+                      fontWeight: 700,
+                      fill: theme.palette.text.primary,
+                      paintOrder: "stroke",
+                      stroke: theme.custom?.cardBg ?? theme.palette.background.paper,
+                      strokeWidth: 3
+                    }
+                  }
+                }}
+              />
+            </ChartCard>
+          </Grid>
+
+          <Grid size={{ lg: 6, md: 12, xs: 12 }}>
             {/* Monthly Line chart */}
             <ChartCard title="Monthly Agreement Trends">
               <LineChart
@@ -246,25 +438,6 @@ const Dashboard: React.FC = () => {
                 ]}
                 height={300}
                 margin={{ left: 20, right: 20, top: 20, bottom: 30 }}
-              />
-            </ChartCard>
-          </Grid>
-
-          <Grid size={{ lg: 6, md: 12, xs: 12 }}>
-            {/* Status donut */}
-            <ChartCard title="Agreement Status Distribution">
-              <PieChart
-                series={[
-                  {
-                    data: statusDistribution, // IDistributionPoint[]
-                    innerRadius: 40,
-                    outerRadius: 100,
-                    paddingAngle: 2,
-                    cornerRadius: 5
-                  }
-                ]}
-                height={300}
-                margin={{ left: 10, right: 20, top: 10, bottom: 10 }}
               />
             </ChartCard>
           </Grid>
@@ -294,25 +467,6 @@ const Dashboard: React.FC = () => {
                 <ChartsReferenceLine y={5} lineStyle={{ stroke: theme.palette.warning.main, strokeWidth: 1 }} />
                 <ChartsReferenceLine y={10} lineStyle={{ stroke: "#fa4f58", strokeWidth: 1 }} />
               </BarChart>
-            </ChartCard>
-          </Grid>
-
-          <Grid size={{ lg: 6, md: 12, xs: 12 }}>
-            {/* Risk donut */}
-            <ChartCard title="Risk Level Distribution">
-              <PieChart
-                series={[
-                  {
-                    data: safeRiskDistribution, // IDistributionPoint[]
-                    innerRadius: 40,
-                    outerRadius: 100,
-                    paddingAngle: 2,
-                    cornerRadius: 5
-                  }
-                ]}
-                height={300}
-                margin={{ left: 10, right: 20, top: 10, bottom: 10 }}
-              />
             </ChartCard>
           </Grid>
         </Grid>
