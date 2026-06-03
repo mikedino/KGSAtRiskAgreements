@@ -5,6 +5,7 @@ import { RefreshMode } from "../data/agreementsDataCall";
 export interface IAgreementsContext {
   agreements: IRiskAgreementItem[];
   runByAgreementId: Map<number, IWorkflowRunItem>; // current run for agreement
+  effectiveApprovedRunByAgreementId: Map<number, IWorkflowRunItem>; // last approved baseline run for agreement
 
   // for the item VIEW
   runsByAgreementId: Map<number, IWorkflowRunItem[]>; // all runs for agreement

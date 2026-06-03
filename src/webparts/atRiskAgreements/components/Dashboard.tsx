@@ -2,7 +2,7 @@ import * as React from "react";
 import { Grid, Box, Link, Typography, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import InfoCard from "../ui/InfoCard";
 import { ChartCard } from "../ui/ChartCard";
-import { buildDashboardKpis, isActiveByRiskEnd } from "../services/dashboardHelpers";
+import { buildDashboardKpis, getActiveRiskFundingRequested, isActiveByRiskEnd } from "../services/dashboardHelpers";
 import { buildMonthlyTrends, buildStatusDistribution, buildAvgStageTimes, buildRiskDistribution, buildLobValueDistribution } from "../services/dashboardCharts";
 import { Link as RouterLink } from "react-router-dom";
 import { LineChart } from "@mui/x-charts/LineChart";
@@ -16,6 +16,7 @@ import HourglassTop from "@mui/icons-material/HourglassTop";
 import { useAgreements } from "../services/agreementsContext";
 import { ChartsReferenceLine } from "@mui/x-charts/ChartsReferenceLine";
 import { useTheme } from "@mui/material/styles";
+import { DataSource } from "../data/ds";
 
 type LobValueScope = "active" | "all";
 
@@ -27,7 +28,7 @@ const Dashboard: React.FC = () => {
   const [lobValueScope, setLobValueScope] = React.useState<LobValueScope>("active");
 
   // use AgreementsProvider Context
-  const { agreements, runByAgreementId, dashboardActions, loadDashboardActions } = useAgreements();
+  const { agreements, runByAgreementId, effectiveApprovedRunByAgreementId, dashboardActions, loadDashboardActions } = useAgreements();
 
   // load all the actions one time
   React.useEffect(() => {
@@ -36,8 +37,8 @@ const Dashboard: React.FC = () => {
 
   // top cards
   const kpis = React.useMemo(
-    () => buildDashboardKpis(agreements, runByAgreementId),
-    [agreements, runByAgreementId]
+    () => buildDashboardKpis(agreements, runByAgreementId, effectiveApprovedRunByAgreementId),
+    [agreements, runByAgreementId, effectiveApprovedRunByAgreementId]
   );
 
   // Chart datasets
@@ -57,9 +58,17 @@ const Dashboard: React.FC = () => {
     () => agreements.filter((agreement) => isActiveByRiskEnd(agreement)),
     [agreements]
   );
+  const lobNames = React.useMemo(
+    () => DataSource.LOBs.map((lob) => lob.Title).filter(Boolean),
+    [agreements]
+  );
   const lobValueDistribution = React.useMemo(
-    () => buildLobValueDistribution(lobValueScope === "active" ? activeAgreements : agreements),
-    [activeAgreements, agreements, lobValueScope]
+    () => buildLobValueDistribution(
+      lobValueScope === "active" ? activeAgreements : agreements,
+      (agreement) => getActiveRiskFundingRequested(agreement, effectiveApprovedRunByAgreementId),
+      lobNames
+    ),
+    [activeAgreements, agreements, lobValueScope, effectiveApprovedRunByAgreementId, lobNames]
   );
 
   // Avg resp time bar chart SLA
@@ -279,7 +288,7 @@ const Dashboard: React.FC = () => {
           <InfoCard
             title="At-Risk Value"
             value={fmtMoney(kpis.atRiskValue)}
-            subtitle="Risk End today or later"
+            subtitle="Active approved baseline"
             icon={<MonetizationOnIcon />}
             iconColor="warning"
           />
@@ -353,7 +362,7 @@ const Dashboard: React.FC = () => {
                     dataKey: "totalRiskFundingRequested",
                     label: "At-Risk Value",
                     valueFormatter: (value) => fmtCompactMoney(Number(value)),
-                    barLabel: (item: { value: number | null }) => (item.value ? fmtCompactMoney(item.value) : ""),
+                    barLabel: (item: { value: number | null }) => item.value !== null ? fmtCompactMoney(item.value) : "",
                     barLabelPlacement: "outside"
                   }
                 ]}

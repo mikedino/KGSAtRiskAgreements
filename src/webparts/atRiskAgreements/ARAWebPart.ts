@@ -17,9 +17,29 @@ export interface IAtRiskAgreementsWebPartProps {
   title: string;
 }
 
+const ensureSharePointWebViewMode = (): boolean => {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const currentUrl = new URL(window.location.href);
+
+  if (currentUrl.searchParams.get("env") === "WebView") {
+    return false;
+  }
+
+  currentUrl.searchParams.set("env", "WebView");
+  window.location.replace(currentUrl.toString());
+  return true;
+};
+
 export default class AtRiskAgreementsWebPart extends BaseClientSideWebPart<IAtRiskAgreementsWebPartProps> {
 
   public render(): void {
+
+    if (ensureSharePointWebViewMode()) {
+      return;
+    }
 
     // set the context
     setContext(this.context);

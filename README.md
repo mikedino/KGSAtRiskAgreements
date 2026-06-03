@@ -64,6 +64,7 @@ This solution is designed for environments where governance, traceability, and a
 | 2.0.0.12 | April 22, 2026 | Adjust views for Project when new award to show Program Name. Add gate/error for issue creating Draft ATR |
 | 2.0.0.14 | May 4, 2026 | Adjust the change summary and payload summary for Mods due to char limits |
 | 2.0.1.0 | May 7, 2026 | Logo for boot load, kebab menu in header, Export function, User requested Dashboard changes |
+| 2.0.1.1 | June 3, 2026 | Full screen view, Active view and Dashboard cards 8 & 9 updated to show all approved regardless of date |
 
 ---
 

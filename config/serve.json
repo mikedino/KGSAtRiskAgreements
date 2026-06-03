@@ -3,4 +3,8 @@
     "port": 4321,
     "https": true,
     "initialPage": "https://koniaggs.sharepoint.com/sites/ContractsProcurementSite/_layouts/workbench.aspx"
+<<<<<<< HEAD
+=======
+    //"initialPage": "https://koniaggs.sharepoint.com/sites/Dev-Sandbox/_layouts/workbench.aspx"
+>>>>>>> Development
 }

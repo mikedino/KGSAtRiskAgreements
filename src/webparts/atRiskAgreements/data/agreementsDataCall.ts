@@ -8,6 +8,7 @@ export type RefreshMode = "boot" | "refresh";
 export interface IAgreementsDataState {
   agreements: IRiskAgreementItem[];
   runByAgreementId: Map<number, IWorkflowRunItem>;
+  effectiveApprovedRunByAgreementId: Map<number, IWorkflowRunItem>;
   actionsByRunId: Map<number, IWorkflowActionItem[]>;
   isBootLoading: boolean;
   isRefreshing: boolean;
@@ -35,6 +36,7 @@ export const useAgreementsData = (
 
   const [agreements, setAgreements] = React.useState<IRiskAgreementItem[]>([]);
   const [runByAgreementId, setRunByAgreementId] = React.useState<Map<number, IWorkflowRunItem>>(new Map());
+  const [effectiveApprovedRunByAgreementId, setEffectiveApprovedRunByAgreementId] = React.useState<Map<number, IWorkflowRunItem>>(new Map());
   const [actionsByRunId, setActionsByRunId] = React.useState<Map<number, IWorkflowActionItem[]>>(new Map());
 
   const [isBootLoading, setIsBootLoading] = React.useState<boolean>(enabled); // ✅ start boot only if enabled
@@ -96,10 +98,12 @@ export const useAgreementsData = (
 
       // Get WF Runs and WF Actions
       const runs = await DataSource.getCurrentWorkflowRuns();
+      const allRuns = await DataSource.getWorkflowRuns();
       const actions: IWorkflowActionItem[] = [];
 
       if (runs.length === 0) {
         setRunByAgreementId(new Map());
+        setEffectiveApprovedRunByAgreementId(new Map());
         setActionsByRunId(new Map());
         setLastRefreshed(new Date().toISOString());
         return;
@@ -117,6 +121,21 @@ export const useAgreementsData = (
           if (!existing) runMap.set(agreementId, r);
           else if (existing.runStatus !== "Active" && r.runStatus === "Active") runMap.set(agreementId, r);
           else if ((r.runNumber ?? 0) > (existing.runNumber ?? 0)) runMap.set(agreementId, r);
+        }
+      });
+
+      // Map agreementId -> its effective approved run, including superseded runs.
+      const runsById = new Map<number, IWorkflowRunItem>();
+      allRuns.forEach(r => runsById.set(r.Id, r));
+
+      const effectiveApprovedRunMap = new Map<number, IWorkflowRunItem>();
+      nextAgreements.forEach(agreement => {
+        const effectiveRunId = agreement.effectiveApprovedRun?.Id;
+        if (typeof effectiveRunId !== "number") return;
+
+        const effectiveRun = runsById.get(effectiveRunId);
+        if (effectiveRun) {
+          effectiveApprovedRunMap.set(agreement.Id, effectiveRun);
         }
       });
 
@@ -138,6 +157,7 @@ export const useAgreementsData = (
       });
 
       setRunByAgreementId(runMap);
+      setEffectiveApprovedRunByAgreementId(effectiveApprovedRunMap);
       setActionsByRunId(actionsMap);
 
       setLastRefreshed(new Date().toISOString());
@@ -191,6 +211,7 @@ export const useAgreementsData = (
 return {
   agreements,
   runByAgreementId,
+  effectiveApprovedRunByAgreementId,
   actionsByRunId,
   isBootLoading,
   isRefreshing,

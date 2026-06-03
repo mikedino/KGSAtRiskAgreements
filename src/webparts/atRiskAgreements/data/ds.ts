@@ -267,6 +267,21 @@ export class DataSource {
         });
     }
 
+    static getWorkflowRuns(): Promise<IWorkflowRunItem[]> {
+        return new Promise<IWorkflowRunItem[]>((resolve, reject) => {
+
+            Web().Lists(Strings.Sites.main.lists.WorkflowRuns).Items().query({
+                Select: this.runSelectQuery,
+                Expand: this.runExpandQuery,
+                OrderBy: ["agreement/Id asc", "runNumber desc"],
+                Top: 5000
+            }).execute(
+                (items) => resolve((items?.results ?? []) as unknown as IWorkflowRunItem[]),
+                (error) => reject(new Error(`Error fetching Runs: ${formatError(error)}`))
+            );
+        });
+    }
+
     static getWorkflowRunsByAgreement(agreementId: number): Promise<IWorkflowRunItem[]> {
         return new Promise<IWorkflowRunItem[]>((resolve, reject) => {
 

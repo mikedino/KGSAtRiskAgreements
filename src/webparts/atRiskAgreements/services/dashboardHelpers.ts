@@ -61,8 +61,33 @@ export interface IDashboardKpis {
 export const isValidDate = (value?: string): boolean =>
     value !== undefined && dayjs(value).isValid();
 
-export const isActiveByRiskEnd = (item: IRiskAgreementItem, asOf = dayjs()): boolean =>
-    isValidDate(item.riskEnd) && !dayjs(item.riskEnd).isBefore(asOf, "day");
+export const isActiveByRiskEnd = (item: IRiskAgreementItem): boolean =>
+    item.araStatus === "Approved" ||
+    (item.araStatus === "Mod Review" && item.effectiveApprovedRun?.Id !== undefined);
+
+const getApprovedSnapshotFunding = (run?: IWorkflowRunItem): number | undefined => {
+    if (!run?.approvedSnapshotJson) return undefined;
+
+    try {
+        const snapshot = JSON.parse(run.approvedSnapshotJson) as { riskFundingRequested?: unknown };
+        const value = Number(snapshot.riskFundingRequested);
+        return Number.isFinite(value) ? value : undefined;
+    } catch {
+        return undefined;
+    }
+};
+
+export const getActiveRiskFundingRequested = (
+    item: IRiskAgreementItem,
+    effectiveApprovedRunByAgreementId?: Map<number, IWorkflowRunItem>
+): number => {
+    if (item.araStatus === "Mod Review") {
+        const approvedValue = getApprovedSnapshotFunding(effectiveApprovedRunByAgreementId?.get(item.Id));
+        if (approvedValue !== undefined) return approvedValue;
+    }
+
+    return item.riskFundingRequested ?? 0;
+};
 
 const isInFlight = (item: IRiskAgreementItem): boolean =>
     item.araStatus === "Under Review" || item.araStatus === "Mod Review";
@@ -178,12 +203,13 @@ const getApprovalCycleDays = (
  * - overdueSummary: based on run.stepAssignedDate
  * - approvedThisMonth: success-complete + final approval date in this month
  * - expiringSoon: riskEnd within next 30 days (excluding canceled)
- * - atRiskValue: sum riskFundingRequested for agreements with Risk End today or later
+ * - atRiskValue: sum riskFundingRequested for approved agreements that are not resolved
  * - avgApprovalDays + delta: cycle days for success-complete, grouped by approval month
  */
 export const buildDashboardKpis = (
     items: IRiskAgreementItem[],
-    runByAgreementId: Map<number, IWorkflowRunItem>
+    runByAgreementId: Map<number, IWorkflowRunItem>,
+    effectiveApprovedRunByAgreementId?: Map<number, IWorkflowRunItem>
 ): IDashboardKpis => {
     const now = dayjs();
     const startOfThisMonth = now.startOf("month");
@@ -215,8 +241,8 @@ export const buildDashboardKpis = (
     }).length;
 
     const atRiskValue = items
-        .filter((i) => isActiveByRiskEnd(i, now))
-        .reduce((sum, i) => sum + (i.riskFundingRequested ?? 0), 0);
+        .filter((i) => isActiveByRiskEnd(i))
+        .reduce((sum, i) => sum + getActiveRiskFundingRequested(i, effectiveApprovedRunByAgreementId), 0);
 
     const successItems = items.filter((i) => isSuccessComplete(i.araStatus));
 
