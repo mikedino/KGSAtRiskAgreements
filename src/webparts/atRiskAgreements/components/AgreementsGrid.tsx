@@ -12,6 +12,7 @@ import EmptyState, { EmptyStateProps } from "../ui/EmptyStateBox";
 import { useAgreements } from "../services/agreementsContext";
 import { formatDate } from "../services/utils";
 import { exportAgreementRows } from "../services/exportAgreements";
+import { isActiveByRiskEnd } from "../services/dashboardHelpers";
 
 type AgreementViewKey =
   | "all"
@@ -56,11 +57,8 @@ const AgreementsGrid: React.FC = () => {
     {
       key: "active",
       label: "Active",
-      tooltip: "Approved or Resolved agreements with a Risk End date in the future",
-      predicate: a =>
-        ["Approved", "Resolved"].includes(a.araStatus) &&
-        !!a.riskEnd &&
-        dayjs(a.riskEnd).isAfter(today, "day")
+      tooltip: "Approved agreements that have not been resolved, including active modifications",
+      predicate: a => isActiveByRiskEnd(a)
     },
     {
       key: "pending",
@@ -452,7 +450,7 @@ const AgreementsGrid: React.FC = () => {
       case "active":
         return {
           title: "No active agreements",
-          description: "There are no Approved or Resolved agreements with a future Risk End date."
+          description: "There are no active Approved agreements waiting to be resolved."
         };
       case "pending":
         return {

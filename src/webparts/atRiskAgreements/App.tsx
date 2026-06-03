@@ -103,11 +103,16 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }): JSX.Element => {
 
     if (!context || !context.pageContext || !context.pageContext.web) {
         return (
-            <div className={styles.araWrapper}>
-                <Alert severity="warning">
-                    Error initializing the application. Missing SharePoint context. Please refresh the browser.
-                </Alert>
-            </div>
+            <ThemeProvider theme={useDarkTheme ? darkTheme : lightTheme}>
+                <CssBaseline />
+                <Box className={styles.araWrapper} sx={{ minHeight: "100vh", bgcolor: "background.default", color: "text.primary", display: "flex", alignItems: "center", justifyContent: "center", p: 3 }}>
+                    <Box sx={{ width: "100%", maxWidth: 900 }}>
+                        <Alert severity="warning">
+                            Error initializing the application. Missing SharePoint context. Please refresh the browser.
+                        </Alert>
+                    </Box>
+                </Box>
+            </ThemeProvider>
         );
     }
 
@@ -124,11 +129,13 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }): JSX.Element => {
         return (
             <ThemeProvider theme={useDarkTheme ? darkTheme : lightTheme}>
                 <CssBaseline />
-                <Box sx={{ p: 3, color: "text.primary", mx: "auto", maxWidth: "900px" }}>
-                    <Alert severity="info" variant="outlined">
-                        You do not have permission to access the data required to configure this application.
-                        Please contact your site administrator.
-                    </Alert>
+                <Box sx={{ minHeight: "100vh", bgcolor: "background.default", color: "text.primary", display: "flex", alignItems: "center", justifyContent: "center", p: 3 }}>
+                    <Box sx={{ width: "100%", maxWidth: "900px" }}>
+                        <Alert severity="info" variant="outlined">
+                            You do not have permission to access the data required to configure this application.
+                            Please contact your site administrator.
+                        </Alert>
+                    </Box>
 
                     <AlertDialog
                         open={showDialog}
@@ -145,11 +152,13 @@ export const App: React.FC<IAppProps> = ({ wpTitle, context }): JSX.Element => {
         return (
             <ThemeProvider theme={useDarkTheme ? darkTheme : lightTheme}>
                 <CssBaseline />
-                <Box sx={{ p: 3, color: "text.primary", mx: "auto", maxWidth: "900px" }}>
-                    <Alert severity="error" variant="outlined">
-                        Unable to validate installation/configuration. Please refresh the page.
-                        If the problem persists, contact support.
-                    </Alert>
+                <Box sx={{ minHeight: "100vh", bgcolor: "background.default", color: "text.primary", display: "flex", alignItems: "center", justifyContent: "center", p: 3 }}>
+                    <Box sx={{ width: "100%", maxWidth: "900px" }}>
+                        <Alert severity="error" variant="outlined">
+                            Unable to validate installation/configuration. Please refresh the page.
+                            If the problem persists, contact support.
+                        </Alert>
+                    </Box>
 
                     <AlertDialog
                         open={showDialog}

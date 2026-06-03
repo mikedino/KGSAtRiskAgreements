@@ -22,7 +22,9 @@ export const BrandedLoadingState: React.FC<IBrandedLoadingStateProps> = ({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                minHeight: "70vh",
+                minHeight: "100vh",
+                width: "100%",
+                boxSizing: "border-box",
                 bgcolor: "background.default",
                 color: "text.primary"
             }}

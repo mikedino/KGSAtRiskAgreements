@@ -223,14 +223,25 @@ export const buildRiskDistribution = (items: IRiskAgreementItem[]): IValueDistri
   }));
 };
 
-export const buildLobValueDistribution = (items: IRiskAgreementItem[]): ILobValuePoint[] => {
+export const buildLobValueDistribution = (
+  items: IRiskAgreementItem[],
+  getValue: (item: IRiskAgreementItem) => number = (item) => item.riskFundingRequested ?? 0,
+  lobNames: string[] = []
+): ILobValuePoint[] => {
   const buckets = new Map<string, { count: number; totalRiskFundingRequested: number }>();
+
+  lobNames.forEach((name) => {
+    const lob = name.trim();
+    if (lob) {
+      buckets.set(lob, { count: 0, totalRiskFundingRequested: 0 });
+    }
+  });
 
   items.forEach((item) => {
     const lob = item.lob?.trim() || "Unassigned";
     const existing = buckets.get(lob) ?? { count: 0, totalRiskFundingRequested: 0 };
     existing.count++;
-    existing.totalRiskFundingRequested += item.riskFundingRequested ?? 0;
+    existing.totalRiskFundingRequested += getValue(item);
     buckets.set(lob, existing);
   });
 

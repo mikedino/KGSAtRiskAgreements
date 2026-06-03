@@ -92,6 +92,7 @@ export const AppInner: React.FC<IReadyAppProps> = ({
     const {
         agreements,
         runByAgreementId,
+        effectiveApprovedRunByAgreementId,
         isBootLoading,
         isRefreshing,
         lastRefreshed,
@@ -422,6 +423,7 @@ export const AppInner: React.FC<IReadyAppProps> = ({
     const agreementsCtxValue = React.useMemo(() => ({
         agreements,
         runByAgreementId,
+        effectiveApprovedRunByAgreementId,
 
         runsByAgreementId,
         actionsByAgreementId,
@@ -449,7 +451,7 @@ export const AppInner: React.FC<IReadyAppProps> = ({
         lastRefreshed,
         refresh
     }), [
-        agreements, runByAgreementId, runsByAgreementId, actionsByAgreementId, isAgreementDetailLoading, loadAgreementDetail,
+        agreements, runByAgreementId, effectiveApprovedRunByAgreementId, runsByAgreementId, actionsByAgreementId, isAgreementDetailLoading, loadAgreementDetail,
         dashboardActions, isDashboardActionsLoading, loadDashboardActions, clearDashboardActionsCache,
         clearAgreementDetailCache, currentUser, appUsers, getAppUserByUserId, appUserByUserId, refreshCurrentUser,
         refreshAppUsers, myActions, isMyActionsLoading, loadMyActions, isRefreshing, lastRefreshed, refresh
@@ -467,10 +469,12 @@ export const AppInner: React.FC<IReadyAppProps> = ({
         return (
             <ThemeProvider theme={useDarkTheme ? darkTheme : lightTheme}>
                 <CssBaseline />
-                <Box sx={{ p: 3, color: "text.primary", mx: "auto", maxWidth: "900px" }}>
-                    <Alert severity="error" variant="outlined">
-                        Failed to load application data. Please refresh the page.
-                    </Alert>
+                <Box sx={{ minHeight: "100vh", bgcolor: "background.default", color: "text.primary", display: "flex", alignItems: "center", justifyContent: "center", p: 3 }}>
+                    <Box sx={{ width: "100%", maxWidth: "900px" }}>
+                        <Alert severity="error" variant="outlined">
+                            Failed to load application data. Please refresh the page.
+                        </Alert>
+                    </Box>
 
                     <AlertDialog
                         open={showDialog}
@@ -503,90 +507,104 @@ export const AppInner: React.FC<IReadyAppProps> = ({
         <ThemeProvider theme={useDarkTheme ? darkTheme : lightTheme}>
             <CssBaseline />
 
-            <AgreementsContext.Provider value={agreementsCtxValue}>
+            <Box sx={{
+                height: "100vh",
+                minHeight: "100vh",
+                bgcolor: "background.default",
+                color: "text.primary",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden"
+            }}>
+                <AgreementsContext.Provider value={agreementsCtxValue}>
 
-                {/* HEADER WITH THEME TOGGLE - USE APPBAR and TOOLBAR to provide "sticky" appearance */}
-                <AppBar position="sticky" elevation={1} sx={{ top: 0 }} >
+                    {/* HEADER WITH THEME TOGGLE - USE APPBAR and TOOLBAR to provide "sticky" appearance */}
+                    <AppBar position="sticky" elevation={1} sx={{ top: 0, flexShrink: 0 }} >
                     {/* Toolbar gives you the standard header height + padding */}
-                    <Toolbar disableGutters>
-                        <NavHeader context={context} appTitle={wpTitle} useDarkTheme={useDarkTheme} setUseDarkTheme={setUseDarkTheme} />
-                    </Toolbar>
-                </AppBar>
+                        <Toolbar disableGutters>
+                            <NavHeader context={context} appTitle={wpTitle} useDarkTheme={useDarkTheme} setUseDarkTheme={setUseDarkTheme} />
+                        </Toolbar>
+                    </AppBar>
 
-                {/* PAGE CONTENT - wrap in default text color otherwise SPO will overwrite */}
-                <Box sx={{ p: 3, color: "text.primary", mx: "auto", maxWidth: "1600px" }}>
+                    {/* PAGE CONTENT - outer full-width scroller keeps the scrollbar at the WebView edge. */}
+                    <Box sx={{ flex: 1, overflowY: "auto", overflowX: "hidden", width: "100%", color: "text.primary" }}>
+                        <Box sx={{ p: 3, mx: "auto", maxWidth: "1600px", boxSizing: "border-box" }}>
 
-                    <Switch>
-                        <Route exact path="/"><Redirect to="/my-work" /></Route>
+                            <Switch>
+                                <Route exact path="/"><Redirect to="/my-work" /></Route>
 
-                        <Route path="/my-work" component={MyWork} />
-                        <Route path="/all-agreements" component={Agreements} />
-                        <Route path="/dashboard" component={Dashboard} />
-                        <Route path="/admin" render={() => (
-                            <Admin
-                                context={context}
-                                showBusy={(msg) => {
-                                    setBackdropMessage(msg ?? "");
-                                    setShowProgress(true);
-                                    setShowBackdrop(true);
+                                <Route path="/my-work" component={MyWork} />
+                                <Route path="/all-agreements" component={Agreements} />
+                                <Route path="/dashboard" component={Dashboard} />
+                                <Route path="/admin" render={() => (
+                                    <Admin
+                                        context={context}
+                                        showBusy={(msg) => {
+                                            setBackdropMessage(msg ?? "");
+                                            setShowProgress(true);
+                                            setShowBackdrop(true);
+                                        }}
+                                        hideBusy={() => {
+                                            setShowBackdrop(false);
+                                            setShowProgress(false);
+                                            setBackdropMessage("");
+                                        }}
+                                    />
+                                )} />
+
+                                <Route path="/new" render={() => {
+
+                                    const handleCancel = async (reason: CancelReason): Promise<void> => {
+                                        if (reason.type === "draft") {
+                                            setBackdropMessage("Deleting draft agreement…");
+                                            setShowBackdrop(true);
+                                            setShowProgress(true);
+                                            await RiskAgreementService.delete(reason.draftId);
+                                            setShowBackdrop(false);
+                                            setShowProgress(false);
+                                        }
+
+                                        history.push("/my-work");
+                                    };
+
+                                    return (
+                                        <RiskAgreementForm
+                                            context={context}
+                                            mode="new"
+                                            onSubmit={handleSubmitAgreement}
+                                            onCancel={handleCancel}
+                                        />
+                                    );
                                 }}
-                                hideBusy={() => {
-                                    setShowBackdrop(false);
-                                    setShowProgress(false);
-                                    setBackdropMessage("");
+                                />
+
+                                {/* Route to EDIT AGREEMENT */}
+                                <Route path="/edit/:id" render={(routeProps) => {
+                                    const id = routeProps.match.params.id;
+                                    const item = agreements.find((a) => a.Id.toString() === id);
+                                    if (item === undefined) return <div>Agreement not found</div>;
+
+                                    return (
+                                        <RiskAgreementForm
+                                            item={item}
+                                            context={context}
+                                            mode="edit"
+                                            onSubmit={handleSubmitAgreement}
+                                            onCancel={handleBack}
+                                            {...routeProps}
+                                        />
+                                    );
                                 }}
-                            />
-                        )} />
-
-                        <Route path="/new" render={() => {
-
-                            const handleCancel = async (reason: CancelReason): Promise<void> => {
-                                if (reason.type === "draft") {
-                                    setBackdropMessage("Deleting draft agreement…");
-                                    setShowBackdrop(true);
-                                    setShowProgress(true);
-                                    await RiskAgreementService.delete(reason.draftId);
-                                    setShowBackdrop(false);
-                                    setShowProgress(false);
-                                }
-
-                                history.push("/my-work");
-                            };
-
-                            return (
-                                <RiskAgreementForm
-                                    context={context}
-                                    mode="new"
-                                    onSubmit={handleSubmitAgreement}
-                                    onCancel={handleCancel}
                                 />
-                            );
-                        }}
-                        />
 
-                        {/* Route to EDIT AGREEMENT */}
-                        <Route path="/edit/:id" render={(routeProps) => {
-                            const id = routeProps.match.params.id;
-                            const item = agreements.find((a) => a.Id.toString() === id);
-                            if (item === undefined) return <div>Agreement not found</div>;
+                                {/* Route to VIEW AGREEMENT */}
+                                <Route path="/view/:id" component={ViewAgreementRoute} />
 
-                            return (
-                                <RiskAgreementForm
-                                    item={item}
-                                    context={context}
-                                    mode="edit"
-                                    onSubmit={handleSubmitAgreement}
-                                    onCancel={handleBack}
-                                    {...routeProps}
-                                />
-                            );
-                        }}
-                        />
+                            </Switch>
 
-                        {/* Route to VIEW AGREEMENT */}
-                        <Route path="/view/:id" component={ViewAgreementRoute} />
-
-                    </Switch>
+                            <Typography sx={{ width: "100%", mt: 2, textAlign: "right", fontSize: 10 }} >App Version: {Strings.Version}</Typography>
+                        </Box>
+                    </Box>
 
                     <AlertDialog open={showDialog} title={dialogTitle} message={dialogMessage} onClose={hideDialog} />
 
@@ -623,11 +641,8 @@ export const AppInner: React.FC<IReadyAppProps> = ({
                         )}
                     </Backdrop>
 
-                    <Typography sx={{ width: "100%", mt: 2, textAlign: "right", fontSize: 10 }} >App Version: {Strings.Version}</Typography>
-
-                </Box>
-
-            </AgreementsContext.Provider>
+                </AgreementsContext.Provider>
+            </Box>
 
         </ThemeProvider>
 

@@ -1,6 +1,8 @@
 @import '~@fluentui/react/dist/sass/References.scss';
 
 .araWrapper {
+  min-height: 100vh;
+  background: inherit;
   overflow: hidden;
 
 

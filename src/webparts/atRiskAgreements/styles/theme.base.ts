@@ -29,11 +29,18 @@ export const baseTheme = createTheme({
         },
         // Smooth transitions globally
         MuiCssBaseline: {
-            styleOverrides: {
+            styleOverrides: (theme) => ({
+                html: {
+                    height: "100%",
+                    backgroundColor: "inherit"
+                },
                 body: {
+                    minHeight: "100%",
+                    backgroundColor: theme.palette.background.default,
+                    color: theme.palette.text.primary,
                     transition: "background-color 300ms ease, color 300ms ease",
                 },
-            },
+            }),
         },
         MuiInputBase: {
             styleOverrides: {
