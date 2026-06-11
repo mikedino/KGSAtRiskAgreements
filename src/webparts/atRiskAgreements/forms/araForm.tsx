@@ -459,8 +459,8 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
       <Box
         sx={{
           backgroundColor: theme.custom?.cardBg,
-          borderColor: theme.custom?.cardBorder,
           border: "1px solid",
+          borderColor: theme.custom?.cardBorder,
           borderRadius: "3px",
           padding: 3,
           "& .MuiPickersSectionList-root": { fontSize: fontSizeDefault, py: paddingVertical, minHeight: minHeight },
