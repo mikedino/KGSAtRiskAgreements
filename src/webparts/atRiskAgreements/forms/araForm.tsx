@@ -450,12 +450,19 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
 
     // let me handle the validation instead of the MUI/Browser
     <form onSubmit={handleSubmit} noValidate>
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="h4">
+          {mode === "new" ? "New At-Risk Agreement" : `Edit: ${form.Title}`}
+        </Typography>
+      </Box>
+
       <Box
         sx={{
           backgroundColor: theme.custom?.cardBg,
           borderColor: theme.custom?.cardBorder,
           border: "1px solid",
-          padding: 2,
+          borderRadius: "3px",
+          padding: 3,
           "& .MuiPickersSectionList-root": { fontSize: fontSizeDefault, py: paddingVertical, minHeight: minHeight },
           "& .MuiAutocomplete-root .MuiOutlinedInput-root.MuiOutlinedInput-root": { padding: 0, minHeight: minHeight },
           "& .MuiAutocomplete-root .MuiOutlinedInput-root.MuiInputBase-sizeSmall .MuiAutocomplete-input": { padding: "10px 14px" }
@@ -466,10 +473,6 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
             There was a problem creating the draft agreement. This could be due to an expired session or stale cache. Please refresh the entire page and try again.
           </Alert>
         )}
-
-        <Typography variant="h5" sx={{ mb: 4 }}>
-          {mode === "new" ? "New At-Risk Agreement" : `Edit At-Risk Agreement - ${form.Title}`}
-        </Typography>
 
         {/* Submission type selector */}
         <TextField

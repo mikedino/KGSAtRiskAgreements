@@ -522,7 +522,7 @@ const AgreementsGrid: React.FC = () => {
       {/* SEARCH + FILTER BAR */}
       <Box
         sx={{
-          mb: 3,
+          my: 3,
           p: 3,
           bgcolor: theme.custom?.cardBg,
           border: "1px solid",

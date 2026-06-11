@@ -126,7 +126,7 @@ const ChangeDeltaDisplay = ({ delta }: { delta: AgreementDelta }): JSX.Element =
     <Stack spacing={1.5}>
         {Object.values(delta).map((d, i) => (
             <Box key={i}>
-                <Typography variant="subtitle2" fontWeight={600}>
+                <Typography variant="subtitle2" fontWeight={600} color="action.active">
                     {d.label}
                 </Typography>
 

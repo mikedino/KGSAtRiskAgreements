@@ -320,22 +320,38 @@ export const AppInner: React.FC<IReadyAppProps> = ({
             } else {
 
                 // MODIFICATION PROCESS
+                if (item.araStatus === "Resolved" || item.araStatus === "Canceled") {
+                    throw new Error("Resolved or canceled agreements cannot be modified.");
+                }
 
-                // Get old/current run
+                // Compare the run loaded with the form against the latest fresh run.
+                // A different run means another save already restarted or advanced the workflow.
                 const oldRun = getCurrentRunOrThrow(item.Id);
                 const freshRuns = await DataSource.getWorkflowRunsByAgreement(item.Id);
+                const latestCurrentRun = freshRuns
+                    .filter(r => r.runStatus !== "Superseded")
+                    .sort((a, b) => (b.runNumber ?? 0) - (a.runNumber ?? 0) || b.Id - a.Id)[0];
                 const latestActiveRun = freshRuns
                     .filter(r => r.runStatus === "Active")
                     .sort((a, b) => (b.runNumber ?? 0) - (a.runNumber ?? 0) || b.Id - a.Id)[0];
-                const currentRun = latestActiveRun ?? oldRun;
 
-                // check to see if any approval decision has been made
-                if (!currentRun.hasDecision) {
+                if (!latestCurrentRun?.Id || latestCurrentRun.Id !== oldRun.Id) {
+                    throw new Error("This agreement's workflow was already restarted or changed by another save. Refresh the agreement and try again.");
+                }
+
+                // An active run with no decisions can accept edits without restarting.
+                if (latestActiveRun && !latestActiveRun.hasDecision) {
                     // save only — NO WF restart
                     await RiskAgreementService.edit({ ...item, ...approvers }, item.araStatus);
                 } else {
-                    if (!latestActiveRun?.Id || latestActiveRun.Id !== oldRun.Id) {
-                        throw new Error("This agreement's workflow was already restarted or changed by another save. Refresh the agreement and try again.");
+                    const canRestartActiveRun = latestActiveRun?.Id === oldRun.Id;
+                    const canRestartApprovedRun =
+                        !latestActiveRun &&
+                        oldRun.runStatus === "Completed" &&
+                        oldRun.outcome === "Approved";
+
+                    if (!canRestartActiveRun && !canRestartApprovedRun) {
+                        throw new Error("This agreement's current workflow state does not allow a modification. Refresh the agreement and try again.");
                     }
 
                     // CREATE A NEW WF RUN
@@ -365,18 +381,21 @@ export const AppInner: React.FC<IReadyAppProps> = ({
                     // 4) Flip agreement pointer (UPDATE) asap
                     await RiskAgreementService.updateRunId(item.Id, newRun.Id);
 
-                    // 5) Supercede old run
-                    await WorkflowRunService.supercedeOldRun(currentRun.Id, "Mod", modMeta?.comment);
+                    // 5) Only stop/supersede a workflow that was still active.
+                    // Completed approved runs remain intact as the approved baseline/history.
+                    if (latestActiveRun) {
+                        await WorkflowRunService.supercedeOldRun(latestActiveRun.Id, "Mod", modMeta?.comment);
 
-                    // 6) Action 1 - stop old run
-                    setBackdropMessage("Stopping Prior Workflow Run…");
-                    await WorkflowActionService.createAction({
-                        agreement: agreement,
-                        run: currentRun,
-                        stepKey: currentRun.currentStepKey,
-                        actionType: "Restarted",
-                        comment: modMeta?.comment ? `Restarted Workflow due to Agreement modification. ${modMeta.comment}` : "Restarted Workflow due to Agreement modification."
-                    });
+                        // 6) Action 1 - stop old active run
+                        setBackdropMessage("Stopping Prior Workflow Run…");
+                        await WorkflowActionService.createAction({
+                            agreement: agreement,
+                            run: latestActiveRun,
+                            stepKey: latestActiveRun.currentStepKey,
+                            actionType: "Restarted",
+                            comment: modMeta?.comment ? `Restarted Workflow due to Agreement modification. ${modMeta.comment}` : "Restarted Workflow due to Agreement modification."
+                        });
+                    }
 
                     // 7) Action 2 - CREATE INITIAL ACTION ROW FOR NEW RUN
                     await WorkflowActionService.createAction({
