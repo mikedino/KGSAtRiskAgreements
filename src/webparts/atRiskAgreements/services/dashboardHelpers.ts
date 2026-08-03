@@ -90,7 +90,7 @@ export const getActiveRiskFundingRequested = (
 };
 
 const isInFlight = (item: IRiskAgreementItem): boolean =>
-    item.araStatus === "Under Review" || item.araStatus === "Mod Review";
+    item.araStatus === "Under Review" || item.araStatus === "Mod Review" || item.araStatus === "Submitted";
 
 const isSuccessComplete = (status: AraStatus): boolean =>
     status === "Approved" || status === "Resolved";
