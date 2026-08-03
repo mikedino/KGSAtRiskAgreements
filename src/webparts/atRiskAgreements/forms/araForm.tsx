@@ -583,7 +583,8 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                     return options
                       .filter(o =>
                         o.field_42?.toLowerCase().includes(search) ||
-                        o.field_28?.toLowerCase().includes(search));
+                        o.field_28?.toLowerCase().includes(search) ||
+                        o.InvoiceID1?.toLowerCase().includes(search));
                   }}
                   value={selectedInvoice}
                   onChange={(_, newValue) => { updateField("invoice", newValue?.InvoiceID1 ?? ""); }}
@@ -616,7 +617,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                     <li {...props} key={option.field_14}>
                       <Stack>
                         <Typography fontSize={14} fontWeight={500}>{option.InvoiceID1}</Typography>
-                        <Typography variant="body2" color="text.secondary">{option.field_28}</Typography>
+                        <Typography variant="body2" color="text.secondary">{option.field_42}</Typography>
                       </Stack>
                     </li>
                   )}

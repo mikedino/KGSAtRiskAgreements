@@ -65,7 +65,7 @@ const AgreementsGrid: React.FC = () => {
       label: "Pending",
       tooltip: "Submitted or Under Review agreements",
       predicate: a =>
-        ["Submitted", "Under Review"].includes(a.araStatus)
+        ["Submitted", "Under Review", "Mod Review"].includes(a.araStatus)
     },
     {
       key: "rejected",
