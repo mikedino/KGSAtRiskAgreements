@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Box, Button, Grid, Stack, Tooltip, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import { Box, Button, Checkbox, FormControlLabel, Grid, Stack, Tooltip, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
 //import InfoCard from "../ui/InfoCard";
 import { useAgreements } from "../services/agreementsContext";
 import { ContextInfo } from "gd-sprest";
@@ -13,6 +13,7 @@ import MyWorkCard from "../ui/MyWorkCard";
 import { useHistory, useLocation } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
 import EmptyState, { EmptyStateProps } from "../ui/EmptyStateBox";
+import { isHighRiskAtr } from "../ui/HighRiskFlag";
 
 export interface AgreementWorkflowSummary {
   statusLabel: string;
@@ -110,6 +111,7 @@ const MyWork: React.FC = () => {
 
   const [selectedView, setSelectedView] = React.useState<MyWorkViewKey>(initial.view);
   const [displayMode, setDisplayMode] = React.useState<MyWorkDisplayMode>(initial.mode);
+  const [highRiskOnly, setHighRiskOnly] = React.useState(false);
 
   // Keep state in sync if user uses browser nav (back/forward) and URL changes
   React.useEffect(() => {
@@ -176,7 +178,11 @@ const MyWork: React.FC = () => {
     const rejected = steps.find(s => s.status === "Rejected");
     if (rejected) return { statusLabel: "Rejected", statusColor: "error" };
 
-    const completed = steps.find(s => s.status === "Approved" && s.completesOnApprove);
+    const completed = steps.find(s => {
+      if (s.status !== "Approved") return false;
+      const completes = s.completesOnApprove;
+      return typeof completes === "function" ? completes(item) : completes === true;
+    });
     if (completed) return { statusLabel: "Approved", statusColor: "success" };
 
     const current = steps.find(s => s.status === "Current");
@@ -278,6 +284,10 @@ const MyWork: React.FC = () => {
   const myResolvedItems = myAgreements.filter(w => w.item.araStatus === "Resolved");
   const myReviewedItems = workflowItems.filter(w => myReviewInfoMap.has(w.item.Id));
 
+  const applyHighRiskFilter = React.useCallback((items: MyWorkItem[]): MyWorkItem[] => {
+    return highRiskOnly ? items.filter(w => isHighRiskAtr(w.item)) : items;
+  }, [highRiskOnly]);
+
   // compute total approved for top card
   // const myApprovedTotal = myAgreements.filter(w =>
   //   w.item.araStatus === "Approved" || w.item.araStatus === "Resolved"
@@ -289,39 +299,39 @@ const MyWork: React.FC = () => {
       key: "action",
       label: "My Action",
       tooltip: "Agreements requiring your review & action",
-      getItems: () => myActionItems
+      getItems: () => applyHighRiskFilter(myActionItems)
     },
     {
       key: "reviewed",
       label: "My Reviewed",
       tooltip: "Agreements you have reviewed as an approver",
-      getItems: () => myReviewedItems
+      getItems: () => applyHighRiskFilter(myReviewedItems)
     },
     {
       key: "pending",
       label: "Pending",
       tooltip: "My submitted agreements Under Review",
-      getItems: () => myPendingItems
+      getItems: () => applyHighRiskFilter(myPendingItems)
     },
     {
       key: "approved",
       label: "Approved (open)",
       tooltip: "My submitted agreements that are approved and not yet resolved",
-      getItems: () => myApprovedItems
+      getItems: () => applyHighRiskFilter(myApprovedItems)
     },
     {
       key: "resolved",
       label: "Resolved",
       tooltip: "My submitted agreements that are resolved",
-      getItems: () => myResolvedItems
+      getItems: () => applyHighRiskFilter(myResolvedItems)
     },
     {
       key: "all",
       label: "All",
       tooltip: "All my submitted agreements",
-      getItems: () => myAgreements
+      getItems: () => applyHighRiskFilter(myAgreements)
     }
-  ], [myActionItems, myReviewedItems, myPendingItems, myApprovedItems, myResolvedItems, myAgreements]);
+  ], [myActionItems, myReviewedItems, myPendingItems, myApprovedItems, myResolvedItems, myAgreements, applyHighRiskFilter]);
 
   // compute view counts for each chip
   const viewCounts = React.useMemo(() => {
@@ -478,34 +488,45 @@ const MyWork: React.FC = () => {
             })}
           </Stack>
 
-          <ToggleButtonGroup
-            value={displayMode}
-            exclusive
-            size="small"
-            onChange={(_, val) => val && handleDisplayModeChange(val)}
-            sx={{
-              ml: "auto",
-              "& .MuiToggleButton-root": {
-                textTransform: "none",
-                borderColor: "divider",
-                "&.Mui-selected": {
-                  bgcolor: "primary.main",
-                  color: "primary.contrastText",
-                  fontWeight: 700,
-                  "&:hover": {
-                    bgcolor: "primary.dark"
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ ml: "auto" }}>
+            <FormControlLabel
+              label="High risk only"
+              control={
+                <Checkbox
+                  checked={highRiskOnly}
+                  onChange={(e) => setHighRiskOnly(e.target.checked)}
+                />
+              }
+            />
+
+            <ToggleButtonGroup
+              value={displayMode}
+              exclusive
+              size="small"
+              onChange={(_, val) => val && handleDisplayModeChange(val)}
+              sx={{
+                "& .MuiToggleButton-root": {
+                  textTransform: "none",
+                  borderColor: "divider",
+                  "&.Mui-selected": {
+                    bgcolor: "primary.main",
+                    color: "primary.contrastText",
+                    fontWeight: 700,
+                    "&:hover": {
+                      bgcolor: "primary.dark"
+                    }
                   }
                 }
-              }
-            }}
-          >
-            <ToggleButton value="full">
-              Full
-            </ToggleButton>
-            <ToggleButton value="compact">
-              Compact
-            </ToggleButton>
-          </ToggleButtonGroup>
+              }}
+            >
+              <ToggleButton value="full">
+                Full
+              </ToggleButton>
+              <ToggleButton value="compact">
+                Compact
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Stack>
 
         </Stack>
 

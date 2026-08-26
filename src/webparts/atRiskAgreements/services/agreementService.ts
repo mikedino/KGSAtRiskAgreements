@@ -142,7 +142,8 @@ export class RiskAgreementService {
         riskFundingRequested: item.riskFundingRequested ?? 0,
         riskJustification: item.riskJustification,
         contractName: item.contractName,
-        programName: item.programName
+        programName: item.programName,
+        atpReceived: item.atpReceived
       };
 
       if (trackingTitle) {

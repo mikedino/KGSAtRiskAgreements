@@ -3,6 +3,7 @@ import { Card, CardContent, Typography, Chip, Stack, Grid, Divider, Box } from "
 import { IRiskAgreementItem } from "../data/props";
 import { AgreementWorkflowSummary } from "../components/MyWork";
 import { formatSinceDate, formatCurrency, formatDate } from "../services/utils";
+import HighRiskFlag from "./HighRiskFlag";
 
 interface MyWorkCardProps {
     item: IRiskAgreementItem;
@@ -31,9 +32,12 @@ const MyWorkCard: React.FC<MyWorkCardProps> = ({ item, workflow, onClick, varian
             >
                 <Stack direction="row" alignItems="center" spacing={2}>
                     <Stack sx={{ minWidth: 0, flexGrow: 1 }}>
-                        <Typography variant="body2" fontWeight={600} noWrap>
-                            {item.projectName}
-                        </Typography>
+                        <Stack direction="row" alignItems="center" spacing={0.5} sx={{ minWidth: 0 }}>
+                            <HighRiskFlag item={item} />
+                            <Typography variant="body2" fontWeight={600} noWrap>
+                                {item.projectName}
+                            </Typography>
+                        </Stack>
                         <Typography variant="caption" color="text.secondary" noWrap>
                             {item.Title}
                         </Typography>
@@ -79,9 +83,12 @@ const MyWorkCard: React.FC<MyWorkCardProps> = ({ item, workflow, onClick, varian
                     <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                         {/* Left side: title info */}
                         <Stack>
-                            <Typography variant="h6" fontWeight={600}>
-                                {item.projectName}
-                            </Typography>
+                            <Stack direction="row" alignItems="center" spacing={0.75}>
+                                <HighRiskFlag item={item} size="medium" />
+                                <Typography variant="h6" fontWeight={600}>
+                                    {item.projectName}
+                                </Typography>
+                            </Stack>
 
                             <Typography variant="body2" color="text.secondary">
                                 {item.Title}

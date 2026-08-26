@@ -181,7 +181,7 @@ export class DataSource {
         "entityGM/Id", "entityGM/Title", "entityGM/EMail",
         "contractMgr/Id", "contractMgr/Title", "contractMgr/EMail",
         "subContractMgr/Id", "subContractMgr/Title", "subContractMgr/EMail",
-        "currentRun/Id", "currentRun/Title",
+        "currentRun/Id", "currentRun/Title", "atpReceived",
         "effectiveApprovedRun/Id", "effectiveApprovedRun/Title"
     ];
     public static agreementExpandQuery: string[] = ["Author", "backupRequestor", "projectMgr", "entityGM", "contractMgr", "currentRun", "effectiveApprovedRun", "Editor", "subContractMgr"];

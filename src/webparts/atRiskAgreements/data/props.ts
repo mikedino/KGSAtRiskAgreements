@@ -31,6 +31,7 @@ export interface IAttachmentInfo extends Types.SP.Attachment {
 export type ApprovalChoice = "Approved" | "Rejected" | "Not Started";
 export type AraStatus = "Draft" | "Submitted" | "Under Review" | "Mod Review" | "Approved" | "Rejected" | "Resolved" | "Canceled";
 export type ContractType = "FFP/LOE" | "T&M" | "LH" | "Cost Plus/Reimbursable" | "Hybrid";
+export type AtpReceivedChoice = "Yes" | "No";
 
 export type WorkflowStepKey =
   | "submit"
@@ -92,6 +93,7 @@ export interface IRiskAgreementItem {
   araStatus: AraStatus;
   entityGM: IPeoplePicker;
   backupRequestor: IPeoplePicker;
+  atpReceived: AtpReceivedChoice;
 
   // Workflow pointer (SharePoint Lookup column to Runs)
   currentRun?: ILookupItem;

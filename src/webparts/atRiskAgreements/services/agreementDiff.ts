@@ -62,6 +62,7 @@ export const buildAgreementDelta = (before: IRiskAgreementItem, after: IRiskAgre
     add("projectMgr", "Project Manager", fmtPerson(before.projectMgr), fmtPerson(after.projectMgr));
     add("contractMgr", "Contract Manager", fmtPerson(before.contractMgr), fmtPerson(after.contractMgr));
     add("riskReason", "Risk Reason", fmtText(before.riskReason), fmtText(after.riskReason));
+    add("atpReceived", "ATP Received", fmtText(before.atpReceived), fmtText(after.atpReceived));
 
     if (!sameNumber(before.riskFundingRequested, after.riskFundingRequested)) {
         delta.riskFundingRequested = {

@@ -41,6 +41,7 @@ export class WorkflowDecisionService {
       contractMgrId: agreement.contractMgr?.Id ?? null,
       riskReason: agreement.riskReason,
       riskFundingRequested: agreement.riskFundingRequested ?? null,
+      atpReceived: agreement.atpReceived ?? null,
       riskJustification: agreement.riskJustification,
       entityGMId: agreement.entityGM?.Id ?? null,
       backupRequestorId: agreement.backupRequestor?.Id ?? null
