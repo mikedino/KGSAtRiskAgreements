@@ -3,7 +3,7 @@ import { Web } from "gd-sprest";
 import Strings from "../../../strings";
 import { formatError, encodeListName } from "./utils";
 import { WorkflowStepKey, ActionDecision } from "../data/props";
-import { IWorkflowStep, RiskAgreementWorkflow } from "./workflowModel";
+import { getWorkflowForRun, IWorkflowStep } from "./workflowModel";
 import { DataSource } from "../data/ds";
 
 export interface IRunDecisionResult {
@@ -23,6 +23,59 @@ export interface IRunDecisionResult {
 }
 
 export class WorkflowRunService {
+    private static getApproverForAgreementStep(
+        agreement: IRiskAgreementItem,
+        stepKey: WorkflowStepKey
+    ): IPeoplePicker | undefined {
+        switch (stepKey) {
+            case "contractMgr":
+                return agreement.contractMgr;
+            case "ogPresident":
+                return DataSource.OGs.find(og => og.Title === agreement.og)?.president;
+            case "coo": {
+                const og = DataSource.OGs.find(o => o.Title === agreement.og);
+                return DataSource.LOBs.find(lob => lob.Id === og?.lob.Id)?.coo;
+            }
+            case "ceo":
+                return DataSource.CEO;
+            case "svpContracts":
+                return DataSource.SVPContracts;
+            default:
+                return undefined;
+        }
+    }
+
+    static async updatePreDecisionApproverSnapshots(
+        run: IWorkflowRunItem,
+        agreement: IRiskAgreementItem
+    ): Promise<void> {
+        if (run.hasDecision) {
+            throw new Error("Cannot update workflow approvers after an approval or rejection has been recorded.");
+        }
+
+        const workflow = getWorkflowForRun(run);
+        const currentStep = this.getStep(workflow, run.currentStepKey);
+        const pendingApprover = this.getApproverForAgreementStep(agreement, run.currentStepKey);
+        const og = DataSource.OGs.find(o => o.Title === agreement.og);
+        const lob = DataSource.LOBs.find(l => l.Id === og?.lob.Id);
+
+        await Web()
+            .Lists(Strings.Sites.main.lists.WorkflowRuns)
+            .Items()
+            .getById(run.Id)
+            .update({
+                __metadata: { type: `SP.Data.${encodeListName(Strings.Sites.main.lists.WorkflowRuns)}ListItem` },
+                contractMgrId: agreement.contractMgr?.Id ?? null,
+                ogPresidentId: og?.president?.Id ?? null,
+                cooId: lob?.coo?.Id ?? null,
+                ceoId: DataSource.CEO?.Id ?? null,
+                svpContractsId: DataSource.SVPContracts?.Id ?? null,
+                pendingRole: currentStep?.label ?? null,
+                pendingApproverId: pendingApprover?.Id ?? null,
+                pendingApproverEmail: pendingApprover?.EMail ?? null
+            })
+            .executeAndWait();
+    }
 
     static createRun(
         agreementId: number,
@@ -144,17 +197,18 @@ export class WorkflowRunService {
     }
 
 
-    private static getStep(key: WorkflowStepKey): IWorkflowStep | undefined {
-        return RiskAgreementWorkflow.find(s => s.key === key);
+    private static getStep(workflow: IWorkflowStep[], key: WorkflowStepKey): IWorkflowStep | undefined {
+        return workflow.find(s => s.key === key);
     }
 
     // Walk "next" until you find a required step (or end)
     private static getNextRequiredStepKey(
         agreement: IRiskAgreementItem,
+        workflow: IWorkflowStep[],
         startKey: WorkflowStepKey
     ): WorkflowStepKey | undefined {
 
-        let current = this.getStep(startKey);
+        let current = this.getStep(workflow, startKey);
 
         // If model is misconfigured, bail safely
         const guardMax = 20;
@@ -164,7 +218,7 @@ export class WorkflowRunService {
             guard++;
 
             const nextKey = current.next;
-            const nextStep = this.getStep(nextKey);
+            const nextStep = this.getStep(workflow, nextKey);
             if (!nextStep) return undefined;
 
             if (nextStep.isRequired(agreement)) return nextKey;
@@ -176,9 +230,14 @@ export class WorkflowRunService {
         return undefined;
     }
 
-    private static getApproverForStep(run: IWorkflowRunItem, stepKey: WorkflowStepKey): IPeoplePicker | undefined {
-        const step = this.getStep(stepKey);
+    private static getApproverForStep(workflow: IWorkflowStep[], run: IWorkflowRunItem, stepKey: WorkflowStepKey): IPeoplePicker | undefined {
+        const step = this.getStep(workflow, stepKey);
         return step?.getApprover ? step.getApprover(run) : undefined;
+    }
+
+    private static completesOnApprove(step: IWorkflowStep | undefined, agreement: IRiskAgreementItem): boolean {
+        const completes = step?.completesOnApprove;
+        return typeof completes === "function" ? completes(agreement) : completes === true;
     }
 
     static async applyDecision(
@@ -214,7 +273,11 @@ export class WorkflowRunService {
         }
 
         // Approved: move to next required step, or complete run approved
-        const nextKey = this.getNextRequiredStepKey(agreement, run.currentStepKey);
+        const workflow = getWorkflowForRun(run);
+        const currentStep = this.getStep(workflow, run.currentStepKey);
+        const nextKey = this.completesOnApprove(currentStep, agreement)
+            ? undefined
+            : this.getNextRequiredStepKey(agreement, workflow, run.currentStepKey);
 
         if (!nextKey) {
             await Web()
@@ -239,8 +302,8 @@ export class WorkflowRunService {
             return { completed: true, nowIso };
         }
 
-        const nextStep = this.getStep(nextKey);
-        const approver = this.getApproverForStep(run, nextKey);
+        const nextStep = this.getStep(workflow, nextKey);
+        const approver = this.getApproverForStep(workflow, run, nextKey);
 
         await Web()
             .Lists(Strings.Sites.main.lists.WorkflowRuns)

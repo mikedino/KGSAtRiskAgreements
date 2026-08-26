@@ -55,6 +55,7 @@ const AgreementInfoCard = ({
                 <ReadOnly label="Operating Group" value={item.og} />
                 <ReadOnly label="Line of Business" value={item.lob} />
                 <ReadOnly label="Risk Funding Requested" value={formatCurrency(item.riskFundingRequested)} />
+                <ReadOnly label="ATP Received" value={item.atpReceived} />
                 <ReadOnly label="At-Risk Reason" value={item.riskReason} />
                 <ReadOnly label="Project Manager" value={item.projectMgr?.Title} />
                 <ReadOnly label="Contract Manager" value={item.contractMgr?.Title} />

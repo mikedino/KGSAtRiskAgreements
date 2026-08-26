@@ -8,6 +8,7 @@ The solution supports:
 
 - Guided, role-based approval workflows
 - Agreement modifications that automatically restart approvals when required
+- ATP Received tracking with high-risk flagging when ATP has not been received
 - Full workflow history with multiple runs, actions, comments, and change summaries
 - Personalized dashboards for approvers and submitters
 - A detailed agreement view with expandable workflow timelines and change history
@@ -67,6 +68,7 @@ This solution is designed for environments where governance, traceability, and a
 | 2.0.1.1 | June 3, 2026 | Full screen view, Active view and Dashboard cards 8 & 9 updated to show all approved regardless of date |
 | 2.0.1.2 | June 10, 2026 | Allow mod to approved ATRs. Minor UI adjustments to view/edit form. |
 | 2.0.1.3 | Aug 3, 2026 | Form > Invoice: add title to results/display, add Invoice ID to search. Include Mod Review in "Pending" view. |
+| 3.0.0.1 | Aug 26, 2026 | MAJOR REV: Change WF Model so SVP approves after CM. Add ATP Rec'd field and High Risk flag. Fix header to push personnel/OG edits to WF Run if no Approvals rec'd yet. |
 
 ---
 
@@ -90,18 +92,22 @@ This solution is designed for environments where governance, traceability, and a
 - Create and submit At-Risk Agreements
 - Edit agreements prior to approval
 - Automatically detect when a modification requires workflow restart
+- Keep in-flight workflow run approvers synchronized with personnel and OG edits until the first approval or rejection is recorded
 
 ### Approval Workflow Engine
 
 - Multi-step approval workflow
+- Current workflow routes SVP Contracts approval immediately after Contract Manager review
 - Role-based approvers resolved at runtime
 - Support for skipped or conditional steps
 - Clear “Current”, “Approved”, “Rejected”, and “Queued” states
+- Legacy workflow runs retain the approval order they started with for accurate historical display
 
 ### Workflow Runs & History
 
 - Each workflow restart creates a new Run
 - Runs are preserved for historical reference
+- Pre-approval edits update the existing Run snapshot instead of creating a new Run
 - Expandable accordion view of all runs
 - Current run is emphasized; previous runs are read-only
 
@@ -117,6 +123,7 @@ This solution is designed for environments where governance, traceability, and a
 - "My Action" — items waiting on the current user
 - "My Reviewed" — agreements the user approved or rejected
 - "Pending", "Approved", "Resolved", and "All" views
+- High-risk flag indicators and filtering for ATRs where ATP has not been received
 - Fully derived from workflow state and actions
 
 ### Performance-Conscious Data Loading

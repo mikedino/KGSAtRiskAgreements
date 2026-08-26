@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useMemo, useState } from "react";
 import dayjs from "dayjs";
-import { Box, Typography, TextField, MenuItem, Stack, Chip, Tooltip, Button } from "@mui/material";
+import { Box, Typography, TextField, MenuItem, Stack, Chip, Tooltip, Button, Checkbox, FormControlLabel } from "@mui/material";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { useHistory } from "react-router-dom";
@@ -13,6 +13,7 @@ import { useAgreements } from "../services/agreementsContext";
 import { formatDate } from "../services/utils";
 import { exportAgreementRows } from "../services/exportAgreements";
 import { isActiveByRiskEnd } from "../services/dashboardHelpers";
+import HighRiskFlag, { isHighRiskAtr } from "../ui/HighRiskFlag";
 
 type AgreementViewKey =
   | "all"
@@ -45,6 +46,7 @@ const AgreementsGrid: React.FC = () => {
   const [entityFilter, setEntityFilter] = useState("");
   const [lobFilter, setLobFilter] = useState("");
   const [contractTypeFilter, setContractTypeFilter] = useState("");
+  const [highRiskOnly, setHighRiskOnly] = useState(false);
   const [selectedView, setSelectedView] = useState<AgreementViewKey>("all");
 
   const agreementViews = useMemo<AgreementView[]>(() => [
@@ -193,6 +195,7 @@ const AgreementsGrid: React.FC = () => {
     entity: string,
     lob: string,
     contractType: string,
+    highRiskOnly: boolean,
     view: AgreementViewKey
   ): IRiskAgreementItem[] => {
 
@@ -217,8 +220,9 @@ const AgreementsGrid: React.FC = () => {
         const matchesEntity = !entity || item.entity === entity;
         const matchesLob = !lob || item.lob === lob;
         const matchesContract = !contractType || item.contractType === contractType;
+        const matchesHighRisk = !highRiskOnly || isHighRiskAtr(item);
 
-        return (matchesSearch && matchesEntity && matchesLob && matchesContract);
+        return (matchesSearch && matchesEntity && matchesLob && matchesContract && matchesHighRisk);
       });
   };
 
@@ -251,13 +255,15 @@ const AgreementsGrid: React.FC = () => {
     setEntityFilter("");
     setLobFilter("");
     setContractTypeFilter("");
+    setHighRiskOnly(false);
   };
 
   const hasActiveFilters =
     Boolean(search?.trim()) ||
     Boolean(entityFilter) ||
     Boolean(lobFilter) ||
-    Boolean(contractTypeFilter);
+    Boolean(contractTypeFilter) ||
+    highRiskOnly;
 
   // Apply search/entity/contract filters without locking counts to the selected view.
   const baseFilteredAgreements = React.useMemo(() => {
@@ -267,9 +273,10 @@ const AgreementsGrid: React.FC = () => {
       entityFilter,
       lobFilter,
       contractTypeFilter,
+      highRiskOnly,
       "all"
     );
-  }, [agreements, search, entityFilter, lobFilter, contractTypeFilter, agreementViews]);
+  }, [agreements, search, entityFilter, lobFilter, contractTypeFilter, highRiskOnly, agreementViews]);
 
   // final data grid rows/items
   const rows = React.useMemo<AgreementGridRow[]>(() => {
@@ -279,6 +286,7 @@ const AgreementsGrid: React.FC = () => {
       "",
       "",
       "",
+      false,
       selectedView
     ).map((agreement) => {
       const currentRun = runByAgreementId.get(agreement.Id);
@@ -315,9 +323,12 @@ const AgreementsGrid: React.FC = () => {
         minWidth: 200,
         renderCell: (params) => (
           <Box sx={{ minWidth: 0 }}>
-            <Typography variant="body2" fontWeight={500} noWrap title={params.row.Title}>
-              {params.row.Title}
-            </Typography>
+            <Stack direction="row" alignItems="center" spacing={0.5} sx={{ minWidth: 0 }}>
+              <HighRiskFlag item={params.row} />
+              <Typography variant="body2" fontWeight={500} noWrap title={params.row.Title}>
+                {params.row.Title}
+              </Typography>
+            </Stack>
             <Typography
               variant="caption"
               color="text.secondary"
@@ -534,7 +545,7 @@ const AgreementsGrid: React.FC = () => {
           gridTemplateColumns: {
             xs: "1fr",
             md: "minmax(0, 1.25fr) minmax(0, 1fr) minmax(120px, auto)",
-            lg: "minmax(280px, 1.35fr) minmax(190px, 1fr) minmax(210px, 1fr) minmax(165px, 0.85fr) auto"
+            lg: "minmax(260px, 1.35fr) minmax(170px, 1fr) minmax(190px, 1fr) minmax(155px, 0.85fr) minmax(155px, 0.85fr) auto"
           }
         }}
       >
@@ -644,6 +655,24 @@ const AgreementsGrid: React.FC = () => {
             </MenuItem>
           ))}
         </TextField>
+
+        <FormControlLabel
+          label="High risk only"
+          sx={{
+            minWidth: 0,
+            gridColumn: {
+              xs: "1",
+              md: "3",
+              lg: "auto"
+            }
+          }}
+          control={
+            <Checkbox
+              checked={highRiskOnly}
+              onChange={(e) => setHighRiskOnly(e.target.checked)}
+            />
+          }
+        />
 
         {/* RESET FILTERS */}
         <Button

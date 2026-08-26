@@ -16,6 +16,7 @@ import { DataSource } from "../data/ds";
 import { AgreementDelta } from "../services/agreementDiff";
 import { useTheme } from "@mui/material/styles";
 import { decodeHtml } from "../services/utils";
+import HighRiskFlag, { HIGH_RISK_ATR_LABEL, isHighRiskAtr } from "../ui/HighRiskFlag";
 
 interface RiskAgreementViewProps {
     item: IRiskAgreementItem;
@@ -574,7 +575,10 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
 
                 <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
                     <Stack direction="row" alignItems="center" spacing={2}>
-                        <Typography variant="h4">{item.Title}</Typography>
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                            <HighRiskFlag item={item} size="medium" />
+                            <Typography variant="h4">{item.Title}</Typography>
+                        </Stack>
 
                         <Chip
                             label={item.araStatus}
@@ -631,6 +635,12 @@ const RiskAgreementView: React.FC<RiskAgreementViewProps> = ({ item, currentUser
                     </Stack>
                 </Stack>
             </Box>
+
+            {isHighRiskAtr(item) && (
+                <Alert severity="error" variant="outlined" sx={{ mb: 3 }}>
+                    {HIGH_RISK_ATR_LABEL}: ATP has not been received.
+                </Alert>
+            )}
 
             <Grid container spacing={3}>
                 <Grid size={{ xs: 12, lg: 6 }}>

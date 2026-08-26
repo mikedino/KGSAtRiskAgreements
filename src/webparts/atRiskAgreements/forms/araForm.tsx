@@ -11,7 +11,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
-import { ContractType, IAttachmentInfo, IContractItem, IInvoiceItem, IOgItem, IPeoplePicker, IRiskAgreementItem } from "../data/props";
+import { AtpReceivedChoice, ContractType, IAttachmentInfo, IContractItem, IInvoiceItem, IOgItem, IPeoplePicker, IRiskAgreementItem } from "../data/props";
 import { IPersonaProps } from "@fluentui/react";
 import CurrencyField from "../ui/CurrencyField";
 import { DataSource } from "../data/ds";
@@ -186,7 +186,6 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
   }
 
   // helper for contract onChange to find OG and set, then find CM and set
-  // helper for contract onChange to find OG and set, then find CM and set
   const applyOgAndCmFromContract = (contract: IContractItem | null): undefined => {
     const ogTitle = (contract?.field_75 ?? "").trim();
 
@@ -285,7 +284,8 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
     !form.contractType ||
     !form.entity ||
     !form.og ||
-    !form.riskFundingRequested ||
+    !form.atpReceived ||
+    (form.riskFundingRequested === undefined || form.riskFundingRequested === null) ||
     !form.riskJustification ||
     !attachments.length ||
     (submissionType === "existing" && (!form.contractId || !form.invoice || !form.popEnd || !form.riskReason));
@@ -813,7 +813,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
               <Divider sx={{ mb: 1 }} />
             </Grid>
 
-            <Grid size={{ xs: 12, md: 6, lg: 3 }}>
+            <Grid size={{ xs: 12, md: 6, lg: submissionType === "existing" ? 2.4 : 3 }}>
               <CompactDateField
                 label="Risk Start Date"
                 value={form.riskStart ? dayjs(form.riskStart) : undefined}
@@ -826,7 +826,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
               />
             </Grid>
 
-            <Grid size={{ xs: 12, md: 6, lg: 3 }}>
+            <Grid size={{ xs: 12, md: 6, lg: submissionType === "existing" ? 2.4 : 3 }}>
               <CompactDateField
                 label="Risk End Date"
                 value={form.riskEnd ? dayjs(form.riskEnd) : undefined}
@@ -840,7 +840,7 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
             </Grid>
 
             {submissionType === "existing" && (
-              <Grid size={{ xs: 12, md: 6, lg: 3 }}>
+              <Grid size={{ xs: 12, md: 6, lg: 2.4 }}>
                 <TextField
                   select
                   label="Reason for At-Risk Work"
@@ -851,13 +851,13 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                   value={form.riskReason ?? ""}
                   onChange={(e) => updateField("riskReason", e.target.value as IRiskAgreementItem["riskReason"])}
                 >
-                  <MenuItem value="Lack of funding">Lack of funding</MenuItem>
+                  <MenuItem value="Lack of Funding">Lack of Funding</MenuItem>
                   <MenuItem value="PoP End">PoP End</MenuItem>
                 </TextField>
               </Grid>
             )}
 
-            <Grid size={{ xs: 12, md: 6, lg: 3 }}>
+            <Grid size={{ xs: 12, md: 6, lg: submissionType === "existing" ? 2.4 : 3 }}>
               <CurrencyField
                 label="New Risk Funding Requested"
                 fullWidth
@@ -871,6 +871,29 @@ const RiskAgreementForm: React.FC<RiskAgreementFormProps> = ({ item, context, mo
                     : undefined
                 }
               />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6, lg: submissionType === "existing" ? 2.4 : 3 }}>
+              <TextField
+                select
+                label="ATP Received?"
+                fullWidth
+                required
+                value={form.atpReceived ?? ""}
+                error={submitted && isRequiredError(form.atpReceived)}
+                helperText={
+                  submitted && isRequiredError(form.atpReceived)
+                    ? "ATP Received is required"
+                    : form.atpReceived === "No"
+                      ? "No ATP marks this ATR as high risk."
+                      : undefined
+                }
+                onChange={(e) => updateField("atpReceived", e.target.value as AtpReceivedChoice)}
+              >
+                <MenuItem value="">Select</MenuItem>
+                <MenuItem value="Yes">Yes</MenuItem>
+                <MenuItem value="No">No</MenuItem>
+              </TextField>
             </Grid>
 
             {/* // -----------------------------

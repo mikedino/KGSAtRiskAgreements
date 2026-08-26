@@ -341,8 +341,9 @@ export const AppInner: React.FC<IReadyAppProps> = ({
 
                 // An active run with no decisions can accept edits without restarting.
                 if (latestActiveRun && !latestActiveRun.hasDecision) {
-                    // save only — NO WF restart
-                    await RiskAgreementService.edit({ ...item, ...approvers }, item.araStatus);
+                    // save and refresh the active run snapshots — NO WF restart
+                    const agreement = await RiskAgreementService.edit({ ...item, ...approvers }, item.araStatus);
+                    await WorkflowRunService.updatePreDecisionApproverSnapshots(latestActiveRun, agreement);
                 } else {
                     const canRestartActiveRun = latestActiveRun?.Id === oldRun.Id;
                     const canRestartApprovedRun =

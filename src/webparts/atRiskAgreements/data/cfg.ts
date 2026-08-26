@@ -146,6 +146,14 @@ export const Configuration = Helper.SPConfig({
                     type: Helper.SPCfgFieldType.User,
                     description: "Designated person who will receive notifications for this request"
                 } as Helper.IFieldInfoUser,
+                {
+                    name: "atpReceived",
+                    title: "ATP Received",
+                    required: true,
+                    description: "Has an ATP been received from the customer?",
+                    type: Helper.SPCfgFieldType.Choice,
+                    choices: ["Yes", "No"]
+                } as Helper.IFieldInfoChoice,
 
                 /******** Workflow Pointer (Lookup to WorkflowRuns) ********/
                 {
@@ -200,6 +208,7 @@ export const Configuration = Helper.SPConfig({
                         "projectMgr",
                         "riskReason",
                         "riskFundingRequested",
+                        "atpReceived",
                         "araStatus"
                     ]
                 },
@@ -217,6 +226,7 @@ export const Configuration = Helper.SPConfig({
                         "popEnd",
                         "riskReason",
                         "riskFundingRequested",
+                        "atpReceived",
                         "araStatus"
                     ]
                 }
@@ -421,7 +431,7 @@ export const Configuration = Helper.SPConfig({
                     name: "currentStepKey",
                     title: "Current Step Key",
                     type: Helper.SPCfgFieldType.Choice,
-                    choices: ["submit", "contractMgr", "ogPresident", "coo", "ceo", "svpContracts"],
+                    choices: ["submit", "contractMgr", "ogPresident", "coo", "ceo", "svpContracts", "submitter"],
                     defaultValue: "submit",
                     indexed: true
                 } as Helper.IFieldInfoChoice,

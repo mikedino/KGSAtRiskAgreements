@@ -1,5 +1,5 @@
 import { IRiskAgreementItem, IWorkflowActionItem, IWorkflowRunItem, WorkflowStepKey } from "../data/props";
-import { IWorkflowStep, RiskAgreementWorkflow } from "./workflowModel";
+import { getWorkflowForRun, IWorkflowStep } from "./workflowModel";
 
 // create a synthentic step definition for timeline display
 export type TimelineStepKey = WorkflowStepKey | "resolved" | "reverted";
@@ -78,6 +78,7 @@ const getLatestRejectedStepKey = (actions: IWorkflowActionItem[]): TimelineStepK
  * - actions (what happened)
  */
 export function buildWorkflowState(agreement: IRiskAgreementItem, run: IWorkflowRunItem, actions: IWorkflowActionItem[]): WorkflowStepWithStatus[] {
+  const workflow = getWorkflowForRun(run);
 
   // Best-effort "sent date" for the current step:
   // prefer run.stepAssignedDate; otherwise use the last completed step date or agreement created.
@@ -124,7 +125,7 @@ export function buildWorkflowState(agreement: IRiskAgreementItem, run: IWorkflow
 
   // Find the first required step at/after currentKey if the currentKey is not required anymore
   // (ex: risk amount reduced and COO step no longer required).
-  const requiredSteps = RiskAgreementWorkflow.filter(s => !s.isInitial && s.isRequired(agreement));
+  const requiredSteps = workflow.filter(s => !s.isInitial && s.isRequired(agreement));
   const currentIndex = requiredSteps.findIndex(s => s.key === currentKey);
   const effectiveCurrentKey = currentIndex >= 0 ? currentKey : (requiredSteps[0]?.key ?? "contractMgr");
 
@@ -134,8 +135,8 @@ export function buildWorkflowState(agreement: IRiskAgreementItem, run: IWorkflow
   const awaitingSubmitter = run.currentStepKey === "submitter";
   const rejectedKey = awaitingSubmitter ? getLatestRejectedStepKey(actions) : undefined;
 
-  const submitterDef = RiskAgreementWorkflow.find(s => s.key === "submitter");
-  const baseWorkflow = RiskAgreementWorkflow.filter(s => s.key !== "submitter");
+  const submitterDef = workflow.find(s => s.key === "submitter");
+  const baseWorkflow = workflow.filter(s => s.key !== "submitter");
 
   let displayWorkflow = baseWorkflow;
 
