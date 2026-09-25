@@ -491,6 +491,7 @@ const MyWork: React.FC = () => {
           <Stack direction="row" spacing={1} alignItems="center" sx={{ ml: "auto" }}>
             <FormControlLabel
               label="High risk only"
+              sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.8125rem" } }}
               control={
                 <Checkbox
                   checked={highRiskOnly}
