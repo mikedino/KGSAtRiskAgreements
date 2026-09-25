@@ -548,7 +548,7 @@ export const AppInner: React.FC<IReadyAppProps> = ({
 
                     {/* PAGE CONTENT - outer full-width scroller keeps the scrollbar at the WebView edge. */}
                     <Box sx={{ flex: 1, overflowY: "auto", overflowX: "hidden", width: "100%", color: "text.primary" }}>
-                        <Box sx={{ p: 3, mx: "auto", maxWidth: "1600px", boxSizing: "border-box" }}>
+                        <Box sx={{ p: 3, mx: "auto", maxWidth: "1700px", boxSizing: "border-box" }}>
 
                             <Switch>
                                 <Route exact path="/"><Redirect to="/my-work" /></Route>

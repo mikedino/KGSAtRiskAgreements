@@ -1,8 +1,9 @@
 import * as React from "react";
 import { useMemo, useState } from "react";
 import dayjs from "dayjs";
-import { Box, Typography, TextField, MenuItem, Stack, Chip, Tooltip, Button, Checkbox, FormControlLabel } from "@mui/material";
+import { Box, Typography, TextField, MenuItem, Stack, Chip, Tooltip, Button, IconButton, Checkbox, FormControlLabel } from "@mui/material";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
+import FilterAltOffOutlinedIcon from "@mui/icons-material/FilterAltOffOutlined";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { useHistory } from "react-router-dom";
 import { DataSource } from "../data/ds";
@@ -47,6 +48,7 @@ const AgreementsGrid: React.FC = () => {
   const [lobFilter, setLobFilter] = useState("");
   const [contractTypeFilter, setContractTypeFilter] = useState("");
   const [highRiskOnly, setHighRiskOnly] = useState(false);
+  const [hasSubcontractOnly, setHasSubcontractOnly] = useState(false);
   const [selectedView, setSelectedView] = useState<AgreementViewKey>("all");
 
   const agreementViews = useMemo<AgreementView[]>(() => [
@@ -196,6 +198,7 @@ const AgreementsGrid: React.FC = () => {
     lob: string,
     contractType: string,
     highRiskOnly: boolean,
+    hasSubcontractOnly: boolean,
     view: AgreementViewKey
   ): IRiskAgreementItem[] => {
 
@@ -221,8 +224,9 @@ const AgreementsGrid: React.FC = () => {
         const matchesLob = !lob || item.lob === lob;
         const matchesContract = !contractType || item.contractType === contractType;
         const matchesHighRisk = !highRiskOnly || isHighRiskAtr(item);
+        const matchesSubcontract = !hasSubcontractOnly || item.hasSubcontract;
 
-        return (matchesSearch && matchesEntity && matchesLob && matchesContract && matchesHighRisk);
+        return (matchesSearch && matchesEntity && matchesLob && matchesContract && matchesHighRisk && matchesSubcontract);
       });
   };
 
@@ -256,6 +260,7 @@ const AgreementsGrid: React.FC = () => {
     setLobFilter("");
     setContractTypeFilter("");
     setHighRiskOnly(false);
+    setHasSubcontractOnly(false);
   };
 
   const hasActiveFilters =
@@ -263,7 +268,8 @@ const AgreementsGrid: React.FC = () => {
     Boolean(entityFilter) ||
     Boolean(lobFilter) ||
     Boolean(contractTypeFilter) ||
-    highRiskOnly;
+    highRiskOnly ||
+    hasSubcontractOnly;
 
   // Apply search/entity/contract filters without locking counts to the selected view.
   const baseFilteredAgreements = React.useMemo(() => {
@@ -274,9 +280,10 @@ const AgreementsGrid: React.FC = () => {
       lobFilter,
       contractTypeFilter,
       highRiskOnly,
+      hasSubcontractOnly,
       "all"
     );
-  }, [agreements, search, entityFilter, lobFilter, contractTypeFilter, highRiskOnly, agreementViews]);
+  }, [agreements, search, entityFilter, lobFilter, contractTypeFilter, highRiskOnly, hasSubcontractOnly, agreementViews]);
 
   // final data grid rows/items
   const rows = React.useMemo<AgreementGridRow[]>(() => {
@@ -286,6 +293,7 @@ const AgreementsGrid: React.FC = () => {
       "",
       "",
       "",
+      false,
       false,
       selectedView
     ).map((agreement) => {
@@ -544,8 +552,8 @@ const AgreementsGrid: React.FC = () => {
           alignItems: "center",
           gridTemplateColumns: {
             xs: "1fr",
-            md: "minmax(0, 1.25fr) minmax(0, 1fr) minmax(120px, auto)",
-            lg: "minmax(260px, 1.35fr) minmax(170px, 1fr) minmax(190px, 1fr) minmax(155px, 0.85fr) minmax(155px, 0.85fr) auto"
+            md: "repeat(2, minmax(0, 1fr))",
+            lg: "minmax(180px, 1.35fr) minmax(120px, 1fr) minmax(100px, 0.7fr) minmax(130px, 0.65fr) auto"
           }
         }}
       >
@@ -563,7 +571,7 @@ const AgreementsGrid: React.FC = () => {
             minWidth: 0,
             gridColumn: {
               xs: "1",
-              md: "1 / span 2",
+              md: "1",
               lg: "auto"
             },
             "& .MuiInputBase-root": { minWidth: 0 }
@@ -580,7 +588,7 @@ const AgreementsGrid: React.FC = () => {
             minWidth: 0,
             gridColumn: {
               xs: "1",
-              md: "3",
+              md: "2",
               lg: "auto"
             },
             "& .MuiSelect-select": {
@@ -656,47 +664,53 @@ const AgreementsGrid: React.FC = () => {
           ))}
         </TextField>
 
-        <FormControlLabel
-          label="High risk only"
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={1}
           sx={{
-            minWidth: 0,
-            gridColumn: {
-              xs: "1",
-              md: "3",
-              lg: "auto"
-            }
-          }}
-          control={
-            <Checkbox
-              checked={highRiskOnly}
-              onChange={(e) => setHighRiskOnly(e.target.checked)}
-            />
-          }
-        />
-
-        {/* RESET FILTERS */}
-        <Button
-          size="small"
-          variant="text"
-          disabled={!hasActiveFilters}
-          onClick={resetFilters}
-          sx={{
-            px: 1,
-            whiteSpace: "nowrap",
-            justifySelf: {
-              xs: "stretch",
-              md: "end",
-              lg: "start"
-            },
-            gridColumn: {
-              xs: "1",
-              md: "3",
-              lg: "auto"
+            gridColumn: { xs: "1", md: "1 / -1", lg: "auto" },
+            flexWrap: { xs: "wrap", lg: "nowrap" },
+            "& .MuiFormControlLabel-root": { m: 0 },
+            "& .MuiFormControlLabel-label": {
+              fontSize: "0.8125rem",
+              whiteSpace: "nowrap"
             }
           }}
         >
-          Clear filters
-        </Button>
+          <FormControlLabel
+            label="High risk only"
+            control={
+              <Checkbox
+                size="small"
+                checked={highRiskOnly}
+                onChange={(e) => setHighRiskOnly(e.target.checked)}
+              />
+            }
+          />
+          <FormControlLabel
+            label="Has Subcontract?"
+            control={
+              <Checkbox
+                size="small"
+                checked={hasSubcontractOnly}
+                onChange={(e) => setHasSubcontractOnly(e.target.checked)}
+              />
+            }
+          />
+          <Tooltip title="Clear filters" arrow>
+            <Box component="span" sx={{ display: "inline-flex", pl: { xs: 0, lg: 3 } }}>
+              <IconButton
+                size="small"
+                aria-label="Clear filters"
+                disabled={!hasActiveFilters}
+                onClick={resetFilters}
+              >
+                <FilterAltOffOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          </Tooltip>
+        </Stack>
         {/* </Stack> */}
       </Box>
 

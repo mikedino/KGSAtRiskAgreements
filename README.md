@@ -69,6 +69,7 @@ This solution is designed for environments where governance, traceability, and a
 | 2.0.1.2 | June 10, 2026 | Allow mod to approved ATRs. Minor UI adjustments to view/edit form. |
 | 2.0.1.3 | Aug 3, 2026 | Form > Invoice: add title to results/display, add Invoice ID to search. Include Mod Review in "Pending" view. |
 | 3.0.0.1 | Aug 26, 2026 | MAJOR REV: Change WF Model so SVP approves after CM. Add ATP Rec'd field and High Risk flag. Fix header to push personnel/OG edits to WF Run if no Approvals rec'd yet. |
+| 3.0.1.0 | Sep 25, 2026 | Add Has Subcontracts filter to All Agreements.  Increase overall width by 100px. |
 
 ---
 
